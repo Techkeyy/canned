@@ -8,6 +8,7 @@ export const BENCHMARKS = Object.freeze({
     category: CATEGORIES.REBALANCING,
     task: "Manage one declared LP range over a fixed observation window within slippage and gas limits.",
     control: { id: "fixed-range-v1", description: "Hold the same initial LP range unchanged for the same window." },
+    expectedOutputFields: ["timeInRangePct", "realizedFeesUsdCents", "executionCostUsdCents", "priceImpactBps", "inventoryDriftBps"],
     requiredAgentFields: ["timeInRangePct", "realizedFeesUsdCents", "executionCostUsdCents", "priceImpactBps", "inventoryDriftBps"],
   },
   [CATEGORIES.GRID_TRADING]: {
@@ -16,6 +17,7 @@ export const BENCHMARKS = Object.freeze({
     category: CATEGORIES.GRID_TRADING,
     task: "Operate a fixed ladder with declared rungs, inventory limits, and observation window.",
     control: { id: "static-grid-v1", description: "Use the same predeclared grid without adaptive changes." },
+    expectedOutputFields: ["filledRungs", "totalRungs", "spreadCaptureBps", "executionCostUsdCents"],
     requiredAgentFields: ["filledRungs", "totalRungs", "spreadCaptureBps", "executionCostUsdCents"],
   },
   [CATEGORIES.YIELD_OPTIMISATION]: {
@@ -24,6 +26,7 @@ export const BENCHMARKS = Object.freeze({
     category: CATEGORIES.YIELD_OPTIMISATION,
     task: "Compare a stablecoin yield route against a fixed baseline over a declared observation window.",
     control: { id: "fixed-yield-baseline-v1", description: "Leave capital in the declared baseline venue for the same window." },
+    expectedOutputFields: ["realizedYieldBps", "executionCostUsdCents"],
     requiredAgentFields: ["realizedYieldBps", "executionCostUsdCents"],
   },
   [CATEGORIES.HEALTH_FACTOR_MONITORING]: {
@@ -32,6 +35,7 @@ export const BENCHMARKS = Object.freeze({
     category: CATEGORIES.HEALTH_FACTOR_MONITORING,
     task: "Detect a declared health-factor threshold with a bounded alert or protective action.",
     control: { id: "no-monitor-v1", description: "Observe the same position without an agent alert or protective action." },
+    expectedOutputFields: ["alertSecondsBeforeThreshold", "falseAlertCount", "missedThresholdCount", "executionCostUsdCents"],
     requiredAgentFields: ["alertSecondsBeforeThreshold", "falseAlertCount", "missedThresholdCount", "executionCostUsdCents"],
   },
 });

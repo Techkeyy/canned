@@ -6,7 +6,7 @@ Canned is an early-stage, evidence-led marketplace for autonomous BNB Chain agen
 
 Milestone 2 core slice implemented as of 2026-08-26.
 
-The repository now has a BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, a fixture runner, and a small inspection page. Directive #3 has been exercised with a real paid attempt: job 669 was precommitted, funded, accepted by the provider, and then timed out without a submitted deliverable. The escrow was refunded after expiry. This is a real paid timeout/insufficient-data result, not a qualifying success or public-metric win.
+The repository now has a BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, fresh candidate readiness/cooldown selection, a fixture runner, and a small inspection page. Directive #3 produced real paid timeout evidence for job 669. The next bounded attempt selected grid-trading identity 1926 as the freshest ready candidate, created job 673, and also expired without a submitted deliverable; its escrow was reconciled. Both are real paid timeout/insufficient-data results, not qualifying successes or public-metric wins.
 
 ## Project documents
 
@@ -35,11 +35,11 @@ npm run serve
 
 The inspection page is served at `http://localhost:8787/inspection`. `npm run inventory` is read-only and writes the verified candidate report to `data/inventory/verified-candidates.json`. The current report is a live snapshot, not a marketplace ranking.
 
-The current live snapshot searched 22 8004scan results, deeply examined 12, found 6 reachable services, and found 4 callable candidate surfaces. Four candidates returned accepted A2A quote probes at 0.1 U. The selected entry, `weighrange-agent` (BSC testnet identity 1923), now has one persisted paid timeout attempt. The provider endpoint acknowledged the funded job but did not produce an onchain submission, so the candidate remains unqualified.
+The fresh candidate workflow persists a readiness matrix and provider history. It does not immediately retry a provider after a paid timeout, and it stops before funding when no remaining candidate passes the required checks. The selected `weighladder-agent` (BSC testnet identity 1926) acknowledged job 673 but did not produce an onchain submission before its bounded deadline, so it is now cooled down and remains unqualified.
 
 `npm run benchmark:fixture` exercises the full persistence and evaluator path without network writes. Fixture records are explicitly excluded from public metrics.
 
-`npm run wallet:create` creates one disposable SDK-encrypted testnet keystore and an ignored `.env.local`. `npm run wallet:check` performs read-only balance, allowance, token, gas, and fresh-quote checks. `npm run benchmark:paid` is the explicit write path and requires `CANNED_ALLOW_TESTNET_WRITES=true`; it refuses mainnet and refuses to proceed with insufficient funds.
+`npm run wallet:create` creates one disposable SDK-encrypted testnet keystore and an ignored `.env.local`. `npm run wallet:check` performs read-only balance, allowance, token, gas, and selected-candidate checks. `npm run inventory` refreshes the public candidate matrix and quote/readiness evidence. `npm run benchmark:paid` is the explicit write path and requires `CANNED_ALLOW_TESTNET_WRITES=true`; it refuses mainnet, cooled-down providers, systemic repeated failures, and insufficient funds.
 
 The paid test used only BSC testnet. Its final run record, protocol events, timeout, control, evidence hashes, refund, and Router expiry reconciliation are available through the inspection route and local content-addressed state. Keep the wallet write flag disabled after testing. Do not send funds from a normal wallet and do not enter a private key into Canned.
 

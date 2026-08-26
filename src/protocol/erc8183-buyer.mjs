@@ -1,4 +1,5 @@
 import path from "node:path";
+import { parseAbiItem } from "viem";
 import { ERC8183_STATES } from "../domain.mjs";
 import { contentHashes, nowIso, safeError } from "../core.mjs";
 
@@ -150,7 +151,22 @@ export async function createFundedJob({ agent, precommit, quote, store, env = pr
     const budget = BigInt(quotedTerms.price);
     const budgetSet = await buyer.client.setBudget(created.jobId, budget);
     await persist("set_budget", { tx: txShape(budgetSet), snapshot: await protocolSnapshot(buyer.client, created.jobId), budget: budget.toString() });
+    const fundStartBlock = await buyer.client.publicClient.getBlockNumber();
     const funded = await buyer.client.fund(created.jobId, budget, { approveFloor: 0n });
+    const fundReceiptBlock = funded.receipt?.blockNumber === undefined || funded.receipt?.blockNumber === null ? await buyer.client.publicClient.getBlockNumber() : BigInt(funded.receipt.blockNumber);
+    try {
+      const approvalEvent = parseAbiItem("event Approval(address indexed owner,address indexed spender,uint256 value)");
+      const approvals = await buyer.client.publicClient.getLogs({ address: paymentToken, event: approvalEvent, args: { owner: buyer.wallet.address }, fromBlock: fundStartBlock, toBlock: fundReceiptBlock });
+      const seen = new Set();
+      for (const approval of approvals) {
+        if (seen.has(approval.transactionHash)) continue;
+        seen.add(approval.transactionHash);
+        const receipt = await buyer.client.publicClient.getTransactionReceipt({ hash: approval.transactionHash });
+        await persist("approve_payment_token", { automatic: true, spender: approval.args.spender, value: String(approval.args.value), tx: txShape({ transactionHash: approval.transactionHash, status: receipt.status === "success" ? 1 : 0, receipt }) });
+      }
+    } catch (error) {
+      await persist("approval_observation_error", { error: safeError(error) });
+    }
     record.state = "funded";
     record.funded = true;
     await persist("fund_job", { tx: txShape(funded), snapshot: await protocolSnapshot(buyer.client, created.jobId) });

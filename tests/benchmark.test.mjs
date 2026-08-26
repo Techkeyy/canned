@@ -7,6 +7,7 @@ import { BENCHMARKS, evaluateBenchmark } from "../src/benchmark/definitions.mjs"
 import { createPrecommitManifest, deriveQualificationFlags, runBenchmark } from "../src/benchmark/framework.mjs";
 import { FileStore } from "../src/persistence/file-store.mjs";
 import { CATEGORIES, publicMetrics, RUN_TYPES, terminalStateFor } from "../src/domain.mjs";
+import { validateSubmittedDeliverable } from "../src/benchmark/validation.mjs";
 
 const agent = { identity: "fixture:test-agent", name: "Test Agent", services: [] };
 const input = { startingCapitalUsdCents: 100_000, deadlineAtUnixSeconds: 2_000_000_000 };
@@ -35,7 +36,7 @@ test("execution failures remain distinct from insufficient data", () => {
 });
 
 test("qualification flags require payment, provenance, and an independent control", () => {
-  const base = { runType: RUN_TYPES.BENCHMARK, provenanceMode: "LIVE_QUALIFYING", precommit: { manifestHash: "0xmanifest" }, protocolJob: { funded: true, jobId: "17", currentState: "COMPLETED", events: [{ tx: { transactionHash: "0xtx" } }] }, agentOutput: {}, controlOutput: { provenance: { independent: true } }, evaluation: { status: "completed" }, terminalState: "completed" };
+  const base = { runType: RUN_TYPES.BENCHMARK, provenanceMode: "LIVE_QUALIFYING", precommit: { manifestHash: "0xmanifest" }, protocolJob: { funded: true, jobId: "17", currentState: "COMPLETED", events: [{ tx: { transactionHash: "0xtx" } }] }, agentOutput: {}, agentDeliverableValidation: { valid: true, hasActualDeliverable: true }, controlOutput: { provenance: { independent: true } }, evaluation: { status: "completed" }, terminalState: "completed" };
   assert.equal(deriveQualificationFlags(base).qualifiesForPublicMetrics, true);
   assert.equal(deriveQualificationFlags({ ...base, controlOutput: {} }).qualifiesForPublicMetrics, false);
   assert.equal(deriveQualificationFlags({ ...base, protocolJob: null }).qualifiesForPublicMetrics, false);
@@ -65,4 +66,42 @@ test("precommit binds provider, quote, evidence schema, and expiry", () => {
 test("malformed output becomes insufficient data", () => {
   const result = evaluateBenchmark({ benchmark: BENCHMARKS[CATEGORIES.YIELD_OPTIMISATION], input, agentOutput: { realizedYieldBps: "not-a-number" }, controlOutput: { realizedYieldBps: 500, executionCostUsdCents: 0 } });
   assert.equal(result.status, "insufficient_data");
+});
+
+test("submitted SDK deliverable is validated against the job and onchain manifest hash", async () => {
+  const body = { version: "1.0", jobId: 17, response: { content: JSON.stringify({ realizedYieldBps: 620, executionCostUsdCents: 2 }), contentType: "text/plain" }, metadata: {} };
+  const { contentHashes } = await import("../src/core.mjs");
+  const valid = validateSubmittedDeliverable({ body, jobId: 17, onchainDeliverable: contentHashes(body).keccak256, expectedOutputFields: ["realizedYieldBps", "executionCostUsdCents"] });
+  assert.equal(valid.valid, true);
+  assert.equal(valid.hasActualDeliverable, true);
+  assert.equal(validateSubmittedDeliverable({ body, jobId: 18, onchainDeliverable: contentHashes(body).keccak256, expectedOutputFields: ["realizedYieldBps"] }).valid, false);
+});
+
+test("a completed real deliverable becomes Verified Run #1 while retaining public grading rules", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "canned-verified-"));
+  const store = await new FileStore(root).init();
+  const run = await runBenchmark({
+    agent: { identity: "agent:verified", name: "Verified Agent", services: [] },
+    benchmark: BENCHMARKS[CATEGORIES.YIELD_OPTIMISATION],
+    input,
+    agentOutput: { realizedYieldBps: 620, executionCostUsdCents: 2 },
+    agentDeliverableValidation: { valid: true, hasActualDeliverable: true },
+    controlOutput: { provenance: { independent: true }, realizedYieldBps: 500, executionCostUsdCents: 0 },
+    protocolJob: { funded: true, jobId: "17", currentState: "COMPLETED", events: [{ tx: { transactionHash: "0xtx" } }] },
+    executionStatus: "completed",
+    store,
+    runType: RUN_TYPES.BENCHMARK,
+    provenanceMode: "LIVE_QUALIFYING",
+  });
+  assert.equal(run.qualification.isVerifiedRun, true);
+  assert.equal(run.qualification.completedBenchmark, true);
+  assert.equal(run.qualification.qualifiesForPublicMetrics, true);
+});
+
+test("paid timeouts and paid-but-ungraded runs remain excluded from public counts", () => {
+  const runs = [
+    { kind: "benchmark_run", runType: RUN_TYPES.BENCHMARK, provenance: { mode: "LIVE_QUALIFYING" }, qualification: { allGatesPassed: false }, terminalState: "timeout", protocolJob: { funded: true, jobId: "1" }, agent: { identity: "agent:timeout" }, evaluation: { status: "insufficient_data" } },
+    { kind: "benchmark_run", runType: RUN_TYPES.BENCHMARK, provenance: { mode: "LIVE_QUALIFYING" }, qualification: { allGatesPassed: false }, terminalState: "completed", protocolJob: { funded: true, jobId: "2" }, agent: { identity: "agent:ungraded" }, evaluation: { status: "insufficient_data" } },
+  ];
+  assert.deepEqual(publicMetrics(runs), { jobsPaidForAndGraded: 0, agentsTested: 0, winsVsControl: 0, qualifyingRuns: 0, excludedRuns: 2 });
 });

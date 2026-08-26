@@ -31,7 +31,7 @@ Audit date: 2026-08-26. This is a record of the current machine, not a promise t
 | BSC testnet | 97 | `https://bsc-testnet-rpc.publicnode.com` | `https://testnet.bscscan.com` | Read-only `eth_chainId` smoke test passed |
 | BSC mainnet | 56 | `https://bsc-dataseed.bnbchain.org` | `https://bscscan.com` | Not used for writes |
 
-The successful initial read-only testnet smoke result was `0x61`, which is decimal 97. One disposable encrypted testnet wallet was created. Directive #3 later broadcast only BSC testnet ERC-8183 transactions: job 669 was created, registered, budgeted, funded, then expired after the provider timed out; the escrow refund and Router expiry reconciliation also succeeded. No mainnet transaction was broadcast.
+The successful initial read-only testnet smoke result was `0x61`, which is decimal 97. One disposable encrypted testnet wallet was created. Directive #3 later broadcast only BSC testnet ERC-8183 transactions: job 669 was created, registered, budgeted, funded, then expired after the provider timed out; the escrow refund and Router expiry reconciliation also succeeded. Directive #4 selected fresh grid candidate identity 1926 and job 673 followed the same testnet-only path before expiring and reconciling without a provider submission. No mainnet transaction was broadcast.
 
 ## Required soon
 
@@ -40,7 +40,7 @@ The successful initial read-only testnet smoke result was `0x61`, which is decim
 - BSC testnet RPC and explorer access.
 - `@bnbagent/studio-cli` when the first provider-agent or deployment path is selected.
 - A disposable BSC testnet wallet funded only for the minimum ERC-8183 test.
-- A provider submission/deliverable lifecycle that reaches `SUBMITTED` or `COMPLETED`; the first paid attempt timed out honestly and produced no deliverable.
+- A provider submission/deliverable lifecycle that reaches `SUBMITTED` or `COMPLETED`; the first two paid attempts timed out honestly and produced no deliverable.
 - A reproducible benchmark environment with enough testnet activity to score the selected category.
 
 The local wallet setup is available with `npm run wallet:create`; `npm run wallet:check` records the exact live requirements in `data/state/funding-check.json`. The paid runner requires explicit testnet write enablement and leaves it disabled after a run.

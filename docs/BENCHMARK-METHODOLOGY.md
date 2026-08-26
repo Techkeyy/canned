@@ -11,12 +11,14 @@ Before an agent run starts, Canned records a canonical manifest containing:
 - agent identity reference, endpoint, and protocol;
 - control definition and version;
 - initial state and inputs hash;
-- observation window, deadline, limits, and evaluator version;
+- provider-delivery deadline, separate benchmark observation window, limits, and evaluator version;
 - client, provider, evaluator, and optional ERC-8183 job references;
 - authority and payment scope;
 - artifact retention and redaction policy.
 
 The manifest is hashed before the outcome is known. The current slice stores the canonical bytes and SHA-256/Keccak-256 hashes in the local evidence store. A hash is offchain content-addressed evidence until a protocol job, deliverable, or attestation commits it onchain. Any later change creates a new benchmark or run version. A hash proves integrity of the committed bytes, not the truth of their contents.
+
+Before funding, Canned records a fresh candidate readiness checklist: reachable card and quote surface, verified provider signature and identity, quote expiry lead time, documented ERC-8183 notification/schema, declared task capability, and supported protocol version. Documented health or recent-activity signals are recorded when available but are not treated as a delivery guarantee. A provider with a recent paid timeout is placed on a temporary cooldown; two independent providers failing after accepted notification without submission activate a systemic integration guard.
 
 ## Run lifecycle
 
@@ -76,7 +78,7 @@ For each run retain:
 - optional Altana grant, execution, and revoke references;
 - a human-readable summary generated from the record, never instead of it.
 
-The current implementation writes separate agent and control artifacts, run state, protocol-job state, and public-metric projections. Fixture runs and infrastructure smoke tests are persisted for inspection but are excluded from public marketplace metrics. Hashes prove integrity of the committed bytes after the commitment. They do not prove that the bytes describe reality, that an endpoint was honest, or that a strategy is safe or profitable. The UI must state this limitation next to evidence links.
+The current implementation writes separate agent and control artifacts, run state, protocol-job state, candidate readiness/cooldown state, and public-metric projections. A submitted SDK deliverable is stored before parsing and must match its job ID, manifest hash, response schema, and expected benchmark fields. Fixture runs and infrastructure smoke tests are persisted for inspection but are excluded from public marketplace metrics. Hashes prove integrity of the committed bytes after the commitment. They do not prove that the bytes describe reality, that an endpoint was honest, or that a strategy is safe or profitable. The UI must state this limitation next to evidence links.
 
 ## Ranking rules
 
@@ -106,4 +108,4 @@ At least one paired task must be in trading, stock, or security. The report will
 - No private key or API credential is required by the public UI.
 - A fixture mode can exercise the entire UI offline and is labeled as fixture data.
 
-Milestone 2 has verified the deterministic and fixture portions of this list. The paid onchain portion remains open until a dedicated disposable BSC testnet wallet is supplied and a real ERC-8183 lifecycle is persisted.
+Milestone 2 and Directive #3 verified the deterministic, fixture, and ERC-8183 buyer lifecycle portions of this list. Directive #4 added fresh readiness/cooldown selection and a second bounded paid timeout (job 673), but no provider deliverable was observed; Verified Run #1 remains open.
