@@ -191,6 +191,24 @@ const controlOutput = {
   dataLimitations: ["Analysis-only control performs no capital movement.", "No realized fees, time-in-range, or price impact can be observed in this one-off task."],
 };
 
+if (latest?.status === "FUNDED" && Number(latest.expiredAt) <= Math.floor(Date.now() / 1000)) {
+  try {
+    const refunded = await funded.client.claimRefund(BigInt(jobId));
+    latest = await readJob({ client: funded.client, jobId });
+    await appendProtocolEvent({ store, runId, event: "claim_refund", extra: { tx: txShape(refunded), snapshot: latest, refundedBudget: String(funded.record.budget) } });
+    if (latest.status === "EXPIRED") {
+      try {
+        const reconciled = await funded.client.markExpired(BigInt(jobId));
+        await appendProtocolEvent({ store, runId, event: "mark_expired", extra: { tx: txShape(reconciled), snapshot: latest } });
+      } catch (error) {
+        await appendProtocolEvent({ store, runId, event: "mark_expired_error", extra: { error: safeError(error), snapshot: latest } });
+      }
+    }
+  } catch (error) {
+    await appendProtocolEvent({ store, runId, event: "claim_refund_error", extra: { error: safeError(error), snapshot: latest } });
+  }
+}
+
 if (latest?.status === "SUBMITTED") {
   const submittedAt = Number(latest.submittedAt);
   const settleAt = (Number.isFinite(submittedAt) && submittedAt > 0 ? submittedAt : Math.floor(Date.now() / 1000)) + Number(disputeWindow);

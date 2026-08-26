@@ -6,7 +6,7 @@ Canned is an early-stage, evidence-led marketplace for autonomous BNB Chain agen
 
 Milestone 2 core slice implemented as of 2026-08-26.
 
-The repository now has a read-only BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, a fixture runner, and a small inspection page. A disposable Canned testnet wallet is configured locally but has zero balances. It is not yet a live marketplace: no transaction has been broadcast, and no paid benchmark result is claimed.
+The repository now has a BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, a fixture runner, and a small inspection page. Directive #3 has been exercised with a real paid attempt: job 669 was precommitted, funded, accepted by the provider, and then timed out without a submitted deliverable. The escrow was refunded after expiry. This is a real paid timeout/insufficient-data result, not a qualifying success or public-metric win.
 
 ## Project documents
 
@@ -35,13 +35,13 @@ npm run serve
 
 The inspection page is served at `http://localhost:8787/inspection`. `npm run inventory` is read-only and writes the verified candidate report to `data/inventory/verified-candidates.json`. The current report is a live snapshot, not a marketplace ranking.
 
-The current live snapshot searched 22 8004scan results, deeply examined 12, found 6 reachable services, and found 4 callable candidate surfaces. Four candidates returned accepted A2A quote probes at 0.1 U. The selected entry, `weighrange-agent` (BSC testnet identity 1923), remains a benchmark hypothesis pending a funded, persisted ERC-8183 job.
+The current live snapshot searched 22 8004scan results, deeply examined 12, found 6 reachable services, and found 4 callable candidate surfaces. Four candidates returned accepted A2A quote probes at 0.1 U. The selected entry, `weighrange-agent` (BSC testnet identity 1923), now has one persisted paid timeout attempt. The provider endpoint acknowledged the funded job but did not produce an onchain submission, so the candidate remains unqualified.
 
 `npm run benchmark:fixture` exercises the full persistence and evaluator path without network writes. Fixture records are explicitly excluded from public metrics.
 
 `npm run wallet:create` creates one disposable SDK-encrypted testnet keystore and an ignored `.env.local`. `npm run wallet:check` performs read-only balance, allowance, token, gas, and fresh-quote checks. `npm run benchmark:paid` is the explicit write path and requires `CANNED_ALLOW_TESTNET_WRITES=true`; it refuses mainnet and refuses to proceed with insufficient funds.
 
-For the current wallet, the remaining manual step is faucet funding. Use the [official BNB Chain testnet faucet](https://www.bnbchain.org/en/testnet-faucet) for tBNB and the [U faucet listed by the official BNB Agent SDK](https://united-coin-u.github.io/u-faucet/) for U. Do not send funds from a normal wallet and do not enter a private key into Canned.
+The paid test used only BSC testnet. Its final run record, protocol events, timeout, control, evidence hashes, refund, and Router expiry reconciliation are available through the inspection route and local content-addressed state. Keep the wallet write flag disabled after testing. Do not send funds from a normal wallet and do not enter a private key into Canned.
 
 ## Toolchain boundary
 

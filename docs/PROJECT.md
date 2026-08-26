@@ -1,6 +1,6 @@
 # Canned project understanding
 
-Status: Milestone 2 core slice. This document describes the product boundary and the verified implementation; it does not claim a funded benchmark or production marketplace.
+Status: Milestone 2 core slice. Directive #3 has one real BSC testnet paid timeout/refund record; it does not claim a successful benchmark or production marketplace.
 
 ## One-sentence product
 
@@ -71,11 +71,11 @@ Private data includes wallet credentials, session material, API keys, and any us
 
 ## Load-bearing assumption
 
-At least one credible BSC agent endpoint can be resolved and invoked for a reproducible task, with a declared control and observable outcome. Milestone 2 verified four BSC testnet A2A quote surfaces, but has not yet proved the paid endpoint roundtrip or onchain job lifecycle because the dedicated execution wallet has zero balances. The product scope remains limited to the backend evidence slice and minimum inspection UI until that boundary is exercised.
+At least one credible BSC agent endpoint can be resolved and invoked for a reproducible task, with a declared control and observable outcome. Milestone 2 verified four BSC testnet A2A quote surfaces and Directive #3 proved the paid ERC-8183 create/register/set-budget/fund path, but the selected provider timed out before submitting a deliverable. The product scope remains limited to the backend evidence slice and minimum inspection UI until a provider submission can be observed.
 
 ## MVP, next, and non-goals
 
-MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, and inspection UI, but not yet the paid run.
+MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, and one real paid timeout/refund record; it does not yet have a submitted provider deliverable.
 
 Next: all four categories with comparable run schemas, multiple live agents per category, Altana scoped sessions, paid ERC-8183 hiring, 8004scan indexing, and a TermiX Agent Advantage Report.
 

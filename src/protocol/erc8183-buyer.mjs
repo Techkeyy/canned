@@ -1,6 +1,6 @@
 import path from "node:path";
 import { ERC8183_STATES } from "../domain.mjs";
-import { canonicalJson, contentHashes, nowIso, safeError } from "../core.mjs";
+import { contentHashes, nowIso, safeError } from "../core.mjs";
 
 export function writeSafety(env = process.env) {
   const network = env.CANNED_NETWORK || "bsc-testnet";
@@ -93,7 +93,7 @@ async function protocolSnapshot(client, jobId) {
 }
 
 export async function createFundedJob({ agent, precommit, quote, store, env = process.env }) {
-  await loadSdk();
+  const sdk = await loadSdk();
   const safety = writeSafety(env);
   if (!safety.safe || !safety.writesRequested || !safety.walletConfigured) {
     return { ok: false, status: "blocked", error: safety.writesRequested ? "A dedicated execution wallet is required before funding." : "Testnet writes are not explicitly enabled.", safety };
@@ -133,22 +133,23 @@ export async function createFundedJob({ agent, precommit, quote, store, env = pr
   };
   try {
     const expiredAt = BigInt(precommit.deadlineAtUnixSeconds);
-    const description = canonicalJson({
-      type: "canned-precommit-v1",
-      benchmarkId: precommit.benchmarkId,
-      manifestHash: precommit.manifestHash,
-      negotiationHash: quote.negotiationHash,
-    });
+    const sdkErc8183 = await import("@bnbagent/sdk/erc8183");
+    const quoteEnvelope = quote?.rawResponse?.result?.parts?.find((part) => part.kind === "data")?.data || null;
+    if (!quoteEnvelope) throw new Error("The negotiated quote envelope is missing; refusing to create an unbound ERC-8183 job.");
+    const description = sdkErc8183.buildJobDescription(quoteEnvelope);
+    const descriptionHash = contentHashes(description).keccak256;
     const created = await buyer.client.createJob({ provider, expiredAt, description });
     if (created.jobId === null || created.jobId === undefined) throw new Error("ERC-8183 createJob returned no job ID.");
     record.jobId = String(created.jobId);
     record.state = "created";
     const createdSnapshot = await protocolSnapshot(buyer.client, created.jobId);
-    record.precommitBinding = { level: "ONCHAIN_JOB_BOUND_PRECOMMIT", method: "ERC-8183 job.description", manifestHash: precommit.manifestHash };
+    record.precommitBinding = { level: "ONCHAIN_SIGNED_QUOTE_BOUND_PRECOMMIT", method: "ERC-8183 job.description", manifestHash: precommit.manifestHash, signedQuoteDescriptionHash: descriptionHash };
     await persist("create_job", { tx: txShape(created), snapshot: createdSnapshot, precommitBinding: record.precommitBinding });
     const registered = await buyer.client.registerJob(created.jobId);
     await persist("register_job", { tx: txShape(registered), snapshot: await protocolSnapshot(buyer.client, created.jobId) });
     const budget = BigInt(quotedTerms.price);
+    const budgetSet = await buyer.client.setBudget(created.jobId, budget);
+    await persist("set_budget", { tx: txShape(budgetSet), snapshot: await protocolSnapshot(buyer.client, created.jobId), budget: budget.toString() });
     const funded = await buyer.client.fund(created.jobId, budget, { approveFloor: 0n });
     record.state = "funded";
     record.funded = true;

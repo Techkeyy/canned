@@ -31,7 +31,7 @@ Audit date: 2026-08-26. This is a record of the current machine, not a promise t
 | BSC testnet | 97 | `https://bsc-testnet-rpc.publicnode.com` | `https://testnet.bscscan.com` | Read-only `eth_chainId` smoke test passed |
 | BSC mainnet | 56 | `https://bsc-dataseed.bnbchain.org` | `https://bscscan.com` | Not used for writes |
 
-The successful initial read-only testnet smoke result was `0x61`, which is decimal 97. At that point no wallet was loaded. Since then, one disposable encrypted testnet wallet has been created; no contract was deployed and no transaction was broadcast.
+The successful initial read-only testnet smoke result was `0x61`, which is decimal 97. One disposable encrypted testnet wallet was created. Directive #3 later broadcast only BSC testnet ERC-8183 transactions: job 669 was created, registered, budgeted, funded, then expired after the provider timed out; the escrow refund and Router expiry reconciliation also succeeded. No mainnet transaction was broadcast.
 
 ## Required soon
 
@@ -40,10 +40,10 @@ The successful initial read-only testnet smoke result was `0x61`, which is decim
 - BSC testnet RPC and explorer access.
 - `@bnbagent/studio-cli` when the first provider-agent or deployment path is selected.
 - A disposable BSC testnet wallet funded only for the minimum ERC-8183 test.
-- A real paid buyer/provider lifecycle with persisted job and deliverable evidence.
+- A provider submission/deliverable lifecycle that reaches `SUBMITTED` or `COMPLETED`; the first paid attempt timed out honestly and produced no deliverable.
 - A reproducible benchmark environment with enough testnet activity to score the selected category.
 
-The local wallet setup is now available with `npm run wallet:create`; `npm run wallet:check` records the exact live requirements in `data/state/funding-check.json`. The current generated wallet has zero tBNB and zero U, so no transaction can start.
+The local wallet setup is available with `npm run wallet:create`; `npm run wallet:check` records the exact live requirements in `data/state/funding-check.json`. The paid runner requires explicit testnet write enablement and leaves it disabled after a run.
 
 ## Recommended later
 
@@ -72,4 +72,5 @@ Checks performed for this slice:
 - live 8004scan inventory and read-only A2A quote probes;
 - encrypted disposable wallet creation and SDK-backed funding preflight;
 - one disposable wallet creation through the SDK encrypted-keystore path;
-- no contract write, payment, or mainnet transaction.
+- BSC testnet ERC-8183 create/register/set-budget/fund/refund/Router-expiry writes for Directive #3;
+- no BSC mainnet transaction.
