@@ -1,0 +1,20 @@
+{
+  "name": "canned",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Evidence-led marketplace for BNB Chain agents.",
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "doctor": "node src/doctor.mjs",
+    "inventory": "node scripts/run-inventory.mjs",
+    "benchmark:fixture": "node scripts/run-fixture.mjs",
+    "serve": "node src/server.mjs"
+  },
+  "dependencies": {
+    "@bnbagent/sdk": "0.5.4"
+  }
+}

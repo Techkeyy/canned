@@ -1,0 +1,130 @@
+# Architecture and vertical slice
+
+This is the implemented Milestone 2 core slice. It is intentionally small enough to prove discovery, evidence, benchmark, and protocol boundaries before adding marketplace breadth.
+
+## Recommended stack
+
+- TypeScript-first workspace, Node 22 or newer, because current BNB Agent Studio supports a TypeScript end-to-end flow.
+- React-based web app for the public marketplace and run detail pages.
+- Node/TypeScript API for catalog queries, run creation, and server-side integration credentials.
+- Worker process for benchmark execution, polling, deadlines, and artifact finalization.
+- PostgreSQL for the queryable catalog and run index. A local SQLite adapter may be used for deterministic offline development, but it must not be presented as production parity.
+- Content-addressed object storage or IPFS for canonical manifests and raw artifacts. The current slice uses a local content-addressed file store and keeps the storage seam replaceable.
+- `viem` and the official `@bnbagent/sdk@0.5.4` for protocol work. The Studio CLI is an optional provider/deployment path and is not claimed as installed.
+
+## Repository shape
+
+```text
+canned/
+  apps/
+    web/                 public marketplace UI
+    api/                 keyless public API and server integrations
+  packages/
+    domain/              types, schemas, state machines, deterministic scoring
+    evidence/             canonicalization, hashes, artifact manifests
+    adapters/             ERC-8004, 8004scan, A2A/MCP/HTTP, ERC-8183, Altana, x402
+    fixtures/             clearly labeled offline agents and benchmark cases
+  workers/
+    runs/                benchmark runner, control runner, evaluator
+  docs/
+  scripts/
+```
+
+The current implementation is intentionally flatter than the target marketplace shape:
+
+```text
+canned/
+  src/core.mjs                 canonical JSON, hashes, bounded HTTP
+  src/domain.mjs               categories, states, public-metric rules
+  src/discovery/8004scan.mjs  BSC-specific 8004scan adapter and probes
+  src/protocol/                A2A and official SDK-backed ERC-8183 seams
+  src/benchmark/               four definitions and deterministic runner
+  src/persistence/             local persistent index and evidence store
+  src/doctor.mjs               environment and write-safety diagnostics
+  src/server.mjs               minimal inspection API/page
+  scripts/                     inventory and fixture entrypoints
+  tests/                       deterministic and failure-path tests
+  web/inspection.html          minimum inspection surface
+  data/inventory/              verified discovery artifact
+```
+
+PostgreSQL, object storage, worker queues, and a production UI remain later adapters, not hidden assumptions.
+
+## Runtime boundaries
+
+### Web
+
+The web app is a read-heavy interface. It never receives private keys or third-party API keys. It explains network, authority, amount, and state before wallet actions. It renders loading, success, empty, error, pending, rejected, and expired states.
+
+### API
+
+The API owns public catalog reads, signed request validation, run creation, server-side 8004scan access, and job orchestration commands. It does not become an unrestricted signer. Any write path must be explicit, bounded, and auditable.
+
+### Worker
+
+The worker runs a predeclared task and its control against the same input and observation window. It stores raw outputs before computing aggregates. It uses idempotency keys, deadlines, and a retry policy that cannot silently transform a failed run into a pass.
+
+### Domain package
+
+The domain package contains the canonical task schema, internal run states, ERC-8183 state mapping, benchmark versioning, deterministic metrics, and result classification. It has no UI and no network side effects, so it can be tested heavily.
+
+### Adapter package
+
+Adapters isolate protocol differences:
+
+- Identity adapter: ERC-8004 registration and endpoint metadata.
+- Index adapter: 8004scan server-side search and refresh.
+- Invocation adapter: A2A, MCP, or HTTP with capability and health checks.
+- Job adapter: ERC-8183 creation, funding, submission, evaluation, expiry, and references.
+- Authority adapter: Altana session grant, execute, status, and revoke.
+- Payment adapter: x402 only for per-request HTTP payment where required.
+
+## Data model at a glance
+
+`Agent`: identity reference, endpoint, protocol, category capabilities, declared constraints, current health, and source metadata.
+
+`Benchmark`: versioned task definition, category, initial-state rules, control definition, metric definitions, evaluator version, and task hash.
+
+`Run`: agent, benchmark version, inputs hash, control version, start/deadline, internal state, protocol references, output artifact references, metric result, and final classification.
+
+`Job`: optional ERC-8183 client/provider/evaluator, budget token, job ID, payment transaction, description hash, deliverable hash, and protocol state.
+
+`AuthorityGrant`: optional Altana session public key, calls allowlist, spend cap, expiry, registration transaction, and revoke transaction.
+
+`Artifact`: canonical media type, content hash, storage URI, redaction policy, and retention status.
+
+## State model
+
+Application states include `created`, `funded`, `running`, `submitted`, `completed`, `rejected`, `timeout`, `error`, `insufficient_data`, and `expired`. ERC-8183 states remain exactly `Open`, `Funded`, `Submitted`, `Completed`, `Rejected`, and `Expired`; application-specific states must map to them explicitly rather than pretending every error is an ERC state.
+
+All terminal states are retained. A retry creates a new attempt linked to the original run, not a silent overwrite.
+
+## Onchain and offchain split
+
+Onchain: identity pointer, job/payment state, session registration and revocation, transaction hashes, deliverable or manifest commitments, and any protocol-required attestations.
+
+Offchain: searchable index, task JSON, control outputs, raw agent outputs, metric calculations, evaluator logs, human review notes, and UI projections.
+
+The canonical manifest is content-addressed. A keccak256 commitment can be placed in an ERC-8183 description, deliverable, or related attestation where appropriate. The UI must say what the hash proves and what it does not prove.
+
+## First vertical slice
+
+The current selection hypothesis is Rebalancing through `weighrange-agent`, BSC testnet identity 1923, selected from a live 8004scan inventory after a reachable A2A card and accepted quote probe. This is not yet a real benchmark selection because no Canned buyer wallet has funded an ERC-8183 job. `RebalanceBench v1` declares a fixed initial LP range, pool, observation window, slippage/gas limits, and decision policy. The control holds the position unchanged over the same window. Metrics include time in range, fees earned, gas and agent cost, execution failures, price impact, and inventory drift. It must not reduce success to raw return.
+
+If the PancakeSwap endpoint is not available for reproducible testnet execution, use the official BNB Agent Studio/SDK seller example only as an infrastructure smoke test and keep the Rebalancing listing blocked. Do not turn the example into a category claim.
+
+## Failure behavior
+
+Unavailable endpoint: show `unavailable`, preserve the health-check evidence, and exclude it from live performance rankings.
+
+Missing output: classify `error` or `insufficient_data`; never infer a pass.
+
+Wallet rejection: show `rejected`, retain the user-visible reason if safe, and keep the run record.
+
+Expired job: show `expired` and whether reclaim/refund was available.
+
+Stale chain/index data: show the read timestamp and stale badge; never present stale data as live.
+
+## Security boundary
+
+No LLM signs transactions. No user-facing browser code gets private keys, wallet keystores, 8004scan keys, or Altana session secrets. Approvals and calls are allowlisted where the protocol supports it. Mainnet writes are disabled until an audit pass, testnet exercise, and explicit release decision.

@@ -1,0 +1,71 @@
+# Environment and readiness
+
+Audit date: 2026-08-26. This is a record of the current machine, not a promise that all tools are configured for deployment.
+
+## Local tool audit
+
+| Tool | Result | Use |
+| --- | --- | --- |
+| Windows | Microsoft Windows NT 10.0.22621.0 | Host platform |
+| PowerShell | 7.6.4 | Shell used for checks |
+| Git | 2.53.0.windows.2 | Repository management |
+| Node.js | v24.14.0 | Meets Node 22+ requirement |
+| npm | 11.9.0 | Package bootstrap |
+| Bun | 1.3.7 | Meets current Studio deploy prerequisite |
+| Python | 3.14.3 | Optional SDK/examples |
+| pip | 25.3 | Optional SDK/examples |
+| Docker | 29.7.2 | Available; only needed for container/runtime workflows |
+| Docker Compose | v5.3.1 | Available |
+| Corepack | 0.34.6 | Available |
+| pnpm | shim present, version command not verified in this shell | Required as pnpm 10 for Studio workflow |
+| BNB Agent Studio CLI (`bag`) | command shim present but package is broken; `bag --version` fails | Required only when provider-agent or managed deployment work begins; doctor reports the failure |
+| AgentCore CLI | not installed | Optional AWS deployment path; doctor reports unavailable |
+| `@bnbagent/sdk` | 0.5.4 installed locally and listed in lockfile | ERC-8183 buyer seam and protocol reads |
+| Foundry (`forge`, `cast`) | not installed | Only needed for custom Solidity/reference-contract work |
+| AWS CLI | not installed | Optional AWS deployment path |
+
+## Network audit
+
+| Network | Chain ID | RPC | Explorer | Status |
+| --- | ---: | --- | --- | --- |
+| BSC testnet | 97 | `https://bsc-testnet-rpc.publicnode.com` | `https://testnet.bscscan.com` | Read-only `eth_chainId` smoke test passed |
+| BSC mainnet | 56 | `https://bsc-dataseed.bnbchain.org` | `https://bscscan.com` | Not used for writes |
+
+The successful testnet smoke result was `0x61`, which is decimal 97. No wallet was loaded, no contract was deployed, and no transaction was broadcast.
+
+## Required soon
+
+- Node 22+ and a working pnpm 10/Corepack path.
+- A disposable BSC testnet wallet funded only for the minimum test.
+- BSC testnet RPC and explorer access.
+- `@bnbagent/studio-cli` when the first provider-agent or deployment path is selected.
+- A disposable BSC testnet wallet funded only for the minimum ERC-8183 test.
+- A real paid buyer/provider lifecycle with persisted job and deliverable evidence.
+- A reproducible benchmark environment with enough testnet activity to score the selected category.
+
+## Recommended later
+
+- Server-side 8004scan credentials.
+- PostgreSQL and content-addressed storage/IPFS.
+- A testnet pool/lending environment with enough activity for a meaningful benchmark.
+- Altana SDK and testnet session flow.
+
+## Not needed now
+
+Mainnet funds, a local BSC node, WSL, custom Solidity contracts, AWS AgentCore, or any private key committed to the repository. Foundry was not installed because the current slice uses the official SDK rather than custom contract work.
+
+## Secret policy
+
+The repository may define names such as `CANNED_8004SCAN_API_KEY`, `CANNED_DATABASE_URL`, `CANNED_STORAGE_TOKEN`, and `CANNED_WALLET_ADDRESS`. It must never contain a private key, wallet keystore, seed phrase, deployment secret, or an API key. BNB Agent Studio's `WALLET_PASSWORD` and provider credentials belong in a local secret manager or ignored environment file only.
+
+## Reproducibility record
+
+Checks performed for this slice:
+
+- version checks for Git, Node, npm, Bun, Python, pip, Docker, Docker Compose, Corepack, and PowerShell;
+- executable presence checks for pnpm, `bag`, AgentCore, Foundry, and AWS CLI;
+- read-only BSC testnet `eth_chainId` request;
+- official SDK package and lockfile verification;
+- deterministic test suite and fixture exclusion test;
+- live 8004scan inventory and read-only A2A quote probes;
+- no wallet creation, contract write, or mainnet transaction.
