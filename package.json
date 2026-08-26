@@ -14,6 +14,9 @@
     "benchmark:fixture": "node scripts/run-fixture.mjs",
     "wallet:create": "node scripts/create-testnet-wallet.mjs",
     "wallet:check": "node scripts/check-testnet-funding.mjs",
+    "control:weigh-family": "node scripts/analyze-weigh-family.mjs",
+    "control:protocol": "node scripts/run-protocol-control.mjs",
+    "control:reconcile": "node scripts/reconcile-protocol-control.mjs",
     "benchmark:paid": "node scripts/run-paid-benchmark.mjs",
     "serve": "node src/server.mjs"
   },

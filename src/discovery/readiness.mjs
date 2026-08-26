@@ -1,7 +1,14 @@
 import { nowIso } from "../core.mjs";
+import { RUN_TYPES } from "../domain.mjs";
 
 export const DEFAULT_PROVIDER_COOLDOWN_SECONDS = 24 * 60 * 60;
 export const SUPPORTED_A2A_PROTOCOL_VERSION = "0.3.0";
+export const ERC8183_CAPABILITIES = Object.freeze({
+  ONCHAIN_WATCHER: "ERC8183_ONCHAIN_WATCHER",
+  NOTIFY_FUNDED: "ERC8183_NOTIFY_FUNDED",
+  BUYER_RELAY_DELIVERY: "ERC8183_BUYER_RELAY_DELIVERY",
+  PROVIDER_STORAGE_DELIVERY: "ERC8183_PROVIDER_STORAGE_DELIVERY",
+});
 
 const REQUIRED_READINESS_CHECKS = Object.freeze([
   "agentCardReachable",
@@ -35,6 +42,30 @@ function skillById(card, id) {
   return cardSkills(card).find((skill) => String(skill?.id || "").toLowerCase() === id);
 }
 
+export function inferErc8183Capabilities({ card = null, candidate = null } = {}) {
+  const text = `${JSON.stringify(card || {})} ${JSON.stringify(candidate || {})}`.toLowerCase();
+  const skills = cardSkills(card).map((skill) => String(skill?.id || "").toLowerCase());
+  const capabilities = [];
+  const evidence = {};
+  if (skills.includes("notify_funded") || text.includes("notify_funded")) {
+    capabilities.push(ERC8183_CAPABILITIES.NOTIFY_FUNDED);
+    evidence[ERC8183_CAPABILITIES.NOTIFY_FUNDED] = "card skill declares notify_funded";
+  }
+  if (/funded_job_watcher|funded job watcher|submit_result|submitresult|job watcher/.test(text)) {
+    capabilities.push(ERC8183_CAPABILITIES.ONCHAIN_WATCHER);
+    evidence[ERC8183_CAPABILITIES.ONCHAIN_WATCHER] = "card or published metadata mentions a funded-job watcher or submit_result";
+  }
+  if (/buyer.?relay|callback.?url|delivery.?context|relay authorization/.test(text)) {
+    capabilities.push(ERC8183_CAPABILITIES.BUYER_RELAY_DELIVERY);
+    evidence[ERC8183_CAPABILITIES.BUYER_RELAY_DELIVERY] = "card or metadata declares buyer relay/delivery context";
+  }
+  if (/ipfs|storage|deliverable_url|deliverable url|upload.*deliverable/.test(text)) {
+    capabilities.push(ERC8183_CAPABILITIES.PROVIDER_STORAGE_DELIVERY);
+    evidence[ERC8183_CAPABILITIES.PROVIDER_STORAGE_DELIVERY] = "card or metadata declares provider storage/deliverable URL behavior";
+  }
+  return { capabilities: [...new Set(capabilities)], evidence };
+}
+
 function cardText(card) {
   return JSON.stringify(card || {}).toLowerCase();
 }
@@ -56,7 +87,7 @@ function runTime(run) {
 }
 
 function paidAttempt(run) {
-  return run?.protocolJob?.funded === true && run?.protocolJob?.jobId !== undefined && run?.protocolJob?.jobId !== null;
+  return run?.runType !== RUN_TYPES.INFRASTRUCTURE_PROTOCOL_CONTROL && run?.protocolJob?.funded === true && run?.protocolJob?.jobId !== undefined && run?.protocolJob?.jobId !== null;
 }
 
 function hasObservedDeliverable(run) {
@@ -144,7 +175,7 @@ export function detectSystemicFailure(runs = [], { phase = "accepted_notificatio
   };
 }
 
-export function buildReadinessChecklist({ candidate, probe, quoteProbe, quoteVerification, chainId = 97, nowSeconds = Math.floor(Date.now() / 1000), minQuoteLeadSeconds = 120, supportedProtocolVersion = SUPPORTED_A2A_PROTOCOL_VERSION, expectedCategory = null, healthStatus = null, recentActivity = null } = {}) {
+export function buildReadinessChecklist({ candidate, probe, quoteProbe, quoteVerification, chainId = 97, nowSeconds = Math.floor(Date.now() / 1000), minQuoteLeadSeconds = 120, supportedProtocolVersion = SUPPORTED_A2A_PROTOCOL_VERSION, expectedCategory = null, healthStatus = null, recentActivity = null, history = null } = {}) {
   const card = probe?.card || null;
   const negotiateSkill = skillById(card, "negotiate");
   const notifySkill = skillById(card, "notify_funded");
@@ -153,6 +184,7 @@ export function buildReadinessChecklist({ candidate, probe, quoteProbe, quoteVer
   const quoteExpiresAt = Number(quoteProbe?.quote?.quote_expires_at || quote?.quote_expires_at || 0) || null;
   const provider = candidate?.agentWallet || candidate?.ownerAddress || null;
   const expectedTask = expectedCategory || candidate?.categoryHypotheses?.[0]?.category || null;
+  const capabilityModel = inferErc8183Capabilities({ card, candidate });
   const checks = [
     check("agentCardReachable", probe?.reachable === true, probe?.reachable === true ? `HTTP ${probe.httpStatus || 200}` : probe?.reason || "agent card was not reachable"),
     check("quoteEndpointReachable", quoteProbe?.ok === true, quoteProbe?.ok === true ? "negotiation endpoint returned a response" : quoteProbe?.error || "fresh quote was not observed"),
@@ -169,9 +201,20 @@ export function buildReadinessChecklist({ candidate, probe, quoteProbe, quoteVer
   ];
   const required = checks.filter((item) => item.required);
   const passedRequired = required.filter((item) => item.pass).length;
+  const quoteVerified = quoteVerification?.valid === true;
+  const protocolCompatibility = checks.find((item) => item.name === "erc8183VersionMatches")?.pass === true;
+  const deliveryHistory = history?.lastSuccessfulDeliverable ? "observed_success" : history?.paidAttempts ? "paid_failure" : "unverified";
   return {
     observedAt: nowIso(),
     score: Math.round((passedRequired / required.length) * 100),
+    scoreMeaning: "discovery_and_preflight_only; not a delivery-success prediction",
+    discoveryConfidence: passedRequired === required.length ? "high" : passedRequired >= Math.ceil(required.length / 2) ? "medium" : "low",
+    quoteVerified,
+    protocolCompatibility,
+    deliveryHistory,
+    cannedLastResult: history?.lastSuccessfulDeliverable ? "deliverable_observed" : history?.paidAttempts ? "paid_failure" : "never_paid",
+    capabilities: capabilityModel.capabilities,
+    capabilityEvidence: capabilityModel.evidence,
     ready: required.every((item) => item.pass),
     requiredPassed: passedRequired,
     requiredTotal: required.length,
@@ -204,7 +247,7 @@ export function buildCandidateMatrix({ candidates = [], observations = {}, provi
     const observation = observations[candidate.identity] || {};
     const category = candidate.categoryHypotheses?.[0]?.category || null;
     const cooldown = providerCooldownStatus(providerHistory, candidate.identity, nowSeconds);
-    const readiness = observation.readiness || buildReadinessChecklist({ candidate, probe: observation.probe, quoteProbe: observation.quoteProbe, quoteVerification: observation.quoteVerification, expectedCategory: category, nowSeconds });
+    const readiness = observation.readiness || buildReadinessChecklist({ candidate, probe: observation.probe, quoteProbe: observation.quoteProbe, quoteVerification: observation.quoteVerification, expectedCategory: category, nowSeconds, history: cooldown.history });
     const quote = readiness.quote || {};
     const matrix = {
       identity: candidate.identity,
@@ -223,6 +266,11 @@ export function buildCandidateMatrix({ candidates = [], observations = {}, provi
       expectedResponseFormat: candidate.description?.toLowerCase().includes("json") ? "JSON" : "structured output from benchmark schema",
       readiness,
       readinessScore: readiness.score,
+      discoveryConfidence: readiness.discoveryConfidence,
+      quoteVerified: readiness.quoteVerified,
+      protocolCompatibility: readiness.protocolCompatibility,
+      deliveryHistory: readiness.deliveryHistory,
+      capabilities: readiness.capabilities,
       priorCannedExecutionHistory: cooldown.history || null,
       cooldown,
       benchmarkFeasibility: Boolean(category && candidate.chainId === 97 && (candidate.network === "bsc-testnet" || candidate.is_testnet === true) && readiness.ready && quote.price && quote.currency),

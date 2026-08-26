@@ -10,9 +10,29 @@ export function writeSafety(env = process.env) {
   const hasKeyOrAddress = Boolean(env.CANNED_EXECUTION_WALLET_PRIVATE_KEY || env.CANNED_EXECUTION_WALLET_ADDRESS);
   const errors = [];
   if (writesRequested && network !== "bsc-testnet") errors.push("Canned writes are allowed only on bsc-testnet.");
+  if (writesRequested && env.CANNED_CHAIN_ID !== undefined && Number(env.CANNED_CHAIN_ID) !== 97) errors.push("Canned writes require chain ID 97.");
   if (writesRequested && (!hasPassword || !hasKeyOrAddress)) errors.push("Testnet writes require a dedicated execution wallet password and address or first-import private key.");
   if (network === "bsc-mainnet" && writesRequested) errors.push("Mainnet writes are disabled by policy.");
   return { network, writesRequested, hasPassword, hasKeyOrAddress, walletConfigured: hasPassword && hasKeyOrAddress, safe: errors.length === 0, errors };
+}
+
+export async function sendNativeTransfer({ wallet, publicClient, to, valueWei, expectedChainId = 97 } = {}) {
+  if (!wallet || !publicClient || !to) throw new Error("Native transfer requires a wallet, public client, and recipient.");
+  if (!/^0x[0-9a-fA-F]{40}$/.test(String(to))) throw new Error("Native transfer recipient is not a valid EVM address.");
+  const chainId = await publicClient.getChainId();
+  if (chainId !== expectedChainId) throw new Error(`Refusing native transfer on chain ${chainId}; expected ${expectedChainId}.`);
+  const value = BigInt(valueWei);
+  if (value <= 0n) throw new Error("Native transfer amount must be positive.");
+  const gas = 21_000n;
+  const gasPrice = await publicClient.getGasPrice();
+  const balance = await publicClient.getBalance({ address: wallet.address });
+  if (balance < value + gas * gasPrice) throw new Error("Buyer wallet lacks the bounded native transfer amount plus transfer gas.");
+  const nonce = await publicClient.getTransactionCount({ address: wallet.address, blockTag: "pending" });
+  const signed = await wallet.signTransaction({ to, value, gas, gasPrice, nonce, chainId: expectedChainId });
+  const transactionHash = await publicClient.sendRawTransaction({ serializedTransaction: signed.rawTransaction });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: transactionHash });
+  if (receipt.status !== "success") throw new Error("Bounded native provider funding transaction failed.");
+  return { transactionHash, receipt, gasPrice, value };
 }
 
 export function preflightGuards({ chainId, expectedChainId = 97, provider, expectedProvider, tokenAddress, quoteCurrency, quoteAccepted, quoteSignaturePresent, quoteExpiresAt, nowSeconds = Math.floor(Date.now() / 1000), tokenBalance = 0n, requiredBudget = 0n, nativeBalance = 0n, estimatedGasWei = 0n }) {

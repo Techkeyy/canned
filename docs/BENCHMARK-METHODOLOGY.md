@@ -43,6 +43,12 @@ The control is declared before execution, uses the same input and market observa
 
 Controls must account for gas, fees, execution failures, slippage, and missing data. A control may be impossible or unsafe for a particular task; in that case the run is not benchmarkable and is labeled accordingly.
 
+## ERC-8183 protocol control
+
+The infrastructure control is not a product benchmark. It uses a separate disposable provider wallet and the official BNB Agent SDK primitives: `fundedJobWatcher` detects `FUNDED`, and `ERC8183JobOps.submitResult` stores a deliverable and submits its manifest hash onchain. The buyer runs the normal create, register, budget, fund, state-observation, URL-resolution, and validation path. The control uses a zero-U job budget and a deterministic integer sum, so it tests lifecycle plumbing without capital movement or LLM behavior.
+
+The control is precommitted as `INFRASTRUCTURE_PROTOCOL_CONTROL` before funding and is excluded by construction from benchmark metrics, provider cooldown/systemic-failure history, public “jobs paid for and graded,” marketplace inventory, and TermiX evidence. A readiness score is preflight/discovery confidence only; it is not delivery success. Control reports retain both transient lookup failures and later read-only reconciliation results.
+
 ## Deterministic evaluation
 
 The evaluator computes category-specific metrics from raw, versioned inputs. Each metric has a definition, unit, direction, missing-data rule, and weight. A missing required field produces `insufficient_data`, not a favorable default.
@@ -108,4 +114,4 @@ At least one paired task must be in trading, stock, or security. The report will
 - No private key or API credential is required by the public UI.
 - A fixture mode can exercise the entire UI offline and is labeled as fixture data.
 
-Milestone 2 and Directive #3 verified the deterministic, fixture, and ERC-8183 buyer lifecycle portions of this list. Directive #4 added fresh readiness/cooldown selection and a second bounded paid timeout (job 673), but no provider deliverable was observed; Verified Run #1 remains open.
+Milestone 2 and Directive #3 verified the deterministic, fixture, and ERC-8183 buyer lifecycle portions of this list. Directive #4 added fresh readiness/cooldown selection, a second bounded paid timeout (job 673), and infrastructure control job 675. Job 675 verifies the controlled watcher/submit/deliverable path but is not a product run; Verified Run #1 remains open.
