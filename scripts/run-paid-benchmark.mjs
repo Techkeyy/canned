@@ -9,7 +9,7 @@ import { CATEGORIES, RUN_TYPES } from "../src/domain.mjs";
 import { id, isPublicHttpUrl, nowIso, requestJson, safeError } from "../src/core.mjs";
 import { extractProviderDeliverable, validateSubmittedDeliverable } from "../src/benchmark/validation.mjs";
 import { FileStore } from "../src/persistence/file-store.mjs";
-import { appendProtocolEvent, createFundedJob, loadSdk, preflightGuards, readJob, writeSafety } from "../src/protocol/erc8183-buyer.mjs";
+import { appendProtocolEvent, createFundedJob, loadSdk, preflightGuards, readJob, txShape, writeSafety } from "../src/protocol/erc8183-buyer.mjs";
 import { negotiateA2A, notifyFundedA2A } from "../src/protocol/a2a.mjs";
 
 const root = path.resolve(process.cwd());
@@ -209,11 +209,11 @@ if (latest?.status === "FUNDED" && Number(latest.expiredAt) <= Math.floor(Date.n
   try {
     const refunded = await funded.client.claimRefund(BigInt(jobId));
     latest = await readJob({ client: funded.client, jobId });
-    await appendProtocolEvent({ store, runId, event: "claim_refund", extra: { tx: { transactionHash: refunded.transactionHash || null, status: refunded.status ?? null }, snapshot: latest, refundedBudget: String(funded.record.budget) } });
+    await appendProtocolEvent({ store, runId, event: "claim_refund", extra: { tx: txShape(refunded), snapshot: latest, refundedBudget: String(funded.record.budget) } });
     if (latest.status === "EXPIRED") {
       try {
         const reconciled = await funded.client.markExpired(BigInt(jobId));
-        await appendProtocolEvent({ store, runId, event: "mark_expired", extra: { tx: { transactionHash: reconciled.transactionHash || null, status: reconciled.status ?? null }, snapshot: latest } });
+        await appendProtocolEvent({ store, runId, event: "mark_expired", extra: { tx: txShape(reconciled), snapshot: latest } });
       } catch (error) {
         await appendProtocolEvent({ store, runId, event: "mark_expired_error", extra: { error: safeError(error), snapshot: latest } });
       }
@@ -228,7 +228,7 @@ if (latest?.status === "SUBMITTED") {
   while (Date.now() < settleAt * 1000) await delay(15_000);
   try {
     const settled = await funded.client.settle(BigInt(jobId));
-    await appendProtocolEvent({ store, runId, event: "settle_job", extra: { tx: { transactionHash: settled.transactionHash || null, status: settled.status ?? null } } });
+    await appendProtocolEvent({ store, runId, event: "settle_job", extra: { tx: txShape(settled) } });
     latest = await readJob({ client: funded.client, jobId });
     await appendProtocolEvent({ store, runId, event: "chain_state_observed", extra: { snapshot: latest } });
   } catch (error) {

@@ -60,7 +60,7 @@ export async function createBuyer({ env = process.env, dataDir = env.CANNED_DATA
   return { sdk, wallet, client, network: safety.network };
 }
 
-function txShape(result) {
+export function txShape(result) {
   if (!result) return null;
   const receipt = result.receipt || {};
   const gasUsed = receipt.gasUsed === undefined || receipt.gasUsed === null ? null : BigInt(receipt.gasUsed);
