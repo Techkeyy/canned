@@ -125,6 +125,13 @@ const deterministicValidation = validateDeterministicControl({
   expectedJobId: jobId,
   expectedProvider: providerAddress,
 });
+const deterministicOutputEvidence = await store.saveEvidence({
+  kind: "control_deterministic_output_reconciled",
+  runId: run.runId,
+  jobId,
+  output,
+  validation: { deliverable: deliverableValidation.valid, deterministic: deterministicValidation.valid, providerSignerMatches },
+});
 const directEvidenceValid = receipt.status === "success"
   && ["SUBMITTED", "COMPLETED"].includes(job.status)
   && String(submittedEvent.deliverable).toLowerCase() === String(job.deliverable).toLowerCase()
@@ -217,6 +224,7 @@ if (directEvidenceValid) {
     localRelativePath,
   };
 }
+run.artifacts = { ...run.artifacts, deterministicOutput: deterministicOutputEvidence };
 run.evaluation = { ...run.evaluation, status: directEvidenceValid ? "completed" : "failed", observationReconciliation: { directEvidenceValid, sdkResolverUrl, replayStatus, correctedClassification } };
 runs[index] = run;
 await store.saveJson("state/benchmark-runs.json", runs);
