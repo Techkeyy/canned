@@ -14,9 +14,22 @@ export function writeSafety(env = process.env) {
   return { network, writesRequested, hasPassword, hasKeyOrAddress, walletConfigured: hasPassword && hasKeyOrAddress, safe: errors.length === 0, errors };
 }
 
+export function preflightGuards({ chainId, expectedChainId = 97, provider, expectedProvider, tokenAddress, quoteCurrency, quoteAccepted, quoteSignaturePresent, quoteExpiresAt, nowSeconds = Math.floor(Date.now() / 1000), tokenBalance = 0n, requiredBudget = 0n, nativeBalance = 0n, estimatedGasWei = 0n }) {
+  const errors = [];
+  if (chainId !== expectedChainId) errors.push(`wrong_chain:${chainId}`);
+  if (provider && expectedProvider && provider.toLowerCase() !== expectedProvider.toLowerCase()) errors.push("provider_mismatch");
+  if (!tokenAddress || !quoteCurrency || tokenAddress.toLowerCase() !== quoteCurrency.toLowerCase()) errors.push("payment_token_mismatch");
+  if (quoteAccepted !== true) errors.push("quote_not_accepted");
+  if (quoteSignaturePresent !== true) errors.push("quote_signature_missing");
+  if (quoteExpiresAt && nowSeconds >= Number(quoteExpiresAt)) errors.push("quote_expired");
+  if (BigInt(tokenBalance) < BigInt(requiredBudget)) errors.push("insufficient_payment_token");
+  if (BigInt(nativeBalance) < BigInt(estimatedGasWei)) errors.push("insufficient_native_gas");
+  return { ok: errors.length === 0, errors };
+}
+
 let sdkPromise;
 export async function loadSdk() {
-  if (!sdkPromise) sdkPromise = import("@bnbagent/sdk");
+  if (!sdkPromise) sdkPromise = import("@bnbagent/sdk").then((sdk) => { sdk.loadEnv?.(process.cwd()); return sdk; });
   return sdkPromise;
 }
 
@@ -47,7 +60,18 @@ export async function createBuyer({ env = process.env, dataDir = env.CANNED_DATA
 }
 
 function txShape(result) {
-  return result ? { transactionHash: result.transactionHash || null, status: result.status ?? null } : null;
+  if (!result) return null;
+  const receipt = result.receipt || {};
+  const gasUsed = receipt.gasUsed === undefined || receipt.gasUsed === null ? null : BigInt(receipt.gasUsed);
+  const effectiveGasPrice = receipt.effectiveGasPrice === undefined || receipt.effectiveGasPrice === null ? null : BigInt(receipt.effectiveGasPrice);
+  return {
+    transactionHash: result.transactionHash || null,
+    status: result.status ?? null,
+    blockNumber: receipt.blockNumber === undefined || receipt.blockNumber === null ? null : String(receipt.blockNumber),
+    gasUsed: gasUsed === null ? null : gasUsed.toString(),
+    effectiveGasPrice: effectiveGasPrice === null ? null : effectiveGasPrice.toString(),
+    gasCostWei: gasUsed !== null && effectiveGasPrice !== null ? (gasUsed * effectiveGasPrice).toString() : null,
+  };
 }
 
 async function protocolSnapshot(client, jobId) {
@@ -69,6 +93,7 @@ async function protocolSnapshot(client, jobId) {
 }
 
 export async function createFundedJob({ agent, precommit, quote, store, env = process.env }) {
+  await loadSdk();
   const safety = writeSafety(env);
   if (!safety.safe || !safety.writesRequested || !safety.walletConfigured) {
     return { ok: false, status: "blocked", error: safety.writesRequested ? "A dedicated execution wallet is required before funding." : "Testnet writes are not explicitly enabled.", safety };
@@ -77,7 +102,14 @@ export async function createFundedJob({ agent, precommit, quote, store, env = pr
   if (!provider) return { ok: false, status: "blocked", error: "Candidate has no provider wallet address." };
   const quotedTerms = quote?.quote?.terms || quote?.quote || null;
   if (!quotedTerms?.price || !quotedTerms?.currency) return { ok: false, status: "blocked", error: "A signed quote with price and currency is required before funding." };
+  const quoteExpiresAt = quote?.quote?.quote_expires_at || quotedTerms.quote_expires_at;
+  if (quoteExpiresAt && Math.floor(Date.now() / 1000) >= Number(quoteExpiresAt)) return { ok: false, status: "blocked", error: "The signed quote has expired; renegotiate before funding." };
   const buyer = await createBuyer({ env });
+  const paymentToken = await buyer.client.paymentToken();
+  if (paymentToken.toLowerCase() !== String(quotedTerms.currency).toLowerCase()) {
+    buyer.wallet.destroy();
+    return { ok: false, status: "blocked", error: "Quote currency does not match the live ERC-8183 Commerce payment token.", paymentToken, quotedCurrency: quotedTerms.currency };
+  }
   const record = {
     kind: "protocol_job",
     protocol: "ERC-8183",
@@ -85,6 +117,9 @@ export async function createFundedJob({ agent, precommit, quote, store, env = pr
     runId: precommit.runId,
     agentIdentity: agent.identity,
     provider,
+    budget: String(quotedTerms.price),
+    paymentToken,
+    quote: { negotiationHash: quote.negotiationHash || null, price: String(quotedTerms.price), currency: quotedTerms.currency, quoteExpiresAt: quoteExpiresAt || null },
     precommitHash: precommit.manifestHash,
     state: "not_started",
     funded: false,
@@ -93,6 +128,7 @@ export async function createFundedJob({ agent, precommit, quote, store, env = pr
   };
   const persist = async (event, extra = {}) => {
     record.events.push({ at: nowIso(), event, ...extra });
+    if (extra.snapshot) record.currentState = extra.snapshot.status;
     await store.saveJson(`state/protocol-job-${precommit.runId}.json`, record);
   };
   try {
@@ -107,7 +143,9 @@ export async function createFundedJob({ agent, precommit, quote, store, env = pr
     if (created.jobId === null || created.jobId === undefined) throw new Error("ERC-8183 createJob returned no job ID.");
     record.jobId = String(created.jobId);
     record.state = "created";
-    await persist("create_job", { tx: txShape(created), snapshot: await protocolSnapshot(buyer.client, created.jobId) });
+    const createdSnapshot = await protocolSnapshot(buyer.client, created.jobId);
+    record.precommitBinding = { level: "ONCHAIN_JOB_BOUND_PRECOMMIT", method: "ERC-8183 job.description", manifestHash: precommit.manifestHash };
+    await persist("create_job", { tx: txShape(created), snapshot: createdSnapshot, precommitBinding: record.precommitBinding });
     const registered = await buyer.client.registerJob(created.jobId);
     await persist("register_job", { tx: txShape(registered), snapshot: await protocolSnapshot(buyer.client, created.jobId) });
     const budget = BigInt(quotedTerms.price);
@@ -122,6 +160,16 @@ export async function createFundedJob({ agent, precommit, quote, store, env = pr
     await persist("error", { error: record.error });
     return { ok: false, status: "error", record, error: record.error };
   }
+}
+
+export async function appendProtocolEvent({ store, runId, event, extra = {} }) {
+  const relativePath = `state/protocol-job-${runId}.json`;
+  const record = await store.loadJson(relativePath, null);
+  if (!record) throw new Error(`Protocol job record not found for ${runId}.`);
+  record.events.push({ at: nowIso(), event, ...extra });
+  if (extra.snapshot) record.currentState = extra.snapshot.status || record.currentState;
+  await store.saveJson(relativePath, record);
+  return record;
 }
 
 export async function readJob({ client, jobId }) {

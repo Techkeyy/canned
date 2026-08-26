@@ -4,7 +4,7 @@ import { mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { BENCHMARKS, evaluateBenchmark } from "../src/benchmark/definitions.mjs";
-import { runBenchmark } from "../src/benchmark/framework.mjs";
+import { createPrecommitManifest, deriveQualificationFlags, runBenchmark } from "../src/benchmark/framework.mjs";
 import { FileStore } from "../src/persistence/file-store.mjs";
 import { CATEGORIES, publicMetrics, RUN_TYPES, terminalStateFor } from "../src/domain.mjs";
 
@@ -32,6 +32,34 @@ test("execution failures remain distinct from insufficient data", () => {
   assert.equal(terminalStateFor({ executionStatus: "timeout", evaluationStatus: "insufficient_data" }), "timeout");
   assert.equal(terminalStateFor({ executionStatus: "error", evaluationStatus: "insufficient_data" }), "error");
   assert.equal(terminalStateFor({ evaluationStatus: "insufficient_data" }), "insufficient_data");
+});
+
+test("qualification flags require payment, provenance, and an independent control", () => {
+  const base = { runType: RUN_TYPES.BENCHMARK, provenanceMode: "LIVE_QUALIFYING", precommit: { manifestHash: "0xmanifest" }, protocolJob: { funded: true, jobId: "17", currentState: "COMPLETED", events: [{ tx: { transactionHash: "0xtx" } }] }, agentOutput: {}, controlOutput: { provenance: { independent: true } }, evaluation: { status: "completed" }, terminalState: "completed" };
+  assert.equal(deriveQualificationFlags(base).qualifiesForPublicMetrics, true);
+  assert.equal(deriveQualificationFlags({ ...base, controlOutput: {} }).qualifiesForPublicMetrics, false);
+  assert.equal(deriveQualificationFlags({ ...base, protocolJob: null }).qualifiesForPublicMetrics, false);
+  assert.equal(deriveQualificationFlags({ ...base, precommit: null }).qualifiesForPublicMetrics, false);
+});
+
+test("precommit binds provider, quote, evidence schema, and expiry", () => {
+  const manifest = createPrecommitManifest({
+    runId: "run:precommit",
+    agent: { identity: "agent:test", agentWallet: "0xprovider", services: [{ type: "A2A", endpoint: "https://agent.example" }] },
+    benchmark: BENCHMARKS[CATEGORIES.REBALANCING],
+    input,
+    limits: { maxBudget: "100" },
+    deadlineAtUnixSeconds: 2_000_000_000,
+    providerIdentity: "agent:test",
+    providerAddress: "0xprovider",
+    quoteTerms: { price: "100", currency: "0xU" },
+    expectedEvidenceSchema: { agentOutput: "json", controlOutput: "json" },
+  });
+  assert.equal(manifest.providerAddress, "0xprovider");
+  assert.equal(manifest.budget, "100");
+  assert.equal(manifest.paymentToken, "0xU");
+  assert.equal(manifest.expectedEvidenceSchema.agentOutput, "json");
+  assert.match(manifest.manifestHash, /^0x/);
 });
 
 test("malformed output becomes insufficient data", () => {

@@ -71,7 +71,7 @@ Private data includes wallet credentials, session material, API keys, and any us
 
 ## Load-bearing assumption
 
-At least one credible BSC agent endpoint can be resolved and invoked for a reproducible task, with a declared control and observable outcome. Milestone 2 verified four BSC testnet A2A quote surfaces, but has not yet proved the paid endpoint roundtrip or onchain job lifecycle because no dedicated execution wallet is configured. The product scope remains limited to the backend evidence slice and minimum inspection UI until that boundary is exercised.
+At least one credible BSC agent endpoint can be resolved and invoked for a reproducible task, with a declared control and observable outcome. Milestone 2 verified four BSC testnet A2A quote surfaces, but has not yet proved the paid endpoint roundtrip or onchain job lifecycle because the dedicated execution wallet has zero balances. The product scope remains limited to the backend evidence slice and minimum inspection UI until that boundary is exercised.
 
 ## MVP, next, and non-goals
 

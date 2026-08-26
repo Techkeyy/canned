@@ -43,6 +43,7 @@ export function isPublicMetricEligible(run) {
     run?.provenance?.mode === "LIVE_QUALIFYING" &&
     run?.provenance?.fixture !== true &&
     run?.provenance?.infrastructureSmokeTest !== true &&
+    Boolean(run?.manifest?.hash) &&
     run?.protocolJob?.funded === true &&
     run?.qualification?.allGatesPassed === true;
 }

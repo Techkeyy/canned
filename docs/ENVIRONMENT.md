@@ -31,7 +31,7 @@ Audit date: 2026-08-26. This is a record of the current machine, not a promise t
 | BSC testnet | 97 | `https://bsc-testnet-rpc.publicnode.com` | `https://testnet.bscscan.com` | Read-only `eth_chainId` smoke test passed |
 | BSC mainnet | 56 | `https://bsc-dataseed.bnbchain.org` | `https://bscscan.com` | Not used for writes |
 
-The successful testnet smoke result was `0x61`, which is decimal 97. No wallet was loaded, no contract was deployed, and no transaction was broadcast.
+The successful initial read-only testnet smoke result was `0x61`, which is decimal 97. At that point no wallet was loaded. Since then, one disposable encrypted testnet wallet has been created; no contract was deployed and no transaction was broadcast.
 
 ## Required soon
 
@@ -42,6 +42,8 @@ The successful testnet smoke result was `0x61`, which is decimal 97. No wallet w
 - A disposable BSC testnet wallet funded only for the minimum ERC-8183 test.
 - A real paid buyer/provider lifecycle with persisted job and deliverable evidence.
 - A reproducible benchmark environment with enough testnet activity to score the selected category.
+
+The local wallet setup is now available with `npm run wallet:create`; `npm run wallet:check` records the exact live requirements in `data/state/funding-check.json`. The current generated wallet has zero tBNB and zero U, so no transaction can start.
 
 ## Recommended later
 
@@ -68,4 +70,6 @@ Checks performed for this slice:
 - official SDK package and lockfile verification;
 - deterministic test suite and fixture exclusion test;
 - live 8004scan inventory and read-only A2A quote probes;
-- no wallet creation, contract write, or mainnet transaction.
+- encrypted disposable wallet creation and SDK-backed funding preflight;
+- one disposable wallet creation through the SDK encrypted-keystore path;
+- no contract write, payment, or mainnet transaction.

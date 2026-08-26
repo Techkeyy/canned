@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { writeSafety } from "../src/protocol/erc8183-buyer.mjs";
+import { preflightGuards, writeSafety } from "../src/protocol/erc8183-buyer.mjs";
 import { negotiateA2A } from "../src/protocol/a2a.mjs";
 
 test("mainnet or ambiguous write configuration fails closed", () => {
@@ -37,4 +37,16 @@ test("ERC-8183 buyer blocks funding without explicit wallet configuration", asyn
   });
   assert.equal(result.ok, false);
   assert.equal(result.status, "blocked");
+});
+
+test("paid-run preflight refuses expired or mismatched quotes", () => {
+  const base = { chainId: 97, provider: "0xprovider", expectedProvider: "0xprovider", tokenAddress: "0xToken", quoteCurrency: "0xToken", quoteAccepted: true, quoteSignaturePresent: true, nowSeconds: 100, tokenBalance: 100n, requiredBudget: 100n, nativeBalance: 100n, estimatedGasWei: 100n };
+  assert.equal(preflightGuards({ ...base, quoteExpiresAt: 99 }).errors.includes("quote_expired"), true);
+  assert.equal(preflightGuards({ ...base, provider: "0xother", quoteExpiresAt: 200 }).errors.includes("provider_mismatch"), true);
+});
+
+test("paid-run preflight refuses insufficient U or native gas", () => {
+  const base = { chainId: 97, provider: "0xprovider", expectedProvider: "0xprovider", tokenAddress: "0xToken", quoteCurrency: "0xToken", quoteAccepted: true, quoteSignaturePresent: true, quoteExpiresAt: 200, nowSeconds: 100 };
+  assert.equal(preflightGuards({ ...base, tokenBalance: 99n, requiredBudget: 100n, nativeBalance: 100n, estimatedGasWei: 100n }).errors.includes("insufficient_payment_token"), true);
+  assert.equal(preflightGuards({ ...base, tokenBalance: 100n, requiredBudget: 100n, nativeBalance: 99n, estimatedGasWei: 100n }).errors.includes("insufficient_native_gas"), true);
 });

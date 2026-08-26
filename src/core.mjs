@@ -1,5 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { loadEnvFile } from "node:process";
 import { keccak256, stringToHex } from "viem";
+
+const localEnvPath = path.resolve(process.cwd(), ".env.local");
+if (existsSync(localEnvPath)) {
+  try { loadEnvFile(localEnvPath); } catch { /* malformed local secrets are reported by the caller */ }
+}
 
 export function canonicalize(value) {
   if (value === null || typeof value === "string" || typeof value === "boolean") {

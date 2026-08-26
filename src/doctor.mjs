@@ -51,9 +51,9 @@ export async function runDoctor({ env = process.env, print = true } = {}) {
   const sdk = await sdkStatus();
   add("bnb_sdk", sdk.available ? "PASS" : "FAIL", sdk.available ? `${sdk.package}@${sdk.version}` : sdk.error);
   const bag = await commandCheck("bag", ["--version"]);
-  add("bag_cli", bag.status, bag.detail);
+  add("optional_bag_cli", bag.status, `optional provider/deployment tooling; ${bag.detail}`);
   const agentcore = await commandCheck("agentcore", ["--version"]);
-  add("agentcore_cli", agentcore.status, agentcore.detail);
+  add("optional_agentcore_cli", agentcore.status, `optional AWS deployment tooling; ${agentcore.detail}`);
   add("execution_wallet", safety.walletConfigured ? "PASS" : "WARN", safety.walletConfigured ? "configured, secret values withheld" : "not configured; protocol writes remain blocked");
   add("fixture_boundary", env.CANNED_MODE === "fixture" ? "WARN" : "PASS", env.CANNED_MODE === "fixture" ? "fixture mode is active; public metrics are excluded" : "live mode is active; fixtures remain opt-in");
   const report = { network, rpcUrl, checks, ok: checks.every((check) => check.status !== "FAIL") };

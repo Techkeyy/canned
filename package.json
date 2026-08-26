@@ -12,6 +12,9 @@
     "doctor": "node src/doctor.mjs",
     "inventory": "node scripts/run-inventory.mjs",
     "benchmark:fixture": "node scripts/run-fixture.mjs",
+    "wallet:create": "node scripts/create-testnet-wallet.mjs",
+    "wallet:check": "node scripts/check-testnet-funding.mjs",
+    "benchmark:paid": "node scripts/run-paid-benchmark.mjs",
     "serve": "node src/server.mjs"
   },
   "dependencies": {
