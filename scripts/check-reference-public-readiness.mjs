@@ -9,7 +9,7 @@ if (!isPublicHttpUrl(agentUrl)) throw new Error("CANNED_REFERENCE_AGENT_URL must
 const required = (suffix) => new URL(suffix, `${agentUrl.replace(/\/$/, "")}/`).toString();
 const [health, readiness, status, metadata] = await Promise.all(["/health", "/readiness", "/status", "/metadata"].map((suffix) => requestJson(required(suffix))));
 const failures = publicReadinessFailures({ agentUrl, health, readiness, status, metadata });
-const quoteRequest = { task_description: "HealthBench v1 readiness probe; no job will be created.", terms: { deliverables: "Signed readiness response only", quality_standards: "Must identify BSC Testnet, U, price, and expiry", success_criteria: "No onchain job" }, request_id: `readiness-${Date.now()}` };
+const quoteRequest = { task_description: "HealthBench v1 readiness probe; no job will be created.", terms: { deliverables: "Signed readiness response only", quality_standards: "Must identify BSC Testnet, U, price, and expiry", success_criteria: ["No onchain job"] }, request_id: `readiness-${Date.now()}` };
 const quote = await requestJson(required("/negotiate"), { method: "POST", headers: { "Content-Type": "application/json" }, body: quoteRequest });
 const envelope = quote.body || {};
 const responseBody = envelope.response || envelope;

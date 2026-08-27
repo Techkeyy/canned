@@ -20,7 +20,7 @@ async function verifyPublicReadiness() {
   const [health, readiness, status, metadata] = await Promise.all(["/health", "/readiness", "/status", "/metadata"].map((suffix) => requestJson(endpoint(suffix))));
   const failures = publicReadinessFailures({ agentUrl, health, readiness, status, metadata });
   if (failures.length) throw new Error(`Public readiness failed before registration: ${failures.join(", ")}`);
-  const quote = await requestJson(endpoint("/negotiate"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task_description: "HealthBench v1 registration readiness probe; no job will be created.", terms: { deliverables: "Signed readiness response only", quality_standards: "Must identify BSC Testnet, U, price, and expiry", success_criteria: "No onchain job" }, request_id: `registration-readiness-${Date.now()}` }) });
+  const quote = await requestJson(endpoint("/negotiate"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task_description: "HealthBench v1 registration readiness probe; no job will be created.", terms: { deliverables: "Signed readiness response only", quality_standards: "Must identify BSC Testnet, U, price, and expiry", success_criteria: ["No onchain job"] }, request_id: `registration-readiness-${Date.now()}` }) });
   const envelope = quote.body || {};
   const responseBody = envelope.response || envelope;
   const price = responseBody.price || responseBody.terms?.price;
