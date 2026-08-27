@@ -88,6 +88,7 @@ test("Altana authority boundary requires confirmation, validates exact calls, an
   assert.equal(granted.txHash, "0xgrant");
   assert.equal((await authority.execute({ policy: prepared.policy, to: commerce, data })).status, "confirmed");
   assert.equal(calls.length, 1);
+  await assert.rejects(authority.execute({ policy: prepared.policy, to: commerce, data, session: { walletAddress: account, publicKey: "0xpub", expiry: 1, permissions: prepared.policy.permissions } }), /session rejected/);
   await assert.rejects(authority.execute({ policy: prepared.policy, to: router, data }), /call rejected/);
   assert.equal((await authority.revoke({ publicKey: "0xpub", confirmed: true })).txHash, "0xrevoke");
 });

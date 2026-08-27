@@ -121,6 +121,10 @@ export class AltanaAuthorityProvider {
   }
 
   async execute({ policy, to, data, value = 0n, session = null } = {}) {
+    if (session) {
+      const sessionCheck = this.inspect(session);
+      if (!sessionCheck.valid) throw new Error(`Altana session rejected: ${sessionCheck.errors.join(", ")}`);
+    }
     const allowed = validateAltanaCall({ policy, to, data, value });
     if (!allowed.valid) throw new Error(`Altana call rejected: ${allowed.errors.join(", ")}`);
     if (typeof this.executeFn !== "function") throw new Error("Altana SDK execute is not configured; no session write was attempted.");
