@@ -1,6 +1,6 @@
 # Canned project understanding
 
-Status: Directive #7 Reference Fleet Foundation. Directive #3 and Directive #4 have three real BSC testnet paid timeout/refund records; the current inventory still has no successful non-Weigh external delivery. The first-party Health Factor module is implemented but has not yet produced a live paid observation.
+Status: Canned Verified Run #1 is complete. Job 695 paid 0.001 U to the first-party Canned Health Guard (ERC-8004 identity 2003), observed a real IPFS deliverable, reached `COMPLETED`, and was graded deterministically against a human baseline sealed beforehand. `jobs paid for and graded` is 1 and is derived, not asserted. Directive #3 and Directive #4 timeout/refund records remain visible and unchanged, and the current inventory still has no successful third-party external delivery.
 
 ## One-sentence product
 
@@ -71,13 +71,13 @@ Private data includes wallet credentials, session material, API keys, and any us
 
 ## Load-bearing assumption
 
-At least one credible BSC agent endpoint can be resolved and invoked for a reproducible task, with a declared control and observable outcome. Milestone 2 verified four BSC testnet A2A quote surfaces and Directive #3 proved the paid ERC-8183 create/register/set-budget/fund path, but the selected provider timed out before submitting a deliverable. Directive #4 added fresh readiness/cooldown selection and a second independent paid timeout. Marketplace Alpha now exposes category shelves, evidence-first agent cards, details, compare, protocol provenance, negative run history, and a read-only hire review. It does not claim a successful external delivery where none is observed.
+At least one credible BSC agent endpoint can be resolved and invoked for a reproducible task, with a declared control and observable outcome. Milestone 2 verified four BSC testnet A2A quote surfaces and Directive #3 proved the paid ERC-8183 create/register/set-budget/fund path, but the selected provider timed out before submitting a deliverable. Directive #4 added fresh readiness/cooldown selection and a second independent paid timeout. Marketplace Alpha now exposes category shelves, evidence-first agent cards, details, compare, protocol provenance, negative run history, a read-only hire review, and the Agent Advantage side-by-side. The load-bearing assumption is now demonstrated rather than assumed: one agent was hired through Canned for real money and produced an observed, content-addressed, deterministically graded deliverable. It is a first-party agent, so it does not yet demonstrate the same for third-party inventory, and Canned does not claim a successful external delivery where none is observed.
 
 ## MVP, next, and non-goals
 
-MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, readiness/cooldown selection, and two real paid timeout/refund records; it does not yet have a submitted provider deliverable.
+MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, readiness/cooldown selection, two real paid timeout/refund records, and one completed paid benchmark with an observed IPFS deliverable and a deterministic with/without comparison. The observed delivery is from the first-party reference agent; no third-party provider has yet submitted one.
 
-Next: configure and fund the explicitly labelled Health Factor reference seller, register its BSC testnet identity, complete one operator-confirmed ERC-8183 run, then perform an uncontaminated human baseline. Continue non-Weigh discovery in parallel, followed by the Altana session adapter, verified x402/B402 support where applicable, and three qualifying TermiX pairs.
+Next: build a second reference capability so a second Agent Advantage pair exists, and cover the trading, stock, or security category that TermiX requires and Health Factor Monitoring does not satisfy. Then repeated Health Guard observations to move it past a single benchmark, continued third-party discovery, the Altana session adapter, and verified x402/B402 support where applicable.
 
 Non-goals for this milestone: mainnet execution, a general-purpose wallet, an opaque agent ranking model, a fake multi-agent directory, automatic investment advice, unbounded approvals, and a claim that benchmark results guarantee profit or safety.
 

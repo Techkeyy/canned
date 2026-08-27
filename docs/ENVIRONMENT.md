@@ -76,4 +76,10 @@ Checks performed for this slice:
 - one disposable wallet creation through the SDK encrypted-keystore path;
 - BSC testnet ERC-8183 create/register/set-budget/fund/refund/Router-expiry writes for Directive #3;
 - BSC testnet zero-U ERC-8183 control job 675 using a separate provider wallet, official watcher/submit primitives, and a read-only deliverable reconciliation;
+- BSC testnet paid ERC-8183 job 695 against ERC-8004 identity 2003 for 0.001 U, reaching `COMPLETED` with an IPFS deliverable and deterministic grading;
+- deployed-versus-local hash comparison of every Health Guard module and of the frozen `HealthBench_v1` definition;
 - no BSC mainnet transaction.
+
+## Provider RPC configuration
+
+The BNB SDK resolves its BSC testnet RPC from `RPC_URL_BSC_TESTNET` or `RPC_URL`. `CANNED_RPC_URL` is a Canned-side variable and does not reach the SDK. The Health Guard deployment sets `RPC_URL_BSC_TESTNET` plus `BNBAGENT_FALLBACK_RPC_URLS`; without it the SDK default rejects the `eth_getLogs` range that `verifyJob` requires and no funded job can be accepted.

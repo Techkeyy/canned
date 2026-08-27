@@ -101,3 +101,35 @@ Reason: a local file path cannot be independently retrieved by a buyer, judge, o
 Decision: the Canned buyer wallet pays external agents, the HealthBench wallet owns only the disposable Venus position, the reference provider wallet signs quotes and submits seller results, and any future Altana action wallet is a separate scoped authority. No wallet may silently inherit another wallet’s role.
 
 Reason: the safest Venus release is read-only and recommendation-first, with any later action limited to an allowlisted, bounded call under an expiring registered session.
+
+## ADR-021: getAccountLiquidity is the authoritative HealthBench answer
+
+Decision: the deterministic HealthBench evaluator grades against the Venus Comptroller's own `getAccountLiquidity` output. The market-level reconstruction from `markets()`, balances, exchange rates, and oracle prices is computed and published, but it is secondary and is never the graded quantity.
+
+Reason: on the frozen block the recorded vBNB collateral factor of 0.7 does not reproduce the protocol's own liquidity figure, which implies 0.8. Rather than pick a story, the evaluator publishes both numbers and marks the reconciliation inconsistent. Neither the human nor the agent is graded on the derived figure, so the discrepancy cannot bias the comparison.
+
+## ADR-022: One rubric, satisfiable from prose or from structure
+
+Decision: the five scored dimensions are exactly the precommitted `task.expectedOutputSchema` fields. Every check can be satisfied either by a structured deliverable field or by the equivalent statement in prose, so a machine-readable responder earns no credit that a human writing sentences could not also earn.
+
+Reason: a with/without comparison is worthless if the rubric is shaped like one side's output format. The rubric was written from the precommitted schema, and both answers were sealed and content-addressed before it existed.
+
+Limitation recorded honestly: the detailed check list was authored after both answers were sealed. The precommitted artefacts are the task, the output schema, the frozen snapshot, and the evaluator version, not the individual check weights.
+
+## ADR-023: Reference hire readiness is derived, never asserted
+
+Decision: `referenceAgentCandidate` computes hire readiness from five separately observed conditions - onchain identity, configured provider, verified public readiness, a verified fresh quote, and a sealed human baseline. It no longer returns a hardcoded value.
+
+Reason: the previous hardcoded `ready: false` was correct before the baseline existed but could only be moved by editing a literal. Deriving it keeps the gate fail-closed while letting real observations open it, and it makes the reason machine-readable.
+
+## ADR-024: The reference agent gets no allowance for being first-party
+
+Decision: Health Guard downtime, operator intervention, and elapsed time are counted against the agent exactly as they would be for a third-party provider. Agent elapsed time runs from quote request to the provider's own onchain submission.
+
+Reason: during Verified Run #1 the Health Guard failed to serve a funded job because of an RPC misconfiguration, and an operator fixed it mid-run. Excluding that would have made the agent look faster than it was. The intervention is recorded in the run and included in the measured time, which is why the first pair is recorded as a loss on the combined advantage criterion.
+
+## ADR-025: A late but in-deadline submission is reconciled, not rewritten
+
+Decision: when a provider submits after Canned's local observation window but before the onchain submit deadline, the run is reconciled in place. The original timeout observation is preserved under `reconciliation.originalObservation` and the final chain state is recorded alongside it.
+
+Reason: deleting the timeout would hide that Canned's own client gave up early. Keeping both is the honest record of what each party did.

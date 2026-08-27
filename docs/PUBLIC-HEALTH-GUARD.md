@@ -32,3 +32,13 @@ Freeze `HealthBench_v1` first. Open `/baseline/health-factor`, start the timer, 
 ## Future bounded action
 
 The first Health Guard release is read-only. If Altana is later added, use a separate registered session and separate action wallet with a short expiry, narrow allowlist, and small cap. Candidate Venus actions are limited to a review-approved repay or repay-on-behalf/collateral top-up seam. Withdrawals, arbitrary calldata, unlimited approvals, and unattended continuous execution are out of scope.
+
+## RPC requirement
+
+The BNB SDK reads `RPC_URL_BSC_TESTNET` (or `RPC_URL`), **not** `CANNED_RPC_URL`. A deployment that only sets `CANNED_RPC_URL` silently falls back to the SDK default `data-seed-prebsc-2-s2.binance.org`, which rejects the `eth_getLogs` block range that `ERC8183JobOps.verifyJob` needs. The symptom is a funded-job watcher that logs `verify_job(<id>) failed: Request exceeds defined limit` and rejects the job on every poll while the service still reports healthy worker and watcher heartbeats.
+
+The deployment must set `RPC_URL_BSC_TESTNET` to an endpoint that serves wide `eth_getLogs` ranges, and should set `BNBAGENT_FALLBACK_RPC_URLS`. Readiness checks alone do not catch this: the endpoint, worker, watcher, storage, and signed quote were all healthy while the agent was unable to accept any funded job.
+
+## Published identity
+
+Set `CANNED_REFERENCE_AGENT_ID` and `CANNED_REFERENCE_REGISTRY` after ERC-8004 registration so `/metadata` and `/.well-known/agent.json` publish the registered identity instead of `null`. Registration points the registry at the endpoint; this makes the endpoint point back.

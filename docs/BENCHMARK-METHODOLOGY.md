@@ -115,3 +115,36 @@ At least one paired task must be in trading, stock, or security. The report will
 - A fixture mode can exercise the entire UI offline and is labeled as fixture data.
 
 Milestone 2 and Directive #3 verified the deterministic, fixture, and ERC-8183 buyer lifecycle portions of this list. Directive #4 added fresh readiness/cooldown selection, a second bounded paid timeout (job 673), and infrastructure control job 675. Job 675 verifies the controlled watcher/submit/deliverable path but is not a product run; Verified Run #1 remains open.
+
+## HealthBench v1 deterministic evaluator
+
+Evaluator version `health-factor-deterministic-v1`. No LLM participates in scoring.
+
+Ground truth is computed from the frozen snapshot alone, with no live read and no prior answer:
+
+- authoritative fields from `Comptroller.getAccountLiquidity`: error code, liquidity, shortfall, whether the position was liquidatable at the snapshot;
+- a derived market-level reconstruction of collateral and debt, published with an explicit consistency verdict;
+- the change baseline, which for v1 is `not_enough_data` because no prior snapshot is bound;
+- the bounded-action truth, which for a position with zero shortfall is `continue_monitoring_no_intervention`.
+
+Scoring uses the five precommitted `expectedOutputSchema` fields, 20 points each. Each dimension awards 4 points for being answered rather than declined, plus fixed points for named checks. Every check is satisfiable from a structured deliverable field **or** from the equivalent prose statement, so the rubric does not favour a machine-readable format. Checks prefixed `no_` are unsupported-claim guards and are reported separately.
+
+The same ground truth object, the same rubric, and the same evaluator version are applied to the human baseline and to the agent deliverable. Both scores are content-addressed.
+
+## Agent Advantage pair
+
+A pair records time, cost, and quality on both sides and never nets them into a single number. Cost is reported as service fee plus buyer gas on the agent side and as declared operator cost on the human side. The comparison names the faster responder and the higher-quality responder independently, so a faster-but-worse agent is visible as such. `agentAdvantage` is true only when the agent scores higher **and** is not slower.
+
+## Verified Run #1 result
+
+Job 695, ERC-8004 identity `97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2003`, reference block 127521666.
+
+| Metric | Without agent | With agent |
+| --- | ---: | ---: |
+| Time | 306,762 ms | 861,284 ms |
+| Cost | 0 U, no gas | 0.001 U + 0.000060257 tBNB |
+| Quality | 8 / 100 | 92 / 100 |
+
+The agent answered every dimension and was correct about liquidation proximity, the absent change baseline, and the bounded action. It lost 8 points because its deliverable never names which asset is collateral and which is borrowed. The human declined three of five dimensions and asserted the position was "close" to liquidation, which the frozen snapshot does not support.
+
+The agent was slower. Its elapsed time includes an RPC misconfiguration that stopped the Health Guard from verifying the funded job, and the operator intervention that fixed it. The pair is therefore recorded as a **loss** on the combined advantage criterion and a decisive quality win, and it counts as one loss in public metrics.
