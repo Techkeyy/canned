@@ -6,7 +6,7 @@ import { loadSdk } from "../src/protocol/erc8183-buyer.mjs";
 
 const store = await new FileStore().init();
 const adapter = new Eight004ScanAdapter();
-const report = await adapter.discover({ evidenceStore: store, perQuery: 3, maxDeep: 12 });
+const report = await adapter.discover({ evidenceStore: store, perQuery: 5, maxDeep: 32 });
 const runs = await store.loadRuns();
 const providerHistory = buildProviderHistory(runs);
 const sdk = await loadSdk();

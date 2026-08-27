@@ -10,6 +10,32 @@ export const CATEGORY_QUERIES = Object.freeze({
   [CATEGORIES.HEALTH_FACTOR_MONITORING]: "lending health factor monitoring protection agent",
 });
 
+// Keep discovery focused on BNB-relevant work instead of attempting to index the
+// entire registry. The first entry in each list remains CATEGORY_QUERIES for
+// callers that need a canonical label; the variants widen recall for inventory.
+export const CATEGORY_QUERY_VARIANTS = Object.freeze({
+  [CATEGORIES.REBALANCING]: Object.freeze([
+    CATEGORY_QUERIES[CATEGORIES.REBALANCING],
+    "PancakeSwap LP position range manager agent",
+    "concentrated liquidity range management agent",
+  ]),
+  [CATEGORIES.GRID_TRADING]: Object.freeze([
+    CATEGORY_QUERIES[CATEGORIES.GRID_TRADING],
+    "automated trading grid orders agent",
+    "market making spread capture ladder agent",
+  ]),
+  [CATEGORIES.YIELD_OPTIMISATION]: Object.freeze([
+    CATEGORY_QUERIES[CATEGORIES.YIELD_OPTIMISATION],
+    "DeFi yield aggregator APY routing agent",
+    "Venus Lista stablecoin yield agent",
+  ]),
+  [CATEGORIES.HEALTH_FACTOR_MONITORING]: Object.freeze([
+    CATEGORY_QUERIES[CATEGORIES.HEALTH_FACTOR_MONITORING],
+    "Venus lending health factor liquidation protection agent",
+    "borrow collateral monitoring alert agent",
+  ]),
+});
+
 const CATEGORY_SIGNALS = Object.freeze({
   [CATEGORIES.REBALANCING]: [
     ["rebalance", "rebalances", "rebalancing"], ["liquidity", "lp", "range"], ["pancakeswap", "uniswap", "position"],
@@ -87,6 +113,8 @@ function supportsFrom(detail, services, cards) {
     mcp: text.includes("mcp") || services.some((service) => /mcp/i.test(service.type)),
     erc8183: text.includes("erc-8183") || text.includes("erc8183") || text.includes("notify_funded") || text.includes("notify-funded"),
     x402: detail?.x402_supported === true || text.includes("x402"),
+    b402: detail?.b402_supported === true || text.includes("b402"),
+    httpTaskApi: services.some((service) => /http|rest|api|task/i.test(`${service.type} ${service.description || ""}`)),
   };
 }
 
@@ -159,10 +187,12 @@ export class Eight004ScanAdapter {
     const latestItems = latest.body?.items || latest.body?.agents || latest.body?.data?.items || [];
     queryResults.push({ category: "latest_bsc_testnet", query: null, requestPath: "/agents", responseStatus: latest.status, responseHash: contentHashes(latest.rawText).sha256, itemsReturned: Array.isArray(latestItems) ? latestItems.length : 0 });
     for (const item of Array.isArray(latestItems) ? latestItems : []) addCandidate(item, "latest_bsc_testnet");
-    for (const [category, query] of Object.entries(CATEGORY_QUERIES)) {
-      const result = await this.search(query, { chainId, limit: perQuery });
-      queryResults.push({ category, query, requestPath: "/agents/search/semantic", responseStatus: result.response.status, responseHash: contentHashes(result.response.rawText).sha256, itemsReturned: result.items.length });
-      for (const item of result.items) addCandidate(item, category);
+    for (const [category, queries] of Object.entries(CATEGORY_QUERY_VARIANTS)) {
+      for (const query of queries) {
+        const result = await this.search(query, { chainId, limit: perQuery });
+        queryResults.push({ category, query, requestPath: "/agents/search/semantic", responseStatus: result.response.status, responseHash: contentHashes(result.response.rawText).sha256, itemsReturned: result.items.length });
+        for (const item of result.items) addCandidate(item, category);
+      }
     }
     const selected = [...candidates.values()].slice(0, maxDeep);
     const normalized = [];

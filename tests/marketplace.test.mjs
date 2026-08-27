@@ -1,0 +1,66 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { deriveAgentRecord, deriveTrustStates, compareAgents } from "../src/marketplace/model.mjs";
+import { protocolCapabilities, selectHiringAdapter } from "../src/marketplace/adapters.mjs";
+import { deriveMarketplaceMetrics } from "../src/marketplace/metrics.mjs";
+
+const identity = "97:0xabc:2001";
+const candidate = {
+  identity,
+  chainId: 97,
+  network: "bsc-testnet",
+  name: "Evidence Agent",
+  description: "A bounded rebalancing agent.",
+  categoryHypotheses: [{ category: "rebalancing", label: "Rebalancing", confidence: "high", signals: ["range"] }],
+  supports: { a2a: true, erc8183: true, x402: true, b402: false, mcp: false },
+  services: [{ type: "A2A", endpoint: "https://example.test/a2a" }],
+  probes: [{ type: "A2A", reachable: true, callable: true, endpoint: "https://example.test/a2a" }],
+  selectionGate: { readiness: { quoteVerified: true, protocolCompatibility: true, ready: true } },
+  hiring: { price: "10000000000000000", currency: "U", mechanism: "A2A negotiation + ERC-8183 buyer job" },
+};
+
+test("trust ladder distinguishes a verified quote from an observed delivery", () => {
+  const trust = deriveTrustStates(candidate, []);
+  assert.deepEqual(trust.reached, ["LISTED", "ENDPOINT_VERIFIED", "QUOTE_VERIFIED"]);
+  assert.equal(trust.deliveryCount, 0);
+  assert.equal(trust.sampleSize, 0);
+});
+
+test("zero is preserved while unknown comparison fields remain null", () => {
+  const run = { runId: "run-1", runType: "BENCHMARK", createdAt: "2026-08-27T00:00:00Z", agent: { identity }, protocolJob: { funded: true, jobId: 701 }, qualification: { hasActualDeliverable: true, qualifiesForAgentTrackRecord: true }, evaluation: { metrics: { agentAdvantage: false } }, terminalState: "completed" };
+  const record = deriveAgentRecord(candidate, [run]);
+  assert.equal(record.trust.deliveryCount, 1);
+  assert.equal(record.trust.benchmarkCount, 1);
+  const comparison = compareAgents([record], [identity], "rebalancing");
+  assert.equal(comparison.agents[0].observedDeliveries, 1);
+  assert.equal(comparison.agents[0].failureRate, 0);
+  assert.equal(comparison.agents[0].cost, "10000000000000000");
+});
+
+test("Weigh-family candidates remain visible but cannot be newly hired", () => {
+  const weigh = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:1926" };
+  const record = deriveAgentRecord(weigh, []);
+  assert.equal(record.quarantine.active, true);
+  assert.equal(record.quarantine.permanentBlacklist, false);
+  assert.equal(selectHiringAdapter(weigh).status, "blocked");
+});
+
+test("protocol metadata separates advertised, Canned-verified, and used", () => {
+  const capabilities = protocolCapabilities(candidate, []);
+  assert.equal(capabilities.find((item) => item.protocol === "ERC-8183").advertised, true);
+  assert.equal(capabilities.find((item) => item.protocol === "ERC-8183").cannedVerified, true);
+  assert.equal(capabilities.find((item) => item.protocol === "ERC-8183").successfullyUsed, false);
+});
+
+test("fixture and infrastructure control runs do not enter marketplace metrics", () => {
+  const runs = [
+    { runType: "FIXTURE", agent: { identity: "fixture:1" } },
+    { runType: "INFRASTRUCTURE_PROTOCOL_CONTROL", agent: { identity: "CANNED_PROTOCOL_CONTROL" }, protocolJob: { funded: true, jobId: 675 } },
+    { runType: "BENCHMARK", agent: { identity }, protocolJob: { funded: true, jobId: 702 }, qualification: { qualifiesForPublicMetrics: false }, terminalState: "timeout" },
+  ];
+  const metrics = deriveMarketplaceMetrics({ candidates: [candidate], runs });
+  assert.equal(metrics.paidAttempts, 1);
+  assert.equal(metrics.jobsPaidForAndGraded, 0);
+  assert.equal(metrics.excludedFixtureAndControlRuns, 2);
+  assert.equal(metrics.categories.rebalancing.tested, 1);
+});
