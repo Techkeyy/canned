@@ -1,4 +1,5 @@
 import { isPublicHttpUrl, safeUrl } from "../core.mjs";
+import { CATEGORY_LABELS } from "../domain.mjs";
 import { REFERENCE_CHAIN_ID, REFERENCE_ERC8183_COMMERCE_PROXY, REFERENCE_NETWORK, REFERENCE_ORIGIN, REFERENCE_PAYMENT_TOKEN, referenceSpec } from "./constants.mjs";
 
 export const REFERENCE_SERVICE_VERSION = "health-guard-service-v1";
@@ -14,18 +15,27 @@ export function validatePublicReferenceConfig({ agentUrl, storageApiKey = proces
   return { valid: errors.length === 0, errors };
 }
 
-export function publicHealthGuardMetadata({ agentUrl, providerAddress, agentId = null, registry = null } = {}) {
-  const spec = referenceSpec("health-factor");
+export function publicHealthGuardMetadata(options = {}) {
+  return publicReferenceMetadata({ ...options, referenceKey: "health-factor" });
+}
+
+export function publicReferenceMetadata({ agentUrl, providerAddress, agentId = null, registry = null, referenceKey = "health-factor" } = {}) {
+  const spec = referenceSpec(referenceKey);
+  if (!spec) throw new Error(`Unknown reference agent key: ${referenceKey}`);
   return {
     schemaVersion: 1,
     name: spec.name,
     description: spec.description,
-    category: "Health Factor Monitoring",
+    category: CATEGORY_LABELS[spec.category] || spec.category,
+    referenceKey: spec.key,
+    venue: spec.venue || null,
+    capabilities: [...spec.capabilities],
+    executionPolicy: spec.executionPolicy,
     origin: REFERENCE_ORIGIN,
     provider: providerAddress || null,
     network: REFERENCE_NETWORK,
     chainId: REFERENCE_CHAIN_ID,
-    version: REFERENCE_SERVICE_VERSION,
+    version: spec.serviceVersion || REFERENCE_SERVICE_VERSION,
     identity: agentId === null ? null : { agentId, registry, network: REFERENCE_NETWORK, chainId: REFERENCE_CHAIN_ID },
     protocols: [{ name: "ERC-8183", endpoint: agentUrl, verifyingContract: REFERENCE_ERC8183_COMMERCE_PROXY, servicePriceRaw: spec.priceRaw, currency: REFERENCE_PAYMENT_TOKEN, quote: "signed_provider_quote", delivery: "provider_storage" }],
     endpoints: {
@@ -39,7 +49,7 @@ export function publicHealthGuardMetadata({ agentUrl, providerAddress, agentId =
   };
 }
 
-export function publicReadinessSummary({ runtime, providerAddress, agentUrl, storageMode, fulfillmentEnabled = false, metadata = null } = {}) {
+export function publicReadinessSummary({ runtime, providerAddress, agentUrl, storageMode, fulfillmentEnabled = false, metadata = null, rpc = null } = {}) {
   const health = runtime.health();
   const readiness = runtime.readiness();
   return {
@@ -54,7 +64,17 @@ export function publicReadinessSummary({ runtime, providerAddress, agentUrl, sto
     watcher: { ...(readiness.watcher || { alive: false, status: "not_started" }), network: REFERENCE_NETWORK, chainId: REFERENCE_CHAIN_ID, providerAddress },
     storage: { mode: storageMode, public: storageMode === "ipfs", localFilesystemPresentedAsEvidence: false },
     fulfillment: { enabled: fulfillmentEnabled, paidRunExecuted: false },
-    version: REFERENCE_SERVICE_VERSION,
-    metadata: metadata ? { name: metadata.name, category: metadata.category, identity: metadata.identity } : null,
+    version: metadata?.version || REFERENCE_SERVICE_VERSION,
+    // Published so a buyer can see whether the funded-job watcher can actually
+    // read the chain, rather than inferring it from a healthy HTTP response.
+    rpc: rpc ? {
+      capable: rpc.capable === true,
+      usingSdkDefault: rpc.environment?.usingSdkDefault === true,
+      configuredVia: rpc.environment?.perNetworkConfigured ? rpc.environment.perNetworkKey : rpc.environment?.genericConfigured ? "RPC_URL" : "sdk_default",
+      verifyJobLogSpanServed: rpc.checks?.verifyJobLogSpan === true,
+      checkedAt: rpc.checkedAt || null,
+      reason: rpc.reason || null,
+    } : null,
+    metadata: metadata ? { name: metadata.name, category: metadata.category, identity: metadata.identity, venue: metadata.venue || null, referenceKey: metadata.referenceKey || null } : null,
   };
 }

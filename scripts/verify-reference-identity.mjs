@@ -5,7 +5,7 @@ import { EVMWalletProvider } from "@bnbagent/sdk";
 import { ERC8004Agent } from "@bnbagent/sdk/erc8004";
 import { REFERENCE_CHAIN_ID, REFERENCE_NETWORK } from "../src/reference/constants.mjs";
 import { referenceIdentityBindingFailures } from "../src/deploy/readiness.mjs";
-import { Eight004ScanAdapter } from "../src/discovery/8004scan.mjs";
+import { indexerOwnerMatches, lookupIndexedAgent } from "../src/discovery/identity-lookup.mjs";
 
 const env = process.env;
 const dataDir = path.resolve(env.CANNED_DATA_DIR || path.join(process.cwd(), "data"));
@@ -36,13 +36,12 @@ try {
   // Ask the indexer for this agent directly. Scanning only the first page of
   // getAllAgents reports a high token ID as unindexed when it is simply not on
   // page one, which understates the real indexing state.
-  const scan = new Eight004ScanAdapter();
-  const indexedResponse = await scan.detail(REFERENCE_CHAIN_ID, Number(record.agentId));
-  const indexedBody = indexedResponse.ok ? indexedResponse.body : null;
-  const indexed = String(indexedBody?.token_id ?? "") === String(record.agentId) && Number(indexedBody?.chain_id) === REFERENCE_CHAIN_ID;
-  const indexerLookup = { ok: indexedResponse.ok, httpStatus: indexedResponse.status, canonicalAgentId: indexedBody?.agent_id ?? null, name: indexedBody?.name ?? null, ownerAddress: indexedBody?.owner_address ?? null };
+  const lookup = await lookupIndexedAgent({ chainId: REFERENCE_CHAIN_ID, agentId: Number(record.agentId) });
+  const indexed = lookup.indexed;
+  const indexerLookup = { method: lookup.method, pagesScanned: lookup.pagesScanned, httpStatus: lookup.httpStatus, ...(lookup.record || {}) };
+  const ownerMatch = indexerOwnerMatches({ lookup, expectedOwner: record.provider });
   const identityFailures = referenceIdentityBindingFailures({ identity: { agentId: Number(record.agentId), registry: record.registry, provider: directOwner, endpoint: resolvedEndpoint }, status: { provider: record.provider }, metadata: { origin: record.origin, category: "Health Factor Monitoring" }, agentUrl: record.endpoint });
-  if (indexed && String(indexedBody.owner_address).toLowerCase() !== String(record.provider).toLowerCase()) identityFailures.push("indexer_owner_mismatch");
+  if (ownerMatch === false) identityFailures.push("indexer_owner_mismatch");
   if (directOwner.toLowerCase() !== record.provider.toLowerCase()) identityFailures.push("direct_owner_mismatch");
   if (directUri !== sdkInfo.agentURI) identityFailures.push("direct_sdk_uri_mismatch");
   if (sdkInfo.agentId !== Number(record.agentId)) identityFailures.push("sdk_agent_id_mismatch");

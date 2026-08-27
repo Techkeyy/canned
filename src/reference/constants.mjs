@@ -36,6 +36,7 @@ export const REFERENCE_AGENT_SPECS = Object.freeze([
     problem: "Watch this lending position. Tell me how close I am to liquidation, what changed, and what bounded action would restore my safety margin.",
     endpointPath: "/api/reference/health-factor",
     implemented: true,
+    serviceVersion: "health-guard-service-v1",
     protocols: ["ERC-8183"],
     priceRaw: "1000000000000000",
     capabilities: ["venus_authoritative_position_read", "liquidation_proximity_assessment", "change_explanation", "bounded_recommendation"],
@@ -60,13 +61,22 @@ export const REFERENCE_AGENT_SPECS = Object.freeze([
     identity: "CANNED_REFERENCE_REBALANCING_V1",
     name: "Canned Range Keeper",
     category: CATEGORIES.REBALANCING,
-    description: "Planned reference module for PancakeSwap position-range observation and bounded rebalancing.",
-    problem: "Watch this LP position, explain range and inventory drift, and propose a bounded rebalance.",
+    description: "Reads an authoritative PancakeSwap V3 pool and position, reports whether the range is still active and how close price is to an edge, and recommends holding or a bounded replacement range.",
+    problem: "My PancakeSwap liquidity is sitting in this range. Is it still healthy, is price drifting toward an edge, and should I leave it alone or rebalance?",
     endpointPath: "/api/reference/rebalancing",
-    implemented: false,
+    implemented: true,
+    serviceVersion: "range-keeper-service-v1",
+    venue: "PancakeSwap",
     protocols: ["ERC-8183"],
     priceRaw: "1000000000000000",
-    capabilities: ["position_observation", "range_analysis", "bounded_recommendation"],
+    capabilities: [
+      "pancakeswap_v3_authoritative_pool_read",
+      "concentrated_liquidity_range_classification",
+      "range_edge_proximity",
+      "oracle_drift_observation",
+      "rebalance_justification",
+      "bounded_range_proposal",
+    ],
     executionPolicy: { readOnlyByDefault: true, capitalMovement: false, automaticIntervention: false },
   },
   {
@@ -112,9 +122,9 @@ function hireReadiness({ registered, configured, publicReadinessVerified, quoteV
 
 export function referenceAgentCandidate(spec, { providerAddress = null, endpointBase = "http://127.0.0.1:8787", identityRecord = null, allowLocalProbe = true, publicReadinessVerified = Boolean(identityRecord?.publicReadinessVerified), baselineSealed = false } = {}) {
   if (!spec) throw new Error("A reference-agent spec is required.");
-  const endpoint = spec.key === "health-factor" && identityRecord?.endpoint ? identityRecord.endpoint : `${endpointBase}${spec.endpointPath}`;
+  const endpoint = identityRecord?.endpoint || `${endpointBase}${spec.endpointPath}`;
   const configured = Boolean(providerAddress);
-  const registered = spec.key === "health-factor" && Number.isInteger(Number(identityRecord?.agentId)) && identityRecord?.registry;
+  const registered = Number.isInteger(Number(identityRecord?.agentId)) && Boolean(identityRecord?.registry);
   const endpointVerified = spec.implemented && (allowLocalProbe || publicReadinessVerified);
   const identity = registered ? `${REFERENCE_CHAIN_ID}:${String(identityRecord.registry).toLowerCase()}:${identityRecord.agentId}` : spec.identity;
   return {
@@ -129,6 +139,7 @@ export function referenceAgentCandidate(spec, { providerAddress = null, endpoint
     reference: true,
     referenceKey: spec.key,
     erc8004: registered ? { status: "onchain_registered", tokenId: Number(identityRecord.agentId), registry: identityRecord.registry, transactionHash: identityRecord.transactionHash, agentUri: identityRecord.agentUri, indexed: identityRecord.indexer === "indexed" } : { status: "not_registered", tokenId: null, registrationRequired: true },
+    venue: spec.venue || null,
     categoryHypotheses: [{ category: spec.category, confidence: "high", signals: ["Canned Reference Agent specification", ...spec.capabilities] }],
     services: [baseService(endpoint, spec.problem, { implemented: endpointVerified })],
     probes: endpointVerified ? [{ type: "HTTP task API", endpoint, reachable: true, callable: true, observedAt: new Date().toISOString(), origin: REFERENCE_ORIGIN, scope: publicReadinessVerified ? "public" : "local_development" }] : [],
@@ -139,9 +150,25 @@ export function referenceAgentCandidate(spec, { providerAddress = null, endpoint
   };
 }
 
-export function implementedReferenceAgentCandidates(options = {}) {
-  return REFERENCE_AGENT_SPECS.filter((spec) => spec.implemented).map((spec) => referenceAgentCandidate(spec, options));
+/**
+ * `identityRecords` is keyed by reference-agent key, so each implemented agent
+ * resolves its own ERC-8004 identity, endpoint, and readiness. Passing a single
+ * record would make two distinct agents share one identity.
+ */
+export function implementedReferenceAgentCandidates({ identityRecords = {}, baselineSealedByKey = {}, ...options } = {}) {
+  return REFERENCE_AGENT_SPECS.filter((spec) => spec.implemented).map((spec) => referenceAgentCandidate(spec, {
+    ...options,
+    identityRecord: identityRecords[spec.key] ?? null,
+    providerAddress: identityRecords[spec.key]?.provider ?? options.providerAddress ?? null,
+    publicReadinessVerified: identityRecords[spec.key]?.publicReadinessVerified === true,
+    baselineSealed: baselineSealedByKey[spec.key] === true,
+  }));
 }
+
+export const REFERENCE_IDENTITY_FILES = Object.freeze({
+  "health-factor": "state/reference-health-identity.json",
+  rebalancing: "state/reference-range-identity.json",
+});
 
 export function referenceFleetCatalog() {
   return REFERENCE_AGENT_SPECS.map((spec) => ({
@@ -150,6 +177,7 @@ export function referenceFleetCatalog() {
     name: spec.name,
     category: spec.category,
     implementationStatus: spec.implemented ? "implemented" : "planned",
+    venue: spec.venue || null,
     protocols: spec.protocols,
     capabilities: spec.capabilities,
     executionPolicy: spec.executionPolicy,
