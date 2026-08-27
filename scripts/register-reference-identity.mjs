@@ -7,6 +7,7 @@ import { verifyQuoteSignature } from "@bnbagent/sdk/erc8183";
 import { isPublicHttpUrl, requestJson } from "../src/core.mjs";
 import { REFERENCE_CHAIN_ID, REFERENCE_ERC8183_COMMERCE_PROXY, REFERENCE_NETWORK, REFERENCE_PAYMENT_TOKEN } from "../src/reference/constants.mjs";
 import { publicHealthGuardMetadata } from "../src/reference/public-service.mjs";
+import { publicReadinessFailures } from "../src/deploy/readiness.mjs";
 
 const env = process.env;
 if (env.CANNED_ALLOW_TESTNET_WRITES !== "true" || env.CANNED_REFERENCE_REGISTER_CONFIRM !== "true") throw new Error("ERC-8004 registration requires explicit testnet write and registration confirmations; no write was attempted.");
@@ -17,11 +18,7 @@ if ((env.CANNED_NETWORK || REFERENCE_NETWORK) !== REFERENCE_NETWORK || Number(en
 async function verifyPublicReadiness() {
   const endpoint = (suffix) => new URL(suffix, `${agentUrl.replace(/\/$/, "")}/`).toString();
   const [health, readiness, status, metadata] = await Promise.all(["/health", "/readiness", "/status", "/metadata"].map((suffix) => requestJson(endpoint(suffix))));
-  const failures = [];
-  if (!health.ok || health.body?.chainId !== REFERENCE_CHAIN_ID) failures.push("health_chain_guard");
-  if (!readiness.ok || readiness.body?.network !== REFERENCE_NETWORK || readiness.body?.storage?.public !== true) failures.push("public_readiness_or_storage");
-  if (!status.ok || status.body?.provider === undefined || status.body?.paymentToken?.toLowerCase() !== REFERENCE_PAYMENT_TOKEN.toLowerCase()) failures.push("status_provider_or_payment_token");
-  if (!metadata.ok || metadata.body?.origin !== "CANNED_REFERENCE" || metadata.body?.protocols?.[0]?.verifyingContract?.toLowerCase() !== REFERENCE_ERC8183_COMMERCE_PROXY.toLowerCase()) failures.push("metadata_provenance_or_verifying_contract");
+  const failures = publicReadinessFailures({ agentUrl, health, readiness, status, metadata });
   if (failures.length) throw new Error(`Public readiness failed before registration: ${failures.join(", ")}`);
   const quote = await requestJson(endpoint("/negotiate"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task_description: "HealthBench v1 registration readiness probe; no job will be created.", terms: { deliverables: "Signed readiness response only", quality_standards: "Must identify BSC Testnet, U, price, and expiry", success_criteria: "No onchain job" }, request_id: `registration-readiness-${Date.now()}` }) });
   const envelope = quote.body || {};

@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log*
+.env
+.env.*
+!.env.example
+data/state
+data/evidence
+data/runs
+data/wallets
+*.key
+*.pem
+.git
+.git/**

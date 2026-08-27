@@ -7,9 +7,11 @@ import { AltanaAuthorityProvider, buildAltanaSessionPolicy, createOfficialAltana
 import { ReferenceAgentRuntime } from "../src/reference/foundation.mjs";
 import { processFundedReferenceJob } from "../src/reference/erc8183-seller.mjs";
 import { buildHealthFactorDeliverable, buildIndependentHealthFactorControl, manualHealthFactorBaselinePacket } from "../src/reference/health-factor.mjs";
-import { REFERENCE_AGENT_SPECS, REFERENCE_ERC8183_COMMERCE_PROXY, REFERENCE_ORIGIN, referenceAgentCandidate, referenceFleetCatalog } from "../src/reference/constants.mjs";
+import { REFERENCE_AGENT_SPECS, REFERENCE_ERC8183_COMMERCE_PROXY, REFERENCE_ORIGIN, REFERENCE_PAYMENT_TOKEN, referenceAgentCandidate, referenceFleetCatalog } from "../src/reference/constants.mjs";
 import { createHealthBenchDefinition, createHumanBaselineAttempt, completeHumanBaseline, baselineContainsSecretAnswer, healthBenchAgentInput, healthBenchProviderTask, healthBenchRunDefinition, validateHealthBenchAgentInput, publicHealthBenchPacket, publicHealthBenchSource } from "../src/reference/health-benchmark.mjs";
 import { publicHealthGuardMetadata, publicReadinessSummary, validatePublicReferenceConfig } from "../src/reference/public-service.mjs";
+import { publicReadinessFailures, referenceIdentityBindingFailures } from "../src/deploy/readiness.mjs";
+import { verifyContentAddressedRoundTrip } from "../src/deploy/storage.mjs";
 
 const account = "0x0000000000000000000000000000000000000001";
 const commerce = "0x0000000000000000000000000000000000000011";
@@ -125,6 +127,7 @@ test("reference marketplace record is visibly first-party and still cannot be hi
 
 test("public reference configuration rejects local or non-durable deployment inputs", () => {
   assert.equal(validatePublicReferenceConfig({ agentUrl: "http://127.0.0.1:8790/erc8183", storageApiKey: "test" }).valid, false);
+  assert.equal(validatePublicReferenceConfig({ agentUrl: "http://health.example/erc8183", storageApiKey: "test" }).errors.includes("agent_url_must_use_https"), true);
   assert.equal(validatePublicReferenceConfig({ agentUrl: "https://health.example/erc8183", storageApiKey: "test" }).valid, true);
   assert.equal(validatePublicReferenceConfig({ agentUrl: "https://health.example/service", storageApiKey: "test" }).errors.includes("agent_url_must_end_in_erc8183"), true);
 });
@@ -194,4 +197,45 @@ test("public Health Guard metadata and readiness preserve first-party provenance
   assert.equal(summary.storage.public, true);
   assert.equal(summary.worker.alive, false);
   assert.equal(summary.watcher.alive, false);
+});
+
+test("content-addressed storage probe verifies retrieval, hashes, and changed content without returning artifacts", async () => {
+  const records = new Map();
+  const storage = {
+    async upload(data, filename) { const url = `ipfs://${filename.includes("v2") ? "bafychanged" : "bafyfirst"}`; records.set(url, structuredClone(data)); return url; },
+    async exists(url) { return records.has(url); },
+    async download(url) { return structuredClone(records.get(url)); },
+    getGatewayUrl(url) { return `https://gateway.example/ipfs/${url.slice(7)}`; },
+  };
+  const result = await verifyContentAddressedRoundTrip({ storage, firstArtifact: { probe: "one" }, secondArtifact: { probe: "two" } });
+  assert.equal(result.uploadRetrievedEqual, true);
+  assert.equal(result.changedContentDifferent, true);
+  assert.equal(result.firstGatewayUrl.includes("ipfs://"), false);
+  assert.equal(result.firstHash.sha256, result.retrievedHash.sha256);
+});
+
+test("public readiness and identity binding fail closed on dead workers or mismatches", () => {
+  const agentUrl = "https://health.example/erc8183";
+  const common = {
+    health: { ok: true, body: { ok: true, chainId: 97, endpointAlive: true } },
+    readiness: { ok: true, body: { network: "bsc-testnet", chainId: 97, endpoint: { transport: "public_http", url: agentUrl }, worker: { alive: true }, watcher: { alive: true }, storage: { public: true, localFilesystemPresentedAsEvidence: false }, providerAddress: account } },
+    status: { ok: true, body: { chainId: 97, provider: account, paymentToken: REFERENCE_PAYMENT_TOKEN } },
+    metadata: { ok: true, body: { origin: REFERENCE_ORIGIN, chainId: 97, category: "Health Factor Monitoring", protocols: [{ endpoint: agentUrl, verifyingContract: REFERENCE_ERC8183_COMMERCE_PROXY }] } },
+  };
+  assert.deepEqual(publicReadinessFailures({ agentUrl, ...common }), []);
+  assert.equal(publicReadinessFailures({ agentUrl, ...common, readiness: { ...common.readiness, body: { ...common.readiness.body, watcher: { alive: false } } } }).includes("watcher_not_alive"), true);
+  assert.equal(publicReadinessFailures({ agentUrl: "http://127.0.0.1:8790/erc8183", ...common }).includes("public_https_erc8183_url"), true);
+  assert.deepEqual(referenceIdentityBindingFailures({ identity: { agentId: 1927, registry: commerce, provider: account, endpoint: agentUrl }, status: common.status.body, metadata: common.metadata.body, agentUrl }), []);
+  assert.equal(referenceIdentityBindingFailures({ identity: { agentId: 1927, registry: commerce, provider: router, endpoint: agentUrl }, status: common.status.body, metadata: common.metadata.body, agentUrl }).includes("identity_provider_mismatch"), true);
+});
+
+test("worker and watcher health reset after a controlled process restart", () => {
+  const first = new ReferenceAgentRuntime({ spec: REFERENCE_AGENT_SPECS[0], taskHandler: async () => ({ ok: true }) });
+  first.heartbeat({ state: "idle" });
+  first.watcherHeartbeat({ state: "watching" });
+  assert.equal(first.readiness().worker.alive, true);
+  assert.equal(first.readiness().watcher.alive, true);
+  const restarted = new ReferenceAgentRuntime({ spec: REFERENCE_AGENT_SPECS[0], taskHandler: async () => ({ ok: true }) });
+  assert.equal(restarted.readiness().worker.alive, false);
+  assert.equal(restarted.readiness().watcher.alive, false);
 });

@@ -25,6 +25,7 @@ const providerAddress = env.CANNED_REFERENCE_HEALTH_PROVIDER_ADDRESS || (configu
 if (!providerAddress) throw new Error("CANNED_REFERENCE_HEALTH_PROVIDER_ADDRESS is required.");
 const wallet = new EVMWalletProvider({ password, address: providerAddress, walletsDir, persist: true });
 const runtime = new ReferenceAgentRuntime({ spec: referenceSpec("health-factor"), taskHandler: ({ jobId, task, previousSnapshot }) => buildHealthFactorDeliverable({ jobId, task, previousSnapshot }) });
+if (fulfillmentEnabled) runtime.heartbeat({ state: "idle" });
 const storageDir = path.join(dataDir, "state", "reference-deliverables");
 const seller = await createReferenceSeller({ providerWallet: wallet, runtime, storageDir, agentUrl, publicMode: true });
 const metadata = publicHealthGuardMetadata({ agentUrl, providerAddress: wallet.address });

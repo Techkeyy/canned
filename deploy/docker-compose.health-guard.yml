@@ -1,0 +1,27 @@
+services:
+  health-guard:
+    build:
+      context: ..
+      dockerfile: Dockerfile.health-guard
+    image: canned-health-guard:local
+    restart: unless-stopped
+    init: true
+    read_only: true
+    env_file:
+      - /etc/canned/health-guard.env
+    environment:
+      CANNED_DATA_DIR: /var/lib/canned/data
+      CANNED_REFERENCE_TASK_FILE: /run/config/healthbench-v1.json
+      CANNED_REFERENCE_BIND_HOST: 0.0.0.0
+      CANNED_REFERENCE_PORT: 8790
+    ports:
+      - "127.0.0.1:8790:8790"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - /etc/canned/healthbench-v1.json:/run/config/healthbench-v1.json:ro
+      - /etc/canned/reference-provider-wallets:/var/lib/canned/data/state/reference-provider-wallets:ro
+      - canned-health-data:/var/lib/canned/data
+
+volumes:
+  canned-health-data:

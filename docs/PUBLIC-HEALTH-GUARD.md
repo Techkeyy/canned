@@ -15,11 +15,13 @@ The URL must have public DNS/TLS and must not be localhost, a private address, a
 
 ## Durable evidence
 
-Set `STORAGE_API_KEY` only in the deployment secret manager or process environment. The official BNB SDK `IPFSStorageProvider` is required for public mode. The service refuses to start in public mode without it. Do not put the key in Git, a browser bundle, a screenshot, or a command copied into a ticket.
+Set `STORAGE_API_KEY` only in the deployment secret manager or process environment. The installed BNB SDK maps this variable to a Pinata-compatible JWT for `IPFSStorageProvider`; no `PINATA_JWT` variable is required. The service refuses to start in public mode without it. Do not put the key in Git, a browser bundle, a screenshot, or a command copied into a ticket. Use `npm run reference:storage:check` from the server environment for the harmless upload/retrieval/CID test.
 
 ## Readiness then identity
 
-Run `npm run reference:public:check` against the deployed URL. It verifies chain 97, U, the public provenance, IPFS storage, the signed quote, quote expiry, price, and signer/provider match. Only after that passes should an operator use `npm run reference:identity:register` with both explicit confirmation flags. Registration is a sponsored BSC Testnet ERC-8004 write; the script never accepts a local URL and repeats public readiness immediately before the write.
+Run `npm run reference:public:check` against the deployed URL. It verifies public HTTPS, chain 97, U, public provenance, worker/watcher liveness, storage mode, signed quote, quote expiry, price, and signer/provider match. Pair it with the server-side `npm run reference:storage:check` upload/retrieval test. Only after both pass should an operator use `npm run reference:identity:register` with both explicit confirmation flags. Registration is a sponsored BSC Testnet ERC-8004 write; the script never accepts a local URL and repeats public readiness immediately before the write.
+
+The durable VPS package is in `deploy/`: `canned-health-guard.service`, `docker-compose.health-guard.yml`, reverse-proxy templates, `health-guard.env.example`, and the read-only `scripts/inspect-vps-readonly.sh` inventory check. Use an existing dedicated DNS name only; do not invent a hostname or overwrite another service.
 
 After registration, independently check the onchain identity and 8004scan indexing. The marketplace record should show both `onchain_registered` and the separate indexer state.
 

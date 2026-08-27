@@ -1,0 +1,9 @@
+# Replace the placeholder only with an existing DNS name that resolves to this VPS.
+# Do not reuse another application's path or invent a DNS record here.
+REPLACE_WITH_EXISTING_DEDICATED_HOST {
+    encode gzip
+    reverse_proxy 127.0.0.1:8790
+    header {
+        -Server
+    }
+}
