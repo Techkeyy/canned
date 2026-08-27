@@ -116,6 +116,7 @@ export function deriveAgentRecord(candidate, runs = []) {
     categoryHypotheses: categoryRecords(candidate),
     services: candidate?.services || [],
     currentAvailability: candidate?.probes?.some((probe) => probe.reachable === true) ? "reachable" : "not_observed",
+    callableSurface: candidate?.probes?.some((probe) => probe.callable === true) === true,
     status,
     trust,
     quarantine,

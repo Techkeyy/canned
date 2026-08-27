@@ -21,7 +21,7 @@ export function deriveMarketplaceMetrics({ candidates = [], runs = [] } = {}) {
     return [category, {
       discovered: inCategory.length,
       reachable: inCategory.filter((record) => record.currentAvailability === "reachable").length,
-      callable: inCategory.filter((record) => record.protocolCapabilities.some((item) => item.protocol === "A2A" && item.cannedVerified)).length,
+      callable: inCategory.filter((record) => record.callableSurface === true).length,
       hireable: inCategory.filter((record) => selectHiringAdapter(candidates.find((item) => item.identity === record.identity), { chainId: 97 }).status === "ready").length,
       tested: inCategory.filter((record) => record.trust.paidAttempts > 0).length,
       delivered: inCategory.filter((record) => record.trust.deliveryCount > 0).length,
@@ -31,7 +31,7 @@ export function deriveMarketplaceMetrics({ candidates = [], runs = [] } = {}) {
   return {
     discoveredAgents: candidates.length,
     reachableAgents: records.filter((record) => record.currentAvailability === "reachable").length,
-    callableAgents: records.filter((record) => record.protocolCapabilities.some((item) => item.protocol === "A2A" && item.cannedVerified)).length,
+    callableAgents: records.filter((record) => record.callableSurface === true).length,
     verifiedQuotes: records.filter((record) => record.trust.states.QUOTE_VERIFIED).length,
     hireAttempts: actualRuns.filter((run) => run?.qualification?.hasRealPayment === true || run?.protocolJob?.funded === true).length,
     paidAttempts: paidAttempts.length,
