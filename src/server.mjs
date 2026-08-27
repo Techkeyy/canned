@@ -54,7 +54,8 @@ async function snapshot() {
     store.loadRuns(),
   ]);
   const identityRecord = await referenceIdentityRecord();
-  const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({ endpointBase: process.env.CANNED_REFERENCE_AGENT_URL || `http://127.0.0.1:${port}`, providerAddress: await referenceProviderAddress(), identityRecord, allowLocalProbe: false, publicReadinessVerified: identityRecord?.publicReadinessVerified === true })];
+  const baseline = await humanBaseline();
+  const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({ endpointBase: process.env.CANNED_REFERENCE_AGENT_URL || `http://127.0.0.1:${port}`, providerAddress: await referenceProviderAddress(), identityRecord, allowLocalProbe: false, publicReadinessVerified: identityRecord?.publicReadinessVerified === true, baselineSealed: baseline?.status === "submitted" })];
   const marketplace = buildMarketplaceSnapshot({ report: { ...report, candidates }, runs });
   return { report: { ...report, candidates }, runs, marketplace, metrics: deriveMarketplaceMetrics({ candidates, runs }) };
 }
@@ -132,6 +133,35 @@ const server = createServer(async (request, response) => {
         const expiry = Math.floor(Date.now() / 1000) + 900;
         json(response, 200, { status: "policy_ready", officialDeployments: official, policy: buildAltanaSessionPolicy({ commerceAddress, routerAddress, expiry, maxSpendRaw: process.env.CANNED_REFERENCE_MAX_SPEND_RAW || "1000000000000000" }) });
       } catch (error) { json(response, 422, { status: "blocked", reason: error.message }); }
+      return;
+    }
+    if (url.pathname === "/api/agent-advantage") {
+      const stored = await store.loadJson("state/agent-advantage-pairs.json", { pairs: [] });
+      const runs = await store.loadRuns();
+      const pairs = await Promise.all((stored.pairs || []).map(async (entry) => {
+        const grading = await store.loadJson(`state/healthbench-grading-${entry.runId}.json`, null);
+        const run = runs.find((item) => item.runId === entry.runId) || null;
+        return {
+          runId: entry.runId,
+          jobId: entry.jobId,
+          benchmarkId: entry.benchmarkId,
+          category: entry.category,
+          task: entry.task,
+          agent: { identity: entry.identity, name: run?.agent?.name || null, provider: grading?.provider || null },
+          referenceBlock: grading?.referenceBlock || null,
+          evaluatorVersion: entry.pair?.evaluatorVersion || null,
+          groundTruthHash: entry.pair?.groundTruthHash || null,
+          withoutAgent: { ...entry.pair.withoutAgent, rawOutput: grading?.human?.rawSubmission ?? null, dimensions: grading?.human?.score?.dimensions ?? null },
+          withAgent: { ...entry.pair.withAgent, rawOutput: grading?.agent?.rawOutput ?? null, dimensions: grading?.agent?.score?.dimensions ?? null, deliverableUrl: grading?.agent?.deliverableUrl ?? null },
+          comparison: entry.pair.comparison,
+          termix: entry.termix,
+          verifiedRun: entry.verifiedRun,
+          protocol: run ? { chainState: run.protocolJob?.currentState || null, transactions: (run.protocolJob?.events || []).filter((event) => event.tx?.transactionHash).map((event) => ({ event: event.event, transactionHash: event.tx.transactionHash })) } : null,
+          reconciliation: run?.reconciliation || null,
+          gradedAt: entry.gradedAt,
+        };
+      }));
+      json(response, 200, { schemaVersion: 1, network: "bsc-testnet", chainId: 97, pairCount: pairs.length, requiredForTermix: 3, pairs, note: "Time, cost, and quality are reported on both sides. A pair where the human wins a dimension is shown as a loss for the agent." });
       return;
     }
     if (url.pathname === "/api/compare") {
