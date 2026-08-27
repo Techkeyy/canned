@@ -89,7 +89,28 @@ export function referenceSpec(key) {
   return REFERENCE_AGENT_SPECS.find((spec) => spec.key === key) || null;
 }
 
-export function referenceAgentCandidate(spec, { providerAddress = null, endpointBase = "http://127.0.0.1:8787", identityRecord = null, allowLocalProbe = true, publicReadinessVerified = Boolean(identityRecord?.publicReadinessVerified) } = {}) {
+/**
+ * Hire readiness for a reference agent is derived, never asserted. Every
+ * condition is something the caller has separately observed: an onchain
+ * identity, a configured provider, verified public readiness, a verified fresh
+ * quote, and a sealed human baseline so the agent can never answer first.
+ */
+function hireReadiness({ registered, configured, publicReadinessVerified, quoteVerified, baselineSealed }) {
+  const conditions = { identityRegistered: Boolean(registered), providerConfigured: Boolean(configured), publicReadinessVerified: Boolean(publicReadinessVerified), quoteVerified: Boolean(quoteVerified), humanBaselineSealed: Boolean(baselineSealed) };
+  const unmet = Object.entries(conditions).filter(([, value]) => !value).map(([key]) => key);
+  return {
+    ready: unmet.length === 0,
+    quoteVerified: conditions.quoteVerified,
+    protocolCompatibility: true,
+    providerConfigured: conditions.providerConfigured,
+    conditions,
+    reason: unmet.length === 0
+      ? "Identity, provider, public readiness, and a verified fresh quote are all observed, and the human baseline is sealed."
+      : `Hire is blocked until these are observed: ${unmet.join(", ")}.`,
+  };
+}
+
+export function referenceAgentCandidate(spec, { providerAddress = null, endpointBase = "http://127.0.0.1:8787", identityRecord = null, allowLocalProbe = true, publicReadinessVerified = Boolean(identityRecord?.publicReadinessVerified), baselineSealed = false } = {}) {
   if (!spec) throw new Error("A reference-agent spec is required.");
   const endpoint = spec.key === "health-factor" && identityRecord?.endpoint ? identityRecord.endpoint : `${endpointBase}${spec.endpointPath}`;
   const configured = Boolean(providerAddress);
@@ -112,7 +133,7 @@ export function referenceAgentCandidate(spec, { providerAddress = null, endpoint
     services: [baseService(endpoint, spec.problem, { implemented: endpointVerified })],
     probes: endpointVerified ? [{ type: "HTTP task API", endpoint, reachable: true, callable: true, observedAt: new Date().toISOString(), origin: REFERENCE_ORIGIN, scope: publicReadinessVerified ? "public" : "local_development" }] : [],
     supports: { a2a: false, erc8183: true, x402: false, b402: false, mcp: false, httpTaskApi: endpointVerified },
-    selectionGate: { readiness: { ready: false, quoteVerified: Boolean(identityRecord?.quoteVerified), protocolCompatibility: true, providerConfigured: configured, reason: registered ? "Identity is registered. A fresh public quote and post-baseline operator confirmation are still required." : configured ? "A fresh quote and explicit operator confirmation are still required." : "Reference provider wallet is not configured." } },
+    selectionGate: { readiness: hireReadiness({ registered, configured, publicReadinessVerified, quoteVerified: Boolean(identityRecord?.quoteVerified), baselineSealed }) },
     hiring: { price: spec.priceRaw, currency: REFERENCE_PAYMENT_TOKEN, mechanism: "ERC-8183 funded seller job", quoteVerified: Boolean(identityRecord?.quoteVerified), negotiationProbe: identityRecord?.negotiationProbe || null },
     referenceFleet: { origin: REFERENCE_ORIGIN, fleetVersion: "1.0.0", implementationStatus: spec.implemented ? "implemented" : "planned", executionPolicy: spec.executionPolicy },
   };
