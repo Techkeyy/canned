@@ -28,7 +28,10 @@ const runtime = new ReferenceAgentRuntime({ spec: referenceSpec("health-factor")
 if (fulfillmentEnabled) runtime.heartbeat({ state: "idle" });
 const storageDir = path.join(dataDir, "state", "reference-deliverables");
 const seller = await createReferenceSeller({ providerWallet: wallet, runtime, storageDir, agentUrl, publicMode: true });
-const metadata = publicHealthGuardMetadata({ agentUrl, providerAddress: wallet.address });
+const registeredAgentId = env.CANNED_REFERENCE_AGENT_ID ? Number(env.CANNED_REFERENCE_AGENT_ID) : null;
+const registeredRegistry = env.CANNED_REFERENCE_REGISTRY || null;
+if (registeredAgentId !== null && (!Number.isInteger(registeredAgentId) || !registeredRegistry)) throw new Error("CANNED_REFERENCE_AGENT_ID requires a matching CANNED_REFERENCE_REGISTRY.");
+const metadata = publicHealthGuardMetadata({ agentUrl, providerAddress: wallet.address, agentId: registeredAgentId, registry: registeredRegistry });
 const baseUrl = new URL(agentUrl);
 const taskFile = env.CANNED_REFERENCE_TASK_FILE ? path.resolve(env.CANNED_REFERENCE_TASK_FILE) : null;
 
