@@ -1,6 +1,6 @@
 # Canned reference-agent fallback
 
-Status: Directive #7 foundation implemented. Health Factor Monitoring is the first reference module. No mainnet write, live identity registration, Altana grant, or paid job was performed by this change.
+Status: Directive #8 foundation implemented. Health Factor Monitoring is the only reference module being advanced. No mainnet write, live identity registration, Altana grant, or paid job was performed by this change.
 
 ## Why this exists
 
@@ -34,6 +34,14 @@ Each deliverable must be structured, content-addressed, and paired with a determ
 5. At least one testnet run is persisted with raw output and a fresh precommit.
 6. The UI labels the record `Canned Reference Agent` and keeps third-party and reference histories separate.
 
+## Public Health Guard packaging
+
+The production seller is `scripts/run-public-health-guard.mjs`. It refuses localhost/private URLs, requires BSC Testnet chain 97, requires the exact U payment token, and refuses public mode without the official SDK’s IPFS storage credential (`STORAGE_API_KEY`). The service exposes health, readiness, status, metadata, signed quote negotiation, funded-job lookup, and provider-storage response routes under a public URL ending in `/erc8183`.
+
+`npm run reference:public:check` performs read-only public DNS/TLS/HTTP, chain, provenance, storage, and fresh signed-quote checks. `npm run reference:identity:register` repeats those checks immediately before the sponsored ERC-8004 registration write and persists the public identity record only after the transaction is submitted. Until that record includes public readiness and quote verification, the marketplace does not promote the local implementation to a callable public agent.
+
+The reference service has separate endpoint, worker, and funded-job watcher heartbeats. Endpoint liveness is not treated as worker liveness, and a watcher heartbeat is not treated as a delivered submission. Fulfillment is disabled by default and remains behind explicit testnet write configuration.
+
 ## Implemented seams
 
 - `src/reference/constants.mjs` is the explicit `CANNED_REFERENCE` catalog and keeps the four category identities separate from third-party discovery.
@@ -43,3 +51,5 @@ Each deliverable must be structured, content-addressed, and paired with a determ
 - `src/reference/health-factor.mjs` returns recommendation-only output, deterministic change data, and an uncontaminated manual-baseline packet.
 
 The reference provider wallet helper writes a new local encrypted keystore only when the operator explicitly runs `npm run reference:wallet:create`. Its password reference is ignored local state. The live seller requires `CANNED_REFERENCE_ALLOW_TESTNET_WRITES=true`, a configured provider wallet, and a separate operator decision.
+
+The benchmark wallet is separate again. `npm run health:wallet:create` creates one disposable encrypted wallet, `npm run health:position:create` creates the tiny Venus position only after explicit confirmation, and `npm run health:benchmark:freeze` seals `HealthBench_v1`. The buyer wallet, provider wallet, benchmark wallet, and any future Altana action wallet must never be conflated.

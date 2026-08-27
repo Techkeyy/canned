@@ -1,8 +1,29 @@
 import { parseAbi } from "viem";
-import { REFERENCE_CHAIN_ID } from "./constants.mjs";
+import { REFERENCE_CHAIN_ID, VENUS_TESTNET_CORE } from "./constants.mjs";
 
 export const VENUS_CORE_COMPTROLLER_ABI = parseAbi([
   "function getAccountLiquidity(address account) view returns (uint256, uint256, uint256)",
+  "function getAssetsIn(address account) view returns (address[])",
+  "function markets(address market) view returns (bool, uint256, bool)",
+  "function oracle() view returns (address)",
+  "function closeFactorMantissa() view returns (uint256)",
+  "function liquidationIncentiveMantissa() view returns (uint256)",
+]);
+
+export const VENUS_MARKET_READ_ABI = parseAbi([
+  "function getAccountSnapshot(address account) view returns (uint256, uint256, uint256, uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function borrowBalanceStored(address account) view returns (uint256)",
+  "function exchangeRateStored() view returns (uint256)",
+  "function getCash() view returns (uint256)",
+  "function totalBorrows() view returns (uint256)",
+  "function borrowRatePerBlock() view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
+]);
+
+export const VENUS_ORACLE_READ_ABI = parseAbi([
+  "function getUnderlyingPrice(address vToken) view returns (uint256)",
 ]);
 
 export const VENUS_POSITION_READ_REQUIREMENTS = Object.freeze({
@@ -37,6 +58,10 @@ export function createVenusCoreReadPlan({ account, comptrollerAddress, blockTag 
   };
 }
 
+export function officialVenusCoreTestnet() {
+  return { ...VENUS_TESTNET_CORE, chainId: REFERENCE_CHAIN_ID, poolType: "core" };
+}
+
 export async function readVenusCoreLiquidity({ publicClient, account, comptrollerAddress, blockTag = "latest" } = {}) {
   if (!publicClient?.getChainId || !publicClient?.readContract) throw new Error("A viem public client is required for Venus reads.");
   const chainId = await publicClient.getChainId();
@@ -55,6 +80,64 @@ export async function readVenusCoreLiquidity({ publicClient, account, comptrolle
     errorCode: String(errorCode),
     liquidityRaw: String(liquidity),
     shortfallRaw: String(shortfall),
+    authoritative: true,
+  };
+}
+
+export async function readVenusCorePosition({ publicClient, account, blockNumber = "latest", contracts = VENUS_TESTNET_CORE } = {}) {
+  if (!publicClient?.getChainId || !publicClient?.readContract || !publicClient?.getBlock) throw new Error("A viem public client is required for Venus position reads.");
+  const chainId = await publicClient.getChainId();
+  if (chainId !== REFERENCE_CHAIN_ID) throw new Error(`Refusing Venus read on chain ${chainId}; expected BSC testnet chain 97.`);
+  const block = await publicClient.getBlock({ blockNumber: blockNumber === "latest" ? undefined : BigInt(blockNumber) });
+  const atBlock = block.number;
+  const comptroller = contracts.comptroller;
+  const oracle = contracts.oracle;
+  const marketAddresses = [contracts.vBNB, contracts.vUSDT];
+  const readOptional = async (functionName) => {
+    try { return await publicClient.readContract({ address: comptroller, abi: VENUS_CORE_COMPTROLLER_ABI, functionName, blockNumber: atBlock }); } catch { return null; }
+  };
+  const [liquidity, assetsIn, closeFactor, liquidationIncentive, marketRows, markets, prices] = await Promise.all([
+    publicClient.readContract({ address: comptroller, abi: VENUS_CORE_COMPTROLLER_ABI, functionName: "getAccountLiquidity", args: [account], blockNumber: atBlock }),
+    publicClient.readContract({ address: comptroller, abi: VENUS_CORE_COMPTROLLER_ABI, functionName: "getAssetsIn", args: [account], blockNumber: atBlock }),
+    publicClient.readContract({ address: comptroller, abi: VENUS_CORE_COMPTROLLER_ABI, functionName: "closeFactorMantissa", blockNumber: atBlock }),
+    readOptional("liquidationIncentiveMantissa"),
+    Promise.all(marketAddresses.map((market) => publicClient.readContract({ address: comptroller, abi: VENUS_CORE_COMPTROLLER_ABI, functionName: "markets", args: [market], blockNumber: atBlock }))),
+    Promise.all(marketAddresses.map((market) => publicClient.readContract({ address: market, abi: VENUS_MARKET_READ_ABI, functionName: "getAccountSnapshot", args: [account], blockNumber: atBlock }))),
+    Promise.all(marketAddresses.map((market) => publicClient.readContract({ address: oracle, abi: VENUS_ORACLE_READ_ABI, functionName: "getUnderlyingPrice", args: [market], blockNumber: atBlock }))),
+  ]);
+  const [errorCode, liquidityRaw, shortfallRaw] = liquidity;
+  const marketSnapshots = Object.fromEntries(marketAddresses.map((market, index) => {
+    const [error, vTokenBalance, borrowBalance, exchangeRate] = markets[index];
+    const [listed, collateralFactorMantissa, isComped] = marketRows[index];
+    return [market, {
+      vToken: market,
+      listed,
+      collateralFactorMantissa: String(collateralFactorMantissa),
+      isComped,
+      snapshotError: String(error),
+      vTokenBalanceRaw: String(vTokenBalance),
+      borrowBalanceRaw: String(borrowBalance),
+      exchangeRateMantissa: String(exchangeRate),
+      priceRaw: String(prices[index]),
+    }];
+  }));
+  return {
+    protocol: "Venus",
+    poolType: "core",
+    source: "onchain",
+    chainId,
+    account,
+    asOfBlock: String(atBlock),
+    blockHash: block.hash,
+    blockTimestamp: Number(block.timestamp),
+    readPlan: { ...createVenusCoreReadPlan({ account, comptrollerAddress: comptroller, blockTag: String(atBlock) }), contracts: { ...contracts }, markets: marketAddresses },
+    errorCode: String(errorCode),
+    liquidityRaw: String(liquidityRaw),
+    shortfallRaw: String(shortfallRaw),
+    assetsIn,
+    closeFactorMantissa: String(closeFactor),
+    liquidationIncentiveMantissa: liquidationIncentive === null ? null : String(liquidationIncentive),
+    marketSnapshots,
     authoritative: true,
   };
 }

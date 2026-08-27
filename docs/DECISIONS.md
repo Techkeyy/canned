@@ -83,3 +83,21 @@ Decision: provide a paused scheduler policy with testnet-only chain guard, 1.0 U
 ## ADR-017: Reference agents are explicit fallback inventory
 
 Decision: build a Canned Reference Agent only when a fresh bounded inventory review leaves a required category without a defensible external path. Reference agents get separate identities and labels and cannot count as third-party agent diversity.
+
+## ADR-018: HealthBench has a blind human boundary
+
+Decision: freeze raw Venus evidence and the evaluator commitment before collecting a human answer. The baseline route reveals only the task, permitted sources, and raw authoritative reads; it preserves the raw submission and server timing without exposing ground truth or agent output. The benchmark task route remains blocked until the baseline is submitted.
+
+Reason: an evidence marketplace is only credible if the without-agent comparison cannot be contaminated by the product’s own answer.
+
+## ADR-019: Public seller evidence requires durable storage
+
+Decision: local filesystem deliverables are development-only. Public Health Guard fulfillment requires the official SDK IPFS/content-addressed storage provider, public HTTPS readiness, and a fresh signed quote check before ERC-8004 registration.
+
+Reason: a local file path cannot be independently retrieved by a buyer, judge, or evaluator and must not be presented as durable evidence.
+
+## ADR-020: Provider, buyer, benchmark, and future action wallets are separate authorities
+
+Decision: the Canned buyer wallet pays external agents, the HealthBench wallet owns only the disposable Venus position, the reference provider wallet signs quotes and submits seller results, and any future Altana action wallet is a separate scoped authority. No wallet may silently inherit another wallet’s role.
+
+Reason: the safest Venus release is read-only and recommendation-first, with any later action limited to an allowlisted, bounded call under an expiring registered session.

@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { nowIso } from "./core.mjs";
 import { FileStore } from "./persistence/file-store.mjs";
 import { publicMetrics } from "./domain.mjs";
 import { buildMarketplaceSnapshot, compareAgents } from "./marketplace/model.mjs";
@@ -10,9 +11,11 @@ import { buildHealthFactorDeliverable, manualHealthFactorBaselinePacket } from "
 import { ReferenceAgentRuntime } from "./reference/foundation.mjs";
 import { implementedReferenceAgentCandidates, REFERENCE_PAYMENT_TOKEN, referenceFleetCatalog, referenceSpec } from "./reference/constants.mjs";
 import { altanaAvailability, buildAltanaSessionPolicy, officialErc8183Addresses } from "./reference/altana.mjs";
+import { completeHumanBaseline, createHumanBaselineAttempt, publicHealthBenchPacket, publicHealthBenchSource } from "./reference/health-benchmark.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
+const baselineHtml = await readFile(path.resolve(process.cwd(), "web/health-baseline.html"), "utf8");
 const port = Number(process.env.PORT || 8787);
 const healthFactorRuntime = new ReferenceAgentRuntime({
   spec: referenceSpec("health-factor"),
@@ -28,6 +31,18 @@ async function referenceProviderAddress() {
   } catch { return null; }
 }
 
+async function referenceIdentityRecord() {
+  return store.loadJson("state/reference-health-identity.json", null);
+}
+
+async function healthBenchDefinition() {
+  return store.loadJson("state/healthbench-v1.json", null);
+}
+
+async function humanBaseline() {
+  return store.loadJson("state/health-baseline.json", null);
+}
+
 function json(response, status, body) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   response.end(JSON.stringify(body, (_key, value) => typeof value === "bigint" ? value.toString() : value));
@@ -38,7 +53,8 @@ async function snapshot() {
     store.loadJson("inventory/verified-candidates.json", { candidates: [], categorySummary: {} }),
     store.loadRuns(),
   ]);
-  const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({ endpointBase: `http://127.0.0.1:${port}`, providerAddress: await referenceProviderAddress() })];
+  const identityRecord = await referenceIdentityRecord();
+  const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({ endpointBase: process.env.CANNED_REFERENCE_AGENT_URL || `http://127.0.0.1:${port}`, providerAddress: await referenceProviderAddress(), identityRecord, allowLocalProbe: false, publicReadinessVerified: identityRecord?.publicReadinessVerified === true })];
   const marketplace = buildMarketplaceSnapshot({ report: { ...report, candidates }, runs });
   return { report: { ...report, candidates }, runs, marketplace, metrics: deriveMarketplaceMetrics({ candidates, runs }) };
 }
@@ -50,11 +66,24 @@ async function readBody(request) {
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new Error("Request body must be valid JSON."); }
 }
 
+async function readJsonBody(request) {
+  const chunks = [];
+  for await (const chunk of request) chunks.push(chunk);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  if (!raw) return { body: {}, raw: "{}" };
+  try { return { body: JSON.parse(raw), raw }; } catch { throw new Error("Request body must be valid JSON."); }
+}
+
 const server = createServer(async (request, response) => {
   try {
     if (request.url === "/" || request.url === "/inspection") {
       response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       response.end(html);
+      return;
+    }
+    if (request.url === "/baseline/health-factor") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(baselineHtml);
       return;
     }
     const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
@@ -79,6 +108,12 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (url.pathname === "/api/reference/health-factor/task" && request.method === "POST") {
+      const frozenDefinition = await healthBenchDefinition();
+      const baseline = await humanBaseline();
+      if (frozenDefinition && baseline?.status !== "submitted") {
+        json(response, 403, { status: "blocked", reason: "HealthBench human baseline must be submitted before any benchmark-bound agent result is exposed." });
+        return;
+      }
       const body = await readBody(request);
       const result = await healthFactorRuntime.work({ jobId: body.jobId || null, task: body.task || body, previousSnapshot: body.previousSnapshot || null });
       json(response, result.ok ? 200 : 422, result);
@@ -117,6 +152,47 @@ const server = createServer(async (request, response) => {
       const agent = current.marketplace.agents.find((item) => item.identity === identity);
       if (!agent) { json(response, 404, { error: "Agent not found." }); return; }
       json(response, 200, { agent: { identity: agent.identity, name: agent.name }, review: agent.activation, status: agent.status, trust: agent.trust, note: agent.activation.selection.status === "ready" ? "This is a review step. A separate explicit confirmation is required before any testnet write." : agent.activation.selection.reason });
+      return;
+    }
+    if (url.pathname === "/api/baseline/health-factor" && request.method === "GET") {
+      const definition = await healthBenchDefinition();
+      if (!definition) { json(response, 404, { status: "not_ready", reason: "HealthBench v1 has not been frozen." }); return; }
+      const baseline = await humanBaseline();
+      const packet = publicHealthBenchPacket(definition);
+      packet.baseline = { ...packet.baseline, status: baseline?.status || "not_started", attemptId: baseline?.attemptId || null, sourceAvailable: baseline?.status === "started" };
+      json(response, 200, packet);
+      return;
+    }
+    if (url.pathname === "/api/baseline/health-factor/start" && request.method === "POST") {
+      const definition = await healthBenchDefinition();
+      if (!definition) { json(response, 404, { status: "not_ready", reason: "HealthBench v1 has not been frozen." }); return; }
+      const current = await humanBaseline();
+      if (current?.status === "submitted") { json(response, 409, { status: "already_submitted", attemptId: current.attemptId }); return; }
+      const attempt = current?.status === "started" ? current : createHumanBaselineAttempt({ benchmarkId: definition.benchmarkId });
+      if (!current || current.status !== "started") await store.saveJson("state/health-baseline.json", attempt);
+      const packet = publicHealthBenchPacket(definition);
+      packet.baseline = { ...packet.baseline, status: "started", attemptId: attempt.attemptId, startedAt: attempt.startedAt, sourceAvailable: true };
+      json(response, 200, packet);
+      return;
+    }
+    if (url.pathname === "/api/baseline/health-factor/source" && request.method === "GET") {
+      const definition = await healthBenchDefinition();
+      const baseline = await humanBaseline();
+      if (!definition || baseline?.status !== "started") { json(response, 403, { status: "blocked", reason: "Start the human baseline before requesting the frozen raw source packet." }); return; }
+      json(response, 200, publicHealthBenchSource(definition));
+      return;
+    }
+    if (url.pathname === "/api/baseline/health-factor/submit" && request.method === "POST") {
+      const definition = await healthBenchDefinition();
+      const baseline = await humanBaseline();
+      if (!definition || baseline?.status !== "started") { json(response, 403, { status: "blocked", reason: "A started human baseline is required." }); return; }
+      const incoming = await readJsonBody(request);
+      const completed = completeHumanBaseline({ attempt: baseline, submission: incoming.body, submittedAt: nowIso(), elapsedMs: Math.max(0, Date.now() - Date.parse(baseline.startedAt)) });
+      completed.rawSubmissionJson = incoming.raw;
+      completed.groundTruth = null;
+      completed.agentOutput = null;
+      await store.saveJson("state/health-baseline.json", completed);
+      json(response, 200, { status: "submitted", attemptId: completed.attemptId, benchmarkId: completed.benchmarkId, submittedAt: completed.submittedAt, elapsedMs: completed.elapsedMs, preserved: true, evaluated: false, agentRun: "not_started" });
       return;
     }
     if (url.pathname.startsWith("/api/agents/")) {

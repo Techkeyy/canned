@@ -10,12 +10,18 @@ export class ReferenceAgentRuntime {
     this.workerStaleMs = workerStaleMs;
     this.startedAt = new Date(this.clock()).toISOString();
     this.worker = { state: "not_started", heartbeatAt: null, lastJobId: null, lastError: null };
+    this.watcher = { state: "not_started", heartbeatAt: null, lastJobId: null, lastError: null };
     this.stats = { jobsDetected: 0, jobsWorked: 0, jobsSubmitted: 0, failures: 0 };
   }
 
   heartbeat({ state = "idle", jobId = null, error = null } = {}) {
     this.worker = { state, heartbeatAt: new Date(this.clock()).toISOString(), lastJobId: jobId, lastError: error ? safeError(error) : null };
     return this.worker;
+  }
+
+  watcherHeartbeat({ state = "watching", jobId = null, error = null } = {}) {
+    this.watcher = { state, heartbeatAt: new Date(this.clock()).toISOString(), lastJobId: jobId, lastError: error ? safeError(error) : null };
+    return this.watcher;
   }
 
   health() {
@@ -25,6 +31,8 @@ export class ReferenceAgentRuntime {
   readiness() {
     const heartbeatMs = this.worker.heartbeatAt ? Date.parse(this.worker.heartbeatAt) : null;
     const workerAlive = heartbeatMs !== null && this.clock() - heartbeatMs <= this.workerStaleMs && this.worker.state !== "failed";
+    const watcherHeartbeatMs = this.watcher.heartbeatAt ? Date.parse(this.watcher.heartbeatAt) : null;
+    const watcherAlive = watcherHeartbeatMs !== null && this.clock() - watcherHeartbeatMs <= this.workerStaleMs && this.watcher.state !== "failed";
     return {
       origin: REFERENCE_ORIGIN,
       identity: this.spec.identity,
@@ -32,6 +40,7 @@ export class ReferenceAgentRuntime {
       chainId: REFERENCE_CHAIN_ID,
       endpoint: { alive: true, status: "up" },
       worker: { alive: workerAlive, status: this.worker.state, heartbeatAt: this.worker.heartbeatAt, staleAfterMs: this.workerStaleMs, lastJobId: this.worker.lastJobId, lastError: this.worker.lastError },
+      watcher: { alive: watcherAlive, status: this.watcher.state, heartbeatAt: this.watcher.heartbeatAt, staleAfterMs: this.workerStaleMs, lastJobId: this.watcher.lastJobId, lastError: this.watcher.lastError },
       distinction: "Endpoint liveness does not imply worker liveness.",
     };
   }

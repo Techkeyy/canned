@@ -2,7 +2,7 @@ import path from "node:path";
 import { createReferenceManifest } from "./foundation.mjs";
 import { REFERENCE_CHAIN_ID, REFERENCE_NETWORK } from "./constants.mjs";
 
-export async function createReferenceSeller({ providerWallet, runtime, storageDir, agentUrl, servicePriceRaw = runtime.spec.priceRaw } = {}) {
+export async function createReferenceSeller({ providerWallet, runtime, storageDir, agentUrl, servicePriceRaw = runtime.spec.priceRaw, storageProvider = null, publicMode = false } = {}) {
   if (!providerWallet || !runtime) throw new Error("Reference seller requires a provider wallet and runtime.");
   const sdk = await import("@bnbagent/sdk/erc8183");
   const rootSdk = await import("@bnbagent/sdk");
@@ -10,14 +10,17 @@ export async function createReferenceSeller({ providerWallet, runtime, storageDi
   const erc8183Client = await rootSdk.ERC8183Client.create({ walletProvider: providerWallet, network: REFERENCE_NETWORK });
   const negotiationHandler = await sdk.NegotiationHandler.fromErc8183Client(erc8183Client, { servicePrice: String(servicePriceRaw), walletProvider: providerWallet, quoteTtlSeconds: 900 });
   const resolvedStorageDir = storageDir || path.resolve(process.cwd(), "data", "reference-deliverables");
+  const resolvedStorageProvider = storageProvider || (publicMode
+    ? (process.env.STORAGE_API_KEY ? storage.IPFSStorageProvider.fromEnv() : (() => { throw new Error("Public Health Guard requires STORAGE_API_KEY for IPFS/content-addressed deliverables; local storage is development-only."); })())
+    : new storage.LocalStorageProvider(resolvedStorageDir));
   const jobOps = await sdk.ERC8183JobOps.create({
     walletProvider: providerWallet,
     network: REFERENCE_NETWORK,
-    storageProvider: new storage.LocalStorageProvider(resolvedStorageDir),
+    storageProvider: resolvedStorageProvider,
     servicePrice: BigInt(servicePriceRaw),
     agentUrl,
   });
-  return { sdk, jobOps, erc8183Client, negotiationHandler, storageDir: resolvedStorageDir, chainId: REFERENCE_CHAIN_ID, network: REFERENCE_NETWORK };
+  return { sdk, jobOps, erc8183Client, negotiationHandler, storageDir: resolvedStorageDir, storageProvider: resolvedStorageProvider, storageMode: publicMode ? "ipfs" : "local_development_only", chainId: REFERENCE_CHAIN_ID, network: REFERENCE_NETWORK };
 }
 
 export async function negotiateReferenceQuote({ seller, request } = {}) {
@@ -42,9 +45,12 @@ export async function processFundedReferenceJob({ seller, runtime, job, task, pr
 
 export function startReferenceWatcher({ seller, runtime, taskResolver, interval = 30, stop } = {}) {
   if (!seller?.jobOps || !runtime || typeof taskResolver !== "function") throw new Error("Reference watcher requires seller, runtime, and taskResolver.");
+  runtime.watcherHeartbeat({ state: "watching" });
   return import("@bnbagent/sdk/erc8183").then(({ fundedJobWatcher }) => fundedJobWatcher(seller.jobOps, async (job) => {
+    runtime.watcherHeartbeat({ state: "job_detected", jobId: job.jobId });
     const task = await taskResolver(job);
     const result = await processFundedReferenceJob({ seller, runtime, job, task });
+    runtime.watcherHeartbeat({ state: result.status === "submitted" ? "watching" : "degraded", jobId: job.jobId, error: result.ok ? null : result.status });
     if (result.status === "submit_failed" && result.submission?.retryable === true) return { retry: true };
     return undefined;
   }, { interval, stop }));

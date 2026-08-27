@@ -5,6 +5,16 @@ export const REFERENCE_NETWORK = "bsc-testnet";
 export const REFERENCE_CHAIN_ID = 97;
 export const REFERENCE_PAYMENT_TOKEN = "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565";
 export const REFERENCE_PAYMENT_DECIMALS = 18;
+export const REFERENCE_ERC8183_COMMERCE_PROXY = "0xa206c0517B6371C6638CD9e4a42Cc9f02A33B0DE";
+export const VENUS_TESTNET_CORE = Object.freeze({
+  comptroller: "0x94d1820b2D1c7c7452A163983Dc888CEC546b77D",
+  oracle: "0x3cD69251D04A28d887Ac14cbe2E14c52F3D57823",
+  vBNB: "0x2E7222e51c0f6e98610A1543Aa3836E092CDe62c",
+  vUSDT: "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A",
+  usdt: "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+  poolRegistry: "0xC85491616Fa949E048F3aAc39fbf5b0703800667",
+  source: "https://raw.githubusercontent.com/VenusProtocol/venus-protocol-documentation/main/deployed-contracts/markets.md",
+});
 
 const baseService = (endpoint, description, { implemented = false } = {}) => ({
   type: "HTTP task API",
@@ -79,12 +89,15 @@ export function referenceSpec(key) {
   return REFERENCE_AGENT_SPECS.find((spec) => spec.key === key) || null;
 }
 
-export function referenceAgentCandidate(spec, { providerAddress = null, endpointBase = "http://127.0.0.1:8787" } = {}) {
+export function referenceAgentCandidate(spec, { providerAddress = null, endpointBase = "http://127.0.0.1:8787", identityRecord = null, allowLocalProbe = true, publicReadinessVerified = Boolean(identityRecord?.publicReadinessVerified) } = {}) {
   if (!spec) throw new Error("A reference-agent spec is required.");
-  const endpoint = `${endpointBase}${spec.endpointPath}`;
+  const endpoint = spec.key === "health-factor" && identityRecord?.endpoint ? identityRecord.endpoint : `${endpointBase}${spec.endpointPath}`;
   const configured = Boolean(providerAddress);
+  const registered = spec.key === "health-factor" && Number.isInteger(Number(identityRecord?.agentId)) && identityRecord?.registry;
+  const endpointVerified = spec.implemented && (allowLocalProbe || publicReadinessVerified);
+  const identity = registered ? `${REFERENCE_CHAIN_ID}:${String(identityRecord.registry).toLowerCase()}:${identityRecord.agentId}` : spec.identity;
   return {
-    identity: spec.identity,
+    identity,
     name: spec.name,
     description: spec.description,
     network: REFERENCE_NETWORK,
@@ -94,13 +107,13 @@ export function referenceAgentCandidate(spec, { providerAddress = null, endpoint
     origin: REFERENCE_ORIGIN,
     reference: true,
     referenceKey: spec.key,
-    erc8004: { status: "not_registered", tokenId: null, registrationRequired: true },
+    erc8004: registered ? { status: "onchain_registered", tokenId: Number(identityRecord.agentId), registry: identityRecord.registry, transactionHash: identityRecord.transactionHash, agentUri: identityRecord.agentUri, indexed: identityRecord.indexer === "indexed" } : { status: "not_registered", tokenId: null, registrationRequired: true },
     categoryHypotheses: [{ category: spec.category, confidence: "high", signals: ["Canned Reference Agent specification", ...spec.capabilities] }],
-    services: [baseService(endpoint, spec.problem, { implemented: spec.implemented })],
-    probes: spec.implemented ? [{ type: "HTTP task API", endpoint, reachable: true, callable: true, observedAt: new Date().toISOString(), origin: REFERENCE_ORIGIN }] : [],
-    supports: { a2a: false, erc8183: true, x402: false, b402: false, mcp: false, httpTaskApi: spec.implemented },
-    selectionGate: { readiness: { ready: false, quoteVerified: false, protocolCompatibility: true, providerConfigured: configured, reason: configured ? "A fresh quote and explicit operator confirmation are still required." : "Reference provider wallet is not configured." } },
-    hiring: { price: spec.priceRaw, currency: REFERENCE_PAYMENT_TOKEN, mechanism: "ERC-8183 funded seller job", quoteVerified: false },
+    services: [baseService(endpoint, spec.problem, { implemented: endpointVerified })],
+    probes: endpointVerified ? [{ type: "HTTP task API", endpoint, reachable: true, callable: true, observedAt: new Date().toISOString(), origin: REFERENCE_ORIGIN, scope: publicReadinessVerified ? "public" : "local_development" }] : [],
+    supports: { a2a: false, erc8183: true, x402: false, b402: false, mcp: false, httpTaskApi: endpointVerified },
+    selectionGate: { readiness: { ready: false, quoteVerified: Boolean(identityRecord?.quoteVerified), protocolCompatibility: true, providerConfigured: configured, reason: registered ? "Identity is registered. A fresh public quote and post-baseline operator confirmation are still required." : configured ? "A fresh quote and explicit operator confirmation are still required." : "Reference provider wallet is not configured." } },
+    hiring: { price: spec.priceRaw, currency: REFERENCE_PAYMENT_TOKEN, mechanism: "ERC-8183 funded seller job", quoteVerified: Boolean(identityRecord?.quoteVerified), negotiationProbe: identityRecord?.negotiationProbe || null },
     referenceFleet: { origin: REFERENCE_ORIGIN, fleetVersion: "1.0.0", implementationStatus: spec.implemented ? "implemented" : "planned", executionPolicy: spec.executionPolicy },
   };
 }

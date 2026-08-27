@@ -6,12 +6,15 @@ import { AltanaAuthorityProvider, buildAltanaSessionPolicy, createOfficialAltana
 import { ReferenceAgentRuntime } from "../src/reference/foundation.mjs";
 import { processFundedReferenceJob } from "../src/reference/erc8183-seller.mjs";
 import { buildHealthFactorDeliverable, buildIndependentHealthFactorControl, manualHealthFactorBaselinePacket } from "../src/reference/health-factor.mjs";
-import { REFERENCE_AGENT_SPECS, REFERENCE_ORIGIN, referenceAgentCandidate, referenceFleetCatalog } from "../src/reference/constants.mjs";
+import { REFERENCE_AGENT_SPECS, REFERENCE_ERC8183_COMMERCE_PROXY, REFERENCE_ORIGIN, referenceAgentCandidate, referenceFleetCatalog } from "../src/reference/constants.mjs";
+import { createHealthBenchDefinition, createHumanBaselineAttempt, completeHumanBaseline, baselineContainsSecretAnswer, publicHealthBenchPacket, publicHealthBenchSource } from "../src/reference/health-benchmark.mjs";
+import { publicHealthGuardMetadata, publicReadinessSummary, validatePublicReferenceConfig } from "../src/reference/public-service.mjs";
 
 const account = "0x0000000000000000000000000000000000000001";
 const commerce = "0x0000000000000000000000000000000000000011";
 const router = "0x0000000000000000000000000000000000000022";
 const snapshot = { protocol: "Venus", poolType: "core", source: "onchain", chainId: 97, account, asOfBlock: "123", errorCode: "0", liquidityRaw: "1000", shortfallRaw: "0", healthFactor: 1.42, authoritative: true, readPlan: { contract: commerce, method: "getAccountLiquidity(address)" } };
+const frozenSnapshot = { ...snapshot, blockHash: `0x${"ab".repeat(32)}`, blockTimestamp: 1_800_000_000 };
 
 test("reference fleet names all four categories but only publishes implemented modules", () => {
   assert.equal(REFERENCE_AGENT_SPECS.length, 4);
@@ -117,4 +120,54 @@ test("reference marketplace record is visibly first-party and still cannot be hi
   assert.equal(record.origin, REFERENCE_ORIGIN);
   assert.equal(record.reference, true);
   assert.equal(record.activation.selection.status, "blocked");
+});
+
+test("public reference configuration rejects local or non-durable deployment inputs", () => {
+  assert.equal(validatePublicReferenceConfig({ agentUrl: "http://127.0.0.1:8790/erc8183", storageApiKey: "test" }).valid, false);
+  assert.equal(validatePublicReferenceConfig({ agentUrl: "https://health.example/erc8183", storageApiKey: "test" }).valid, true);
+  assert.equal(validatePublicReferenceConfig({ agentUrl: "https://health.example/service", storageApiKey: "test" }).errors.includes("agent_url_must_end_in_erc8183"), true);
+});
+
+test("HealthBench freezes the authoritative source and keeps the answer out of its public packet", () => {
+  const definition = createHealthBenchDefinition({ snapshot: frozenSnapshot, account });
+  const packet = publicHealthBenchPacket(definition);
+  const source = publicHealthBenchSource(definition);
+  assert.equal(definition.immutable, true);
+  assert.equal(typeof definition.precommit.canonicalSha256, "string");
+  assert.equal(packet.frozenEvidence, undefined);
+  assert.equal(packet.evaluator, undefined);
+  assert.equal(definition.evaluator.status, "sealed_until_baseline_submission");
+  assert.equal(source.rawOnchainEvidence.blockHash, frozenSnapshot.blockHash);
+  assert.equal(baselineContainsSecretAnswer(packet), false);
+  assert.equal(baselineContainsSecretAnswer({ agentOutput: { assessment: "hidden" } }), true);
+});
+
+test("human baseline preserves raw submission and server timing without evaluation", () => {
+  const attempt = createHumanBaselineAttempt({ benchmarkId: "HealthBench_v1", startedAt: "2026-08-27T10:00:00.000Z" });
+  const completed = completeHumanBaseline({ attempt, submittedAt: "2026-08-27T10:00:12.345Z", elapsedMs: 12345, submission: { positionFacts: "raw", liquidationProximity: "unknown", changeExplanation: "none", boundedAction: "monitor", reasoningNotes: "manual" } });
+  assert.equal(completed.status, "submitted");
+  assert.equal(completed.elapsedMs, 12345);
+  assert.equal(completed.submission.reasoningNotes, "manual");
+  assert.equal(completed.groundTruth, undefined);
+});
+
+test("marketplace does not promote local Health Guard as public until readiness is recorded", () => {
+  const candidate = referenceAgentCandidate(REFERENCE_AGENT_SPECS[0], { allowLocalProbe: false, publicReadinessVerified: false, providerAddress: account });
+  assert.equal(candidate.services[0].cannedVerified, false);
+  assert.equal(candidate.probes.length, 0);
+  const publicCandidate = referenceAgentCandidate(REFERENCE_AGENT_SPECS[0], { allowLocalProbe: false, publicReadinessVerified: true, identityRecord: { agentId: 1927, registry: commerce, endpoint: "https://health.example/erc8183" }, providerAddress: account });
+  assert.equal(publicCandidate.services[0].cannedVerified, true);
+  assert.equal(publicCandidate.services[0].endpoint, "https://health.example/erc8183");
+  assert.equal(publicCandidate.erc8004.status, "onchain_registered");
+});
+
+test("public Health Guard metadata and readiness preserve first-party provenance and heartbeat distinctions", () => {
+  const runtime = new ReferenceAgentRuntime({ spec: REFERENCE_AGENT_SPECS[0], taskHandler: async () => ({ ok: true }) });
+  const metadata = publicHealthGuardMetadata({ agentUrl: "https://health.example/erc8183", providerAddress: account });
+  const summary = publicReadinessSummary({ runtime, providerAddress: account, agentUrl: "https://health.example/erc8183", storageMode: "ipfs", metadata });
+  assert.equal(metadata.origin, REFERENCE_ORIGIN);
+  assert.equal(metadata.protocols[0].verifyingContract.toLowerCase(), REFERENCE_ERC8183_COMMERCE_PROXY.toLowerCase());
+  assert.equal(summary.storage.public, true);
+  assert.equal(summary.worker.alive, false);
+  assert.equal(summary.watcher.alive, false);
 });
