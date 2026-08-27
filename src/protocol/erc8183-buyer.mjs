@@ -1,7 +1,7 @@
 import path from "node:path";
 import { parseAbiItem } from "viem";
 import { ERC8183_STATES } from "../domain.mjs";
-import { contentHashes, nowIso, safeError } from "../core.mjs";
+import { contentHashes, isPublicHttpUrl, nowIso, requestJson, safeError } from "../core.mjs";
 
 export function writeSafety(env = process.env) {
   const network = env.CANNED_NETWORK || "bsc-testnet";
@@ -211,4 +211,36 @@ export async function appendProtocolEvent({ store, runId, event, extra = {} }) {
 
 export async function readJob({ client, jobId }) {
   return protocolSnapshot(client, jobId);
+}
+
+export const IPFS_GATEWAYS = Object.freeze(["https://gateway.pinata.cloud/ipfs/", "https://ipfs.io/ipfs/", "https://dweb.link/ipfs/", "https://cloudflare-ipfs.com/ipfs/"]);
+
+/**
+ * Resolve a deliverable reference to fetchable HTTP candidates. An `ipfs://`
+ * reference stays content-addressed: the CID is preserved and only the gateway
+ * varies, so retrieval never depends on the provider's own server.
+ */
+export function deliverableFetchCandidates(reference) {
+  const value = String(reference || "");
+  if (/^ipfs:\/\//i.test(value)) {
+    const cidPath = value.replace(/^ipfs:\/\//i, "").replace(/^ipfs\//i, "");
+    return { scheme: "ipfs", cid: cidPath.split("/")[0], contentAddressed: true, candidates: IPFS_GATEWAYS.map((gateway) => `${gateway}${cidPath}`) };
+  }
+  if (isPublicHttpUrl(value)) return { scheme: "https", cid: null, contentAddressed: false, candidates: [value] };
+  return { scheme: "unsupported", cid: null, contentAddressed: false, candidates: [] };
+}
+
+export async function fetchDeliverable(reference, { timeoutMs = 30_000 } = {}) {
+  const resolved = deliverableFetchCandidates(reference);
+  const attempts = [];
+  for (const candidate of resolved.candidates) {
+    try {
+      const response = await requestJson(candidate, { timeoutMs });
+      attempts.push({ url: candidate, status: response.status, ok: response.ok });
+      if (response.ok && response.body !== undefined && response.body !== null) return { ...resolved, ok: true, url: candidate, response, attempts };
+    } catch (error) {
+      attempts.push({ url: candidate, error: safeError(error) });
+    }
+  }
+  return { ...resolved, ok: false, url: null, response: null, attempts };
 }
