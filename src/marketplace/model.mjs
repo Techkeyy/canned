@@ -112,6 +112,7 @@ export function deriveAgentRecord(candidate, runs = []) {
     origin: candidate?.origin || "THIRD_PARTY_DISCOVERY",
     reference: candidate?.reference === true,
     referenceFleet: candidate?.referenceFleet || null,
+    venue: candidate?.venue || null,
     erc8004: candidate?.erc8004 || { status: "unknown", tokenId: null },
     network: candidate?.network || "unknown",
     chainId: candidate?.chainId ?? null,

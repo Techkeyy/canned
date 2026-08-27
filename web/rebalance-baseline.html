@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canned | RebalanceBench v1 baseline</title>
+  <style>
+    :root { --ink:#142033; --muted:#667085; --paper:#f7f7f3; --panel:#fff; --line:#e5e7eb; --blue:#2155d6; --blue-soft:#edf2ff; --green:#176b57; --green-soft:#e8f4ef; --red:#a43c37; --amber-soft:#fff5e2; --amber-line:#f0d9a8; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+    .shell { max-width:900px; margin:0 auto; padding:26px 22px 70px; }
+    .top { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:18px; }
+    .brand { font-weight:800; letter-spacing:-.03em; font-size:20px; } .network { color:var(--green); background:var(--green-soft); border-radius:99px; padding:6px 10px; font-size:12px; font-weight:700; }
+    main { padding-top:48px; } .eyebrow { color:var(--blue); text-transform:uppercase; letter-spacing:.12em; font-weight:800; font-size:11px; }
+    h1 { font-size:clamp(38px,7vw,64px); letter-spacing:-.065em; line-height:1; margin:12px 0 18px; } h2 { font-size:20px; letter-spacing:-.03em; margin:0 0 10px; } h3 { font-size:14px; margin:0 0 8px; } p { color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:22px; margin-top:22px; }
+    .notice { border-color:#cbd8f4; background:var(--blue-soft); } .notice p { color:#45536e; }
+    .warn { border-color:var(--amber-line); background:var(--amber-soft); } .warn p { color:#7a5407; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+    ul { margin:8px 0 0; padding-left:20px; color:var(--muted); } li+li { margin-top:7px; }
+    .facts { display:grid; gap:9px; } .fact { display:flex; justify-content:space-between; gap:16px; border-bottom:1px solid var(--line); padding-bottom:8px; font-size:13px; } .fact span:first-child { color:var(--muted); } .fact span:last-child { text-align:right; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+    .ladder { display:grid; gap:0; border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-top:6px; }
+    .rung { display:flex; justify-content:space-between; gap:12px; padding:11px 14px; font-size:13px; border-bottom:1px solid var(--line); } .rung:last-child { border-bottom:0; }
+    .rung.now { background:var(--blue-soft); font-weight:700; } .rung.edge { background:#fafafa; } .rung span:last-child { font-variant-numeric:tabular-nums; }
+    button { border:1px solid var(--blue); background:var(--blue); color:white; border-radius:9px; padding:11px 15px; font:inherit; font-weight:700; cursor:pointer; } button.secondary { border-color:var(--line); background:white; color:var(--ink); } button:disabled { opacity:.5; cursor:not-allowed; }
+    .status { display:inline-block; color:var(--muted); font-size:13px; margin-left:12px; } .status.error { color:var(--red); } .status.success { color:var(--green); }
+    .timer { font-variant-numeric:tabular-nums; font-size:28px; letter-spacing:-.04em; font-weight:800; margin:8px 0 14px; }
+    form { display:grid; gap:14px; } label { display:grid; gap:6px; font-weight:700; font-size:13px; } label small { font-weight:400; color:var(--muted); }
+    textarea, input { width:100%; border:1px solid #cfd6e0; border-radius:9px; padding:10px; background:#fff; color:var(--ink); font:inherit; } textarea { min-height:78px; resize:vertical; }
+    pre { white-space:pre-wrap; overflow:auto; border:1px solid var(--line); border-radius:10px; background:#fafafa; padding:13px; font:12px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace; max-height:340px; }
+    details { margin-top:14px; } summary { cursor:pointer; font-weight:700; font-size:13px; }
+    .hidden { display:none; }
+    @media (max-width:720px) { .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="top"><span class="brand">Canned</span><span class="network" id="network">BSC Testnet payments / mainnet read-only data</span></div>
+    <main>
+      <div class="eyebrow">RebalanceBench v1 &middot; blind baseline</div>
+      <h1>Would you rebalance this position?</h1>
+      <p>You are the control. Answer from the frozen data below, in your own words, before any Canned agent has run. Your response is recorded exactly as you type it and sealed on submission.</p>
+
+      <div class="panel notice">
+        <h2>Before you start</h2>
+        <p>Do not open Canned&rsquo;s marketplace, the Range Keeper service, or any AI assistant while answering. Do not look up the answer elsewhere. A rough, honest answer is far more useful than a researched one &mdash; if you are unsure, say so. The point is to measure what this task costs a person, not to test you.</p>
+        <p>The timer starts when you press Start. There is no time limit.</p>
+      </div>
+
+      <div class="panel">
+        <h2>The task</h2>
+        <p id="question">Loading the frozen task…</p>
+        <button id="start">Start the timer and show the position</button>
+        <span class="status" id="status">Loading…</span>
+      </div>
+
+      <div class="panel hidden" id="position-wrap">
+        <h2>Your position</h2>
+        <p id="what-you-own"></p>
+        <div class="grid">
+          <div>
+            <h3>Where the price sits</h3>
+            <div class="ladder" id="ladder"></div>
+            <p id="ticks-explained" style="font-size:12px; margin-top:10px;"></p>
+          </div>
+          <div>
+            <h3>Pool</h3>
+            <div class="facts" id="pool-facts"></div>
+            <h3 style="margin-top:18px;">How the market moved</h3>
+            <div class="facts" id="movement"></div>
+          </div>
+        </div>
+        <details>
+          <summary>How PancakeSwap concentrated liquidity works</summary>
+          <ul id="rules"></ul>
+        </details>
+        <details>
+          <summary>Raw onchain data this was read from</summary>
+          <pre id="source"></pre>
+        </details>
+      </div>
+
+      <div class="panel hidden" id="attempt">
+        <h2>Your answer</h2>
+        <div class="timer" id="timer">00:00</div>
+        <form id="baseline-form">
+          <label>Is the position still in range?
+            <small>Is it currently earning fees, or has price moved outside its bounds?</small>
+            <textarea name="positionStatus" required></textarea></label>
+          <label>How close is price to a range edge?
+            <small>Which edge is nearer, and roughly how far away is it?</small>
+            <textarea name="edgeProximity" required></textarea></label>
+          <label>How did the market move around it?
+            <small>Use the averages shown above. Which way, and how big was the move compared with the width of the range?</small>
+            <textarea name="marketMovement" required></textarea></label>
+          <label>Would you rebalance?
+            <small>Yes or no, and why. &ldquo;Leave it alone&rdquo; is a legitimate answer.</small>
+            <textarea name="rebalanceDecision" required></textarea></label>
+          <label>If you would rebalance, what new range?
+            <small>Give the new bounds in ticks or in price. If you would not rebalance, say so.</small>
+            <textarea name="proposedRange" required></textarea></label>
+          <label>What risks or trade-offs are you accepting?
+            <small>What does acting cost, and what does doing nothing cost?</small>
+            <textarea name="risksAndTradeoffs" required></textarea></label>
+          <label>Roughly what did this cost you? <small>Time, tools, subscriptions, or anything you paid. &ldquo;Nothing&rdquo; is fine.</small>
+            <input name="operatorCost" placeholder="e.g. nothing, just my time"></label>
+          <div><button type="submit">Seal my answer</button><span class="status" id="submit-status"></span></div>
+        </form>
+      </div>
+
+      <div class="panel hidden" id="done">
+        <h2>Sealed</h2>
+        <p id="done-meta"></p>
+        <p>Your answer is now content-addressed and immutable. Canned will not hire Range Keeper against this benchmark until a later directive authorizes it.</p>
+      </div>
+
+      <div class="panel warn">
+        <h2>What happens to this</h2>
+        <p>Your exact words are stored and hashed. They are graded later by a deterministic evaluator that was written and frozen before you answered, against the same frozen data the agent will get. Nothing you write is rewritten, corrected, or tidied up, and spelling is never penalised.</p>
+      </div>
+    </main>
+  </div>
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    let packet = null; let attempt = null; let startedMs = null; let timerHandle = null;
+    const setStatus = (text, kind = "") => { const node = $("#status"); node.textContent = text; node.className = "status " + kind; };
+    const pad = (value) => String(value).padStart(2, "0");
+    const formatMs = (ms) => { const total = Math.floor(ms / 1000); return pad(Math.floor(total / 60)) + ":" + pad(total % 60); };
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+    const fact = (label, value) => '<div class="fact"><span>' + esc(label) + '</span><span>' + esc(value) + '</span></div>';
+
+    function showTask() {
+      $("#question").textContent = packet.task.question;
+      $("#network").textContent = packet.executionBoundary.marketDataChain + " read-only data / " + packet.executionBoundary.paymentAndAgentExecutionChain + " payments";
+    }
+
+    function renderSource(source) {
+      const plain = source.plainLanguage;
+      $("#what-you-own").textContent = plain.whatYouOwn + " " + plain.yourRange + " " + plain.currentPrice;
+      $("#ticks-explained").textContent = plain.ticksExplained;
+      const table = plain.priceTable;
+      const quote = Object.keys(table.rangeLowerTick).find((key) => key !== "tick" && key.includes(" per "));
+      const keys = Object.keys(table.currentTick).filter((key) => key !== "tick");
+      // Quote the pair the way a person reads it: the first token's price in the second.
+      const shown = keys.find((key) => key.startsWith(source.pool.pair.split("/")[0])) || keys[0];
+      // Highest price at the top, so the ladder reads the way a price chart does.
+      const rows = [
+        { label: "Range bound", value: table.rangeUpperTick, cls: "edge" },
+        { label: "Price now", value: table.currentTick, cls: "now" },
+        { label: "Range bound", value: table.rangeLowerTick, cls: "edge" },
+      ].sort((left, right) => right.value[shown] - left.value[shown]);
+      $("#ladder").innerHTML = rows.map((row) => '<div class="rung ' + row.cls + '"><span>' + esc(row.label) + " (tick " + esc(row.value.tick) + ")" + '</span><span>' + esc(row.value[shown]) + " " + esc(shown.replace(/_/g, " ")) + "</span></div>").join("");
+      $("#pool-facts").innerHTML = [
+        fact("Pair", source.pool.pair),
+        fact("Fee tier", source.pool.feeTier),
+        fact("Tick spacing", source.pool.tickSpacing),
+        fact("Range width", plain.rangeSummary.widthTicks + " ticks"),
+        fact("Reference block", source.asOfBlock),
+      ].join("");
+      $("#movement").innerHTML = plain.howTheMarketMoved.length
+        ? plain.howTheMarketMoved.map((entry) => { const priceKey = Object.keys(entry).find((key) => key.startsWith("averagePrice_")); return fact(entry.window, entry[priceKey] + " (avg tick " + entry.averageTick + ")"); }).join("")
+        : '<p style="font-size:13px;">The pool oracle could not serve a price history for this position.</p>';
+      $("#rules").innerHTML = plain.rules.map((rule) => "<li>" + esc(rule) + "</li>").join("");
+      $("#source").textContent = JSON.stringify(source.rawOnchainEvidence, null, 2);
+      $("#position-wrap").classList.remove("hidden");
+    }
+
+    async function revealSource() {
+      const response = await fetch("/api/baseline/rebalance/source");
+      if (!response.ok) throw new Error("The frozen source packet is not available.");
+      renderSource(await response.json());
+    }
+
+    function startAttempt(id, when) {
+      attempt = id; startedMs = Date.parse(when);
+      $("#attempt").classList.remove("hidden");
+      timerHandle = setInterval(() => { $("#timer").textContent = formatMs(Date.now() - startedMs); }, 250);
+    }
+
+    async function load() {
+      const response = await fetch("/api/baseline/rebalance");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.reason || "RebalanceBench v1 is not frozen yet.");
+      packet = data; showTask();
+      if (data.baseline.status === "submitted") {
+        $("#done").classList.remove("hidden");
+        $("#done-meta").textContent = "This benchmark already has a submitted human baseline. Do not start a second attempt.";
+        setStatus("Already submitted"); $("#start").disabled = true;
+      } else if (data.baseline.status === "started") {
+        setStatus("Baseline already in progress"); $("#start").disabled = true;
+        await revealSource(); startAttempt(data.baseline.attemptId, data.baseline.startedAt);
+      } else setStatus("Ready to start");
+    }
+
+    $("#start").addEventListener("click", async () => {
+      try {
+        const response = await fetch("/api/baseline/rebalance/start", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.reason || "Could not start the baseline.");
+        packet = data; showTask(); await revealSource();
+        startAttempt(data.baseline.attemptId, data.baseline.startedAt);
+        $("#start").disabled = true; setStatus("Baseline in progress");
+      } catch (error) { setStatus(error.message, "error"); }
+    });
+
+    $("#baseline-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!attempt) return;
+      const body = Object.fromEntries(new FormData(event.currentTarget).entries());
+      body.elapsedMs = Math.max(0, Date.now() - startedMs);
+      const response = await fetch("/api/baseline/rebalance/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await response.json();
+      const submitStatus = $("#submit-status");
+      if (!response.ok) { submitStatus.textContent = data.reason || "Submission failed"; submitStatus.className = "status error"; return; }
+      clearInterval(timerHandle);
+      $("#attempt").classList.add("hidden");
+      $("#done").classList.remove("hidden");
+      $("#done-meta").textContent = "Attempt " + data.attemptId + " recorded in " + formatMs(data.elapsedMs) + ". Evidence hash " + data.evidenceSha256 + ".";
+      setStatus("Submitted", "success");
+    });
+
+    load().catch((error) => setStatus(error.message, "error"));
+  </script>
+</body>
+</html>

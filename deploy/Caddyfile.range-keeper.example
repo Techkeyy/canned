@@ -1,0 +1,9 @@
+# Append this block; do not edit or replace the Health Guard block above it.
+# Use an existing DNS name that already resolves to this VPS.
+range-keeper.103-195-188-198.sslip.io {
+    encode gzip
+    reverse_proxy 127.0.0.1:8791
+    header {
+        -Server
+    }
+}

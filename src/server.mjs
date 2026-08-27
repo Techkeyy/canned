@@ -12,14 +12,23 @@ import { ReferenceAgentRuntime } from "./reference/foundation.mjs";
 import { implementedReferenceAgentCandidates, REFERENCE_PAYMENT_TOKEN, referenceFleetCatalog, referenceSpec } from "./reference/constants.mjs";
 import { altanaAvailability, buildAltanaSessionPolicy, officialErc8183Addresses } from "./reference/altana.mjs";
 import { completeHumanBaseline, createHumanBaselineAttempt, publicHealthBenchPacket, publicHealthBenchSource } from "./reference/health-benchmark.mjs";
+import { buildRangeKeeperDeliverable } from "./reference/range-keeper.mjs";
+import { completeRebalanceBaseline, createRebalanceBaselineAttempt, publicRebalanceBenchPacket, publicRebalanceBenchSource, rebalanceContainsSecretAnswer, REBALANCE_BENCHMARK_ID } from "./reference/rebalance-benchmark.mjs";
+import { summarizeRangeTrackRecord } from "./reference/range-track-record.mjs";
+import { contentHashes } from "./core.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
 const baselineHtml = await readFile(path.resolve(process.cwd(), "web/health-baseline.html"), "utf8");
+const rebalanceBaselineHtml = await readFile(path.resolve(process.cwd(), "web/rebalance-baseline.html"), "utf8");
 const port = Number(process.env.PORT || 8787);
 const healthFactorRuntime = new ReferenceAgentRuntime({
   spec: referenceSpec("health-factor"),
   taskHandler: ({ jobId, task, previousSnapshot }) => buildHealthFactorDeliverable({ jobId, task, previousSnapshot }),
+});
+const rangeKeeperRuntime = new ReferenceAgentRuntime({
+  spec: referenceSpec("rebalancing"),
+  taskHandler: ({ jobId, task }) => buildRangeKeeperDeliverable({ jobId, task }),
 });
 
 async function referenceProviderAddress() {
@@ -39,6 +48,22 @@ async function healthBenchDefinition() {
   return store.loadJson("state/healthbench-v1.json", null);
 }
 
+async function rebalanceBenchDefinition() {
+  return store.loadJson("state/rebalancebench-v1.json", null);
+}
+
+async function rebalanceBaseline() {
+  return store.loadJson("state/rebalance-baseline.json", null);
+}
+
+async function rangeIdentityRecord() {
+  return store.loadJson("state/reference-range-identity.json", null);
+}
+
+async function rangeDecisions() {
+  return (await store.loadJson("state/range-decisions.json", { decisions: [] })).decisions || [];
+}
+
 async function humanBaseline() {
   return store.loadJson("state/health-baseline.json", null);
 }
@@ -53,9 +78,14 @@ async function snapshot() {
     store.loadJson("inventory/verified-candidates.json", { candidates: [], categorySummary: {} }),
     store.loadRuns(),
   ]);
-  const identityRecord = await referenceIdentityRecord();
-  const baseline = await humanBaseline();
-  const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({ endpointBase: process.env.CANNED_REFERENCE_AGENT_URL || `http://127.0.0.1:${port}`, providerAddress: await referenceProviderAddress(), identityRecord, allowLocalProbe: false, publicReadinessVerified: identityRecord?.publicReadinessVerified === true, baselineSealed: baseline?.status === "submitted" })];
+  const [identityRecord, rangeRecord, baseline, rangeBaselineRecord] = await Promise.all([referenceIdentityRecord(), rangeIdentityRecord(), humanBaseline(), rebalanceBaseline()]);
+  const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({
+    endpointBase: `http://127.0.0.1:${port}`,
+    providerAddress: await referenceProviderAddress(),
+    allowLocalProbe: false,
+    identityRecords: { "health-factor": identityRecord, rebalancing: rangeRecord },
+    baselineSealedByKey: { "health-factor": baseline?.status === "submitted", rebalancing: rangeBaselineRecord?.status === "submitted" },
+  })];
   const marketplace = buildMarketplaceSnapshot({ report: { ...report, candidates }, runs });
   return { report: { ...report, candidates }, runs, marketplace, metrics: deriveMarketplaceMetrics({ candidates, runs }) };
 }
@@ -80,6 +110,11 @@ const server = createServer(async (request, response) => {
     if (request.url === "/" || request.url === "/inspection") {
       response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       response.end(html);
+      return;
+    }
+    if (request.url === "/baseline/rebalance") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(rebalanceBaselineHtml);
       return;
     }
     if (request.url === "/baseline/health-factor") {
@@ -133,6 +168,66 @@ const server = createServer(async (request, response) => {
         const expiry = Math.floor(Date.now() / 1000) + 900;
         json(response, 200, { status: "policy_ready", officialDeployments: official, policy: buildAltanaSessionPolicy({ commerceAddress, routerAddress, expiry, maxSpendRaw: process.env.CANNED_REFERENCE_MAX_SPEND_RAW || "1000000000000000" }) });
       } catch (error) { json(response, 422, { status: "blocked", reason: error.message }); }
+      return;
+    }
+    if (url.pathname === "/api/reference/rebalancing" && request.method === "GET") { json(response, 200, rangeKeeperRuntime.health()); return; }
+    if (url.pathname === "/api/reference/rebalancing/readiness") { json(response, 200, rangeKeeperRuntime.readiness()); return; }
+    if (url.pathname === "/api/reference/rebalancing/metrics") { json(response, 200, rangeKeeperRuntime.metrics()); return; }
+    if (url.pathname === "/api/reference/rebalancing/track-record") {
+      const definition = await rebalanceBenchDefinition();
+      json(response, 200, {
+        agent: "Canned Range Keeper",
+        venue: "PancakeSwap",
+        benchmark: definition ? { id: definition.benchmarkId, version: definition.version, pool: definition.pool.address, pair: `${definition.pool.token0.symbol}/${definition.pool.token1.symbol}`, feeTier: definition.pool.fee, referenceBlock: definition.referenceBlock } : null,
+        ...summarizeRangeTrackRecord({ decisions: await rangeDecisions() }),
+      });
+      return;
+    }
+    if (url.pathname === "/api/baseline/rebalance" && request.method === "GET") {
+      const definition = await rebalanceBenchDefinition();
+      if (!definition) { json(response, 404, { status: "not_ready", reason: "RebalanceBench v1 has not been frozen." }); return; }
+      const current = await rebalanceBaseline();
+      const packet = publicRebalanceBenchPacket(definition);
+      packet.baseline = { ...packet.baseline, status: current?.status || "not_started", attemptId: current?.attemptId || null, startedAt: current?.startedAt || null, sourceAvailable: current?.status === "started" };
+      json(response, 200, packet);
+      return;
+    }
+    if (url.pathname === "/api/baseline/rebalance/start" && request.method === "POST") {
+      const definition = await rebalanceBenchDefinition();
+      if (!definition) { json(response, 404, { status: "not_ready", reason: "RebalanceBench v1 has not been frozen." }); return; }
+      const current = await rebalanceBaseline();
+      if (current?.status === "submitted") { json(response, 409, { status: "already_submitted", attemptId: current.attemptId }); return; }
+      const attempt = current?.status === "started" ? current : createRebalanceBaselineAttempt({ benchmarkId: definition.benchmarkId });
+      if (!current || current.status !== "started") await store.saveJson("state/rebalance-baseline.json", attempt);
+      const packet = publicRebalanceBenchPacket(definition);
+      packet.baseline = { ...packet.baseline, status: "started", attemptId: attempt.attemptId, startedAt: attempt.startedAt, sourceAvailable: true };
+      json(response, 200, packet);
+      return;
+    }
+    if (url.pathname === "/api/baseline/rebalance/source" && request.method === "GET") {
+      const definition = await rebalanceBenchDefinition();
+      const current = await rebalanceBaseline();
+      if (!definition || current?.status !== "started") { json(response, 403, { status: "blocked", reason: "Start the baseline before requesting the frozen source packet." }); return; }
+      const source = publicRebalanceBenchSource(definition);
+      // Fail closed rather than serve a packet that could carry an answer.
+      if (rebalanceContainsSecretAnswer(source)) { json(response, 500, { status: "blocked", reason: "The source packet failed its contamination check." }); return; }
+      json(response, 200, source);
+      return;
+    }
+    if (url.pathname === "/api/baseline/rebalance/submit" && request.method === "POST") {
+      const definition = await rebalanceBenchDefinition();
+      const current = await rebalanceBaseline();
+      if (!definition || current?.status !== "started") { json(response, 403, { status: "blocked", reason: "A started RebalanceBench baseline is required." }); return; }
+      const incoming = await readJsonBody(request);
+      const completed = completeRebalanceBaseline({ attempt: current, submission: incoming.body, submittedAt: nowIso(), elapsedMs: Math.max(0, Date.now() - Date.parse(current.startedAt)) });
+      completed.rawSubmissionJson = incoming.raw;
+      completed.groundTruth = null;
+      completed.agentOutput = null;
+      const hashes = contentHashes(incoming.raw);
+      completed.evidence = { sha256: hashes.sha256, keccak256: hashes.keccak256, preservationStatus: "exact_raw_response_preserved_content_addressed" };
+      await store.saveJson("state/rebalance-baseline.json", completed);
+      await store.saveEvidence({ kind: "rebalancebench_human_baseline", benchmarkId: REBALANCE_BENCHMARK_ID, attemptId: completed.attemptId, precommit: definition.precommit, startedAt: completed.startedAt, submittedAt: completed.submittedAt, elapsedMs: completed.elapsedMs, rawSubmissionJson: completed.rawSubmissionJson, rawSubmissionSha256: hashes.sha256, rawSubmissionKeccak256: hashes.keccak256, agentOutputBeforeSubmission: false, groundTruthBeforeSubmission: false });
+      json(response, 200, { status: "submitted", attemptId: completed.attemptId, benchmarkId: completed.benchmarkId, submittedAt: completed.submittedAt, elapsedMs: completed.elapsedMs, evidenceSha256: hashes.sha256, preserved: true, evaluated: false, agentRun: "not_started" });
       return;
     }
     if (url.pathname === "/api/agent-advantage") {

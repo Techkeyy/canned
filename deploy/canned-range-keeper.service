@@ -1,0 +1,25 @@
+[Unit]
+Description=Canned Range Keeper ERC-8183 seller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=canned
+Group=canned
+WorkingDirectory=/opt/canned
+EnvironmentFile=/etc/canned/range-keeper.env
+ExecStart=/usr/bin/node /opt/canned/scripts/run-public-range-keeper.mjs
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/opt/canned /etc/canned/rebalancebench-v1.json
+ReadWritePaths=/var/lib/canned
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
