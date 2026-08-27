@@ -133,3 +133,33 @@ Reason: during Verified Run #1 the Health Guard failed to serve a funded job bec
 Decision: when a provider submits after Canned's local observation window but before the onchain submit deadline, the run is reconciled in place. The original timeout observation is preserved under `reconciliation.originalObservation` and the final chain state is recorded alongside it.
 
 Reason: deleting the timeout would hide that Canned's own client gave up early. Keeping both is the honest record of what each party did.
+
+## ADR-026: PancakeSwap market data is read from mainnet, payments stay on testnet
+
+Decision: RebalanceBench v1 freezes real BSC mainnet PancakeSwap V3 pool and position state, read-only. Every Canned payment, quote, ERC-8183 job, and agent execution remains on BSC testnet, and no mainnet write path exists.
+
+Reason: PancakeSwap V3 is deployed on BSC testnet at the same addresses, so a testnet benchmark was genuinely available and was tested first. Its pools report mutually inconsistent prices across fee tiers and an observation cardinality of 1, meaning no arbitrage and no price history. A rebalancing benchmark on that data would measure nothing. The directive's instruction not to force testnet where it produces useless market conditions applies exactly here.
+
+## ADR-027: Tick direction is quote-dependent, so the rubric never scores it
+
+Decision: RebalanceBench scores market movement relative to the position's own range, and scores the nearer bound on unambiguous identification rather than on the words "upper" or "lower".
+
+Reason: in a USDT/WBNB pool a rising tick is a falling USDT-per-WBNB price, and the nearer bound is simultaneously the lower tick and the higher price. Scoring the direction word would have marked a correct human answer wrong purely for choosing the other quote convention. This was caught by testing the rubric against the same answer written both ways before any human saw the task.
+
+## ADR-028: Readiness must prove the watcher can read the chain
+
+Decision: reference services probe the RPC for the `eth_getLogs` range `ERC8183JobOps.verifyJob` performs, publish the result on `/readiness` and `/rpc`, refuse to start a funded-job watcher when it fails, and re-probe periodically. `publicReadinessFailures` treats an incapable or defaulted RPC as fatal.
+
+Reason: during Verified Run #1 the Health Guard reported a healthy endpoint, a live worker, a live watcher, working storage, and a valid signed quote while being unable to accept any funded job, because the deployment set `CANNED_RPC_URL` and the BNB SDK reads `RPC_URL_BSC_TESTNET`. An `eth_chainId` check cannot catch that; the log-range probe can.
+
+## ADR-029: Each reference agent gets its own identity, wallet, endpoint, and readiness gate
+
+Decision: reference-agent readiness, metadata, category checks, service version, provider wallet, and ERC-8004 identity are all resolved per agent. `referenceFleetIdentityFailures` refuses a shared identity or endpoint, and registration refuses to reuse another agent's provider wallet.
+
+Reason: the plumbing was written for a single agent and hardcoded Health Guard's category and identity. Two agents sharing an identity or a wallet would merge their evidence and make a future Altana session over-broad.
+
+## ADR-030: Range Keeper v1 observes and recommends only
+
+Decision: Range Keeper never removes liquidity, mints liquidity, swaps, or approves spending. A justified rebalance produces a `PLANNED_NOT_AUTHORIZED` plan with a contract allowlist, a method allowlist, a slippage cap, an expiry, and required operator confirmation.
+
+Reason: it keeps RebalanceBench scientifically clean — the human and the agent are compared on the same judgement, with neither moving capital — and it means adding Altana later is a matter of granting a session that already has a declared shape, not redesigning the agent.

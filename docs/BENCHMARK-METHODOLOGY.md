@@ -148,3 +148,45 @@ Job 695, ERC-8004 identity `97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2003`,
 The agent answered every dimension and was correct about liquidation proximity, the absent change baseline, and the bounded action. It lost 8 points because its deliverable never names which asset is collateral and which is borrowed. The human declined three of five dimensions and asserted the position was "close" to liquidation, which the frozen snapshot does not support.
 
 The agent was slower. Its elapsed time includes an RPC misconfiguration that stopped the Health Guard from verifying the funded job, and the operator intervention that fixed it. The pair is therefore recorded as a **loss** on the combined advantage criterion and a decisive quality win, and it counts as one loss in public metrics.
+
+## RebalanceBench v1
+
+Frozen 2026-08-27. Evaluator `range-keeper-deterministic-v1`. No LLM participates in scoring.
+
+| Field | Value |
+| --- | --- |
+| Venue | PancakeSwap V3 |
+| Market data | BSC mainnet, read-only |
+| Payment and agent execution | BSC testnet, chain 97 |
+| Pool | `0x172fcD41E0913e95784454622d1c3724f546f849` (USDT/WBNB, 0.01%, tick spacing 1) |
+| Position | NFT #7261944, ticks -65724 to -65524, width 200 |
+| Reference block | 118445030 |
+| Precommit SHA-256 | `sha256:4781d6200eab71253e7897f11705ae9ae531b0f8bb2cad625168bdc45c0fd8fc` |
+| Precommit Keccak-256 | `0xaa61da7a3bca87bb8b06080036215631c6df0bf58e361ed7ec6ec9dd10c28774` |
+
+Selection was declared before anything was read: the chain head minus 30 blocks for confirmation depth; WBNB/USDT at the fee tier with the greatest in-range liquidity and the largest observation cardinality; the most recently minted position in that pool with non-zero liquidity at the freeze block. The scenario was taken as it came, not searched for.
+
+### Scored dimensions
+
+Six dimensions, exactly the precommitted `expectedOutputSchema` fields, 20 points each: `positionStatus`, `edgeProximity`, `marketMovement`, `rebalanceDecision`, `proposedRange`, `risksAndTradeoffs`. Each awards 4 points for being answered rather than declined plus fixed points for named checks, and every check is satisfiable from a structured deliverable field **or** from the equivalent prose.
+
+### Quote-convention neutrality
+
+This pool is quoted USDT-per-WBNB, and a *rising tick* is a *falling* USDT-per-WBNB price. The nearer bound is the lower tick, which is the higher USDT price. So "up" and "down", and "lower bound" and "upper bound", are both correct English for the same fact depending on which way a responder quotes the pair.
+
+Scoring direction or edge words alone would therefore mark a correct answer wrong. Two checks are built to avoid it:
+
+- movement is scored against the position's own range (toward or away from the nearer bound, and how large the move is relative to the range width), which reads the same in either convention;
+- the nearer bound is scored on being identified unambiguously — by its tick, by its price, or by a single self-consistent edge word — rather than on a word whose meaning depends on the quote.
+
+Matching is negation-aware, so "not close to an edge" no longer satisfies a search for "close to". Declining to propose a range is scored as correct when holding is correct, because it is.
+
+### Fairness check
+
+Before any human saw the task, the rubric was tested against four responders: the agent's own deliverable, a competent answer written in the tick frame, the same answer written in the inverted price frame, and an over-reacting answer. The agent and both competent human answers score 100; the over-reacting answer loses the decision and proximity points; an all-declined answer scores 0. A person who understands the position can match the agent on quality, which is what makes the comparison worth running.
+
+## Range Keeper track record
+
+Methodology `range-keeper-track-record-v1`. A decision is recorded when it is made, with its reference block, position state, recommended action, recommended range, and observation horizon. Its `outcome` stays null until a *later independent read* of the same pool exists; a decision is never scored by the read that produced it.
+
+Settlement measures what is actually measurable: whether the position, or the recommended replacement range, still contained the price at the follow-up block. That is range retention, not profit — fees earned, gas paid, and impermanent loss are not settled. Below five settled decisions no rate is published at all and the summary says so.

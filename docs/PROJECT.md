@@ -1,6 +1,6 @@
 # Canned project understanding
 
-Status: Canned Verified Run #1 is complete. Job 695 paid 0.001 U to the first-party Canned Health Guard (ERC-8004 identity 2003), observed a real IPFS deliverable, reached `COMPLETED`, and was graded deterministically against a human baseline sealed beforehand. `jobs paid for and graded` is 1 and is derived, not asserted. Directive #3 and Directive #4 timeout/refund records remain visible and unchanged, and the current inventory still has no successful third-party external delivery.
+Status: Canned Verified Run #1 is complete, and a second first-party agent is live. Canned Range Keeper (Rebalancing, PancakeSwap) is deployed with a verified endpoint, signed quote, live worker and watcher, IPFS storage, and a verified RPC capability check; RebalanceBench v1 is frozen against real mainnet PancakeSwap state and its blind human baseline is ready but not yet taken. Range Keeper has no ERC-8004 identity, no paid job, and no benchmark, and the marketplace reports it that way. Job 695 paid 0.001 U to the first-party Canned Health Guard (ERC-8004 identity 2003), observed a real IPFS deliverable, reached `COMPLETED`, and was graded deterministically against a human baseline sealed beforehand. `jobs paid for and graded` is 1 and is derived, not asserted. Directive #3 and Directive #4 timeout/refund records remain visible and unchanged, and the current inventory still has no successful third-party external delivery.
 
 ## One-sentence product
 
@@ -77,7 +77,7 @@ At least one credible BSC agent endpoint can be resolved and invoked for a repro
 
 MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, readiness/cooldown selection, two real paid timeout/refund records, and one completed paid benchmark with an observed IPFS deliverable and a deterministic with/without comparison. The observed delivery is from the first-party reference agent; no third-party provider has yet submitted one.
 
-Next: build a second reference capability so a second Agent Advantage pair exists, and cover the trading, stock, or security category that TermiX requires and Health Factor Monitoring does not satisfy. Then repeated Health Guard observations to move it past a single benchmark, continued third-party discovery, the Altana session adapter, and verified x402/B402 support where applicable.
+Next: take the blind RebalanceBench baseline, then hire Range Keeper against the same frozen task to produce TermiX pair #2 in the trading category that Health Factor Monitoring cannot satisfy. Then repeated Health Guard observations to move it past a single benchmark, continued third-party discovery, the Altana session adapter, and verified x402/B402 support where applicable.
 
 Non-goals for this milestone: mainnet execution, a general-purpose wallet, an opaque agent ranking model, a fake multi-agent directory, automatic investment advice, unbounded approvals, and a claim that benchmark results guarantee profit or safety.
 

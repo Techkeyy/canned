@@ -43,3 +43,17 @@ Research date: 2026-08-27. Status labels are Confirmed, Inferred, or Unknown. Th
 - Confirm the current hackathon intake form fields and final judging rubric.
 - Confirm testnet token, pool, and lending-protocol liquidity sufficient for a meaningful first benchmark.
 - Confirm 8004scan API credentials and rate limits for the intended demo volume.
+
+## Requirements re-verified 2026-08-27
+
+Checked against the current BNB Chain hackathon material and the PancakeSwap partner announcement rather than earlier notes.
+
+| Track | Requirement as currently stated | Canned status |
+| --- | --- | --- |
+| Build the Era main track | Build the official BNB Agent Studio marketplace; all four categories need first-class depth | Two of four categories have a real first-party agent. Health Factor Monitoring is benchmarked; Rebalancing is live and frozen but not yet benchmarked. Yield Optimisation and Grid Trading remain planned only. |
+| TermiX | At least three real tasks run both with a marketplace agent and without one, reporting time, cost, and output quality with the actual outputs attached; at least one task in trading, stock, or security; trading track record weighted highly | One qualifying pair exists (HealthBench v1). RebalanceBench v1 is frozen and is a trading-category task, but no human baseline and no paid agent run exist yet, so it is not a candidate pair. |
+| PancakeSwap | 1,000 CAKE partner track. The agent must deliver a real benefit to PancakeSwap traders or liquidity providers — smarter liquidity management, better yields, pool-demand research, or safe automated swaps that never put user funds at risk. Partner tracks are judged on their own criteria. | Range Keeper is smarter liquidity management for LPs, reading real PancakeSwap V3 pool and position state and recommending hold or a bounded range. It is recommendation-only and cannot move user funds. |
+
+Timeline as published: submissions 5 August to 9 September, judging 9 to 23 September, winners announced 5 November.
+
+Nothing in the current material contradicts the earlier requirements matrix. The one change worth recording is that partner tracks publish their own scoring, so the PancakeSwap track page should be re-read before submission rather than assuming the main-track rubric applies.

@@ -21,7 +21,11 @@ const frozenSnapshot = { ...snapshot, blockHash: `0x${"ab".repeat(32)}`, blockTi
 
 test("reference fleet names all four categories but only publishes implemented modules", () => {
   assert.equal(REFERENCE_AGENT_SPECS.length, 4);
-  assert.deepEqual(referenceFleetCatalog().map((item) => item.implementationStatus), ["implemented", "planned", "planned", "planned"]);
+  // Health Guard and Range Keeper are built; Yield Scout and Grid Keeper are not.
+  const catalog = referenceFleetCatalog();
+  assert.deepEqual(catalog.map((item) => item.implementationStatus), ["implemented", "planned", "implemented", "planned"]);
+  assert.deepEqual(catalog.filter((item) => item.implementationStatus === "implemented").map((item) => item.key), ["health-factor", "rebalancing"]);
+  assert.equal(catalog.filter((item) => item.implementationStatus === "planned").length, 2);
   const candidate = referenceAgentCandidate(REFERENCE_AGENT_SPECS[0]);
   assert.equal(candidate.origin, REFERENCE_ORIGIN);
   assert.equal(candidate.erc8004.status, "not_registered");

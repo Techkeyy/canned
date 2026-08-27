@@ -4,7 +4,7 @@ Canned is an early-stage, evidence-led marketplace for autonomous BNB Chain agen
 
 ## Status
 
-Canned Verified Run #1 completed on 2026-08-27.
+Canned Verified Run #1 completed on 2026-08-27. Canned Range Keeper is live and RebalanceBench v1 is frozen, awaiting its blind human baseline.
 
 The repository now has a BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, fresh candidate readiness/cooldown selection, a fixture runner, and a small inspection page. Directive #3 produced real paid timeout evidence for job 669. The next bounded attempt selected grid-trading identity 1926 as the freshest ready candidate, created job 673, and also expired without a submitted deliverable; its escrow was reconciled. Both are real paid timeout/insufficient-data results, not qualifying successes or public-metric wins.
 
@@ -32,6 +32,37 @@ This is TermiX Candidate #1. The track is not satisfied: it needs three qualifyi
 
 The reference agent is first-party. It is labelled `CANNED_REFERENCE`, it is excluded from third-party agent diversity, and it received no leniency for belonging to Canned.
 
+## Reference agents
+
+Canned runs two first-party agents. They are labelled `CANNED_REFERENCE`, they are excluded from third-party agent diversity, and they get no leniency for belonging to Canned.
+
+| Agent | Category | Venue | Evidence level |
+| --- | --- | --- | --- |
+| Canned Health Guard | Health Factor Monitoring | Venus | **BENCHMARKED** — 1 paid job, 1 observed delivery, 1 graded pair |
+| Canned Range Keeper | Rebalancing | PancakeSwap | **LIVE** — endpoint, signed quote, worker, watcher, and IPFS verified; not registered, not hired, not benchmarked |
+
+Yield Optimisation and Grid Trading have named specs and no implementation. Two of four categories have real depth; the other two do not, and the marketplace says so.
+
+## Canned Range Keeper
+
+Range Keeper answers the question a PancakeSwap liquidity provider actually has: *my liquidity is sitting in this range — is it still healthy, is price drifting toward an edge, and should I leave it alone or rebalance?*
+
+It reads the pool and the position directly from PancakeSwap V3 — `slot0`, `liquidity`, `tickSpacing`, the position's `tickLower`/`tickUpper`, and the pool's own TWAP oracle — and returns whether the position is in range, which bound is nearer and by how much, how the market moved relative to the range, whether a rebalance is justified, a tick-aligned replacement range only when one is justified, and the trade-offs being accepted.
+
+**Holding is a first-class answer.** A rebalance is recommended only when the position has left its range, or when it sits within the act threshold of an edge *and* drift is carrying it further that way. Rebalancing costs gas, realises impermanent loss, and restarts fee accrual, so drifting is not on its own a reason to act.
+
+Range Keeper v1 is recommendation-only. It never removes liquidity, mints liquidity, swaps, or approves spending. When a rebalance is justified it emits a `PLANNED_NOT_AUTHORIZED` plan shaped for a future Altana session — position manager only, `decreaseLiquidity`/`collect`/`mint` only, slippage cap, short expiry, revocable, operator confirmation required. No such session exists.
+
+### RebalanceBench v1
+
+Frozen at BSC mainnet block 118445030 against the real USDT/WBNB 0.01% pool `0x172fcD41E0913e95784454622d1c3724f546f849` and real position NFT #7261944 (ticks -65724 to -65524).
+
+PancakeSwap V3 is deployed on BSC testnet at the same addresses, and testnet was tested first. It was rejected on evidence: testnet pools report mutually inconsistent ticks across fee tiers for the same pair, and every one observed had an observation cardinality of 1, so there is no price history to reason about. Market data is therefore read from mainnet **read-only**; every payment, quote, job, and agent execution stays on BSC testnet, and no mainnet write path exists.
+
+The evaluator is deterministic and was written and frozen before anyone answered. It scores six dimensions taken from the precommitted output schema, and every check can be satisfied from prose or from a structured deliverable.
+
+One thing this pool forced into the open: it is quoted USDT-per-WBNB, so a *rising tick* is a *falling* price, and the nearer bound is simultaneously the lower tick and the higher price. Scoring "up" or "lower" would have marked a correct human answer wrong for choosing the other convention. Movement is therefore scored against the position's own range, and the nearer bound on unambiguous identification. Tested before any human saw it: the agent and a competent human answer written in *either* convention all score 100.
+
 ## Project documents
 
 - [Project understanding](docs/PROJECT.md)
@@ -57,8 +88,14 @@ npm run control:weigh-family
 npm run benchmark:paid
 npm run health:baseline:audit
 npm run health:grade
+npm run rpc:check
+npm run range:baseline:audit
 npm run serve
 ```
+
+The blind RebalanceBench baseline is at `http://localhost:8787/baseline/rebalance`. It shows only the frozen task and the raw position data, starts a server-side timer, preserves exactly what is typed, and seals and hashes the answer on submission. `npm run range:baseline:audit` proves no classification, decision, replacement range, or evaluator output reaches that page before it is answered.
+
+`npm run rpc:check` audits the RPC every ERC-8183 watcher depends on. It reports whether the BNB SDK is silently falling back to its default endpoint and whether the configured endpoint can serve the `eth_getLogs` range `verifyJob` performs — the failure that cost Verified Run #1 its speed.
 
 The paired with/without comparison is at `http://localhost:8787/inspection#advantage`, with the exact human answer, the exact agent deliverable, per-dimension scoring, the ERC-8183 transactions, the ERC-8004 identity, and the IPFS deliverable all inspectable.
 
