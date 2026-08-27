@@ -13,10 +13,11 @@ const quoteRequest = { task_description: "HealthBench v1 readiness probe; no job
 const quote = await requestJson(required("/negotiate"), { method: "POST", headers: { "Content-Type": "application/json" }, body: quoteRequest });
 const envelope = quote.body || {};
 const responseBody = envelope.response || envelope;
+const accepted = responseBody.accepted === true;
 const price = responseBody.price || responseBody.terms?.price;
 const currency = responseBody.currency || responseBody.terms?.currency;
 const expiry = responseBody.quote_expires_at || responseBody.quoteExpiresAt;
-if (!quote.ok || envelope.accepted !== true || !envelope.provider_sig || !envelope.negotiation_hash) failures.push("signed_quote");
+if (!quote.ok || !accepted || !envelope.provider_sig || !envelope.negotiation_hash) failures.push("signed_quote");
 if (String(price) !== "1000000000000000") failures.push("quote_price");
 if (String(currency).toLowerCase() !== REFERENCE_PAYMENT_TOKEN.toLowerCase()) failures.push("quote_currency");
 if (!(Number(expiry) > Math.floor(Date.now() / 1000))) failures.push("quote_expiry");

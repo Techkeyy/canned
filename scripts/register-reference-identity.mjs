@@ -23,10 +23,11 @@ async function verifyPublicReadiness() {
   const quote = await requestJson(endpoint("/negotiate"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ task_description: "HealthBench v1 registration readiness probe; no job will be created.", terms: { deliverables: "Signed readiness response only", quality_standards: "Must identify BSC Testnet, U, price, and expiry", success_criteria: ["No onchain job"] }, request_id: `registration-readiness-${Date.now()}` }) });
   const envelope = quote.body || {};
   const responseBody = envelope.response || envelope;
+  const accepted = responseBody.accepted === true;
   const price = responseBody.price || responseBody.terms?.price;
   const currency = responseBody.currency || responseBody.terms?.currency;
   const expiry = responseBody.quote_expires_at || responseBody.quoteExpiresAt;
-  if (!quote.ok || envelope.accepted !== true || String(price) !== "1000000000000000" || String(currency).toLowerCase() !== REFERENCE_PAYMENT_TOKEN.toLowerCase() || !(Number(expiry) > Math.floor(Date.now() / 1000)) || !envelope.provider_sig || !envelope.negotiation_hash) throw new Error("Public readiness did not return a current bounded signed quote.");
+  if (!quote.ok || !accepted || String(price) !== "1000000000000000" || String(currency).toLowerCase() !== REFERENCE_PAYMENT_TOKEN.toLowerCase() || !(Number(expiry) > Math.floor(Date.now() / 1000)) || !envelope.provider_sig || !envelope.negotiation_hash) throw new Error("Public readiness did not return a current bounded signed quote.");
   const chain = { id: REFERENCE_CHAIN_ID, name: "BSC Testnet", nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 }, rpcUrls: { default: { http: [env.CANNED_RPC_URL || "https://bsc-testnet-rpc.publicnode.com"] } } };
   const publicClient = createPublicClient({ chain, transport: http(chain.rpcUrls.default.http[0], { timeout: 12_000 }) });
   const signature = await verifyQuoteSignature({ envelope, provider: status.body.provider, publicClient, expectedVerifyingContract: REFERENCE_ERC8183_COMMERCE_PROXY });
