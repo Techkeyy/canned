@@ -5,6 +5,7 @@ import { EVMWalletProvider } from "@bnbagent/sdk";
 import { ReferenceAgentRuntime } from "../src/reference/foundation.mjs";
 import { createReferenceSeller, negotiateReferenceQuote, processFundedReferenceJob, startReferenceWatcher } from "../src/reference/erc8183-seller.mjs";
 import { buildHealthFactorDeliverable } from "../src/reference/health-factor.mjs";
+import { healthBenchProviderTask } from "../src/reference/health-benchmark.mjs";
 import { referenceSpec, REFERENCE_NETWORK, REFERENCE_CHAIN_ID, REFERENCE_PAYMENT_TOKEN } from "../src/reference/constants.mjs";
 import { publicHealthGuardMetadata, publicReadinessSummary, validatePublicReferenceConfig } from "../src/reference/public-service.mjs";
 
@@ -41,13 +42,7 @@ async function taskFromFile() {
   if (!taskFile) throw new Error("HealthBench task file is not configured; no task was executed.");
   const definition = JSON.parse(await readFile(taskFile, "utf8"));
   if (definition?.benchmarkId !== "HealthBench_v1" || definition?.immutable !== true) throw new Error("Only an immutable HealthBench_v1 definition may be executed.");
-  return {
-    account: definition.position.account,
-    protocol: "venus",
-    poolType: definition.position.poolType,
-    authoritativeSnapshot: definition.frozenEvidence.snapshot,
-    previousSnapshot: definition.frozenEvidence.priorSnapshot,
-  };
+  return healthBenchProviderTask(definition);
 }
 
 function json(response, status, body, headers = {}) {

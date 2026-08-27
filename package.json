@@ -22,6 +22,8 @@
     "health:position:create": "node scripts/create-health-position.mjs",
     "health:position:recover": "node scripts/recover-health-position.mjs",
     "health:benchmark:freeze": "node scripts/freeze-health-benchmark.mjs",
+    "health:baseline:seal": "node scripts/seal-health-baseline.mjs",
+    "health:baseline:audit": "node scripts/audit-health-baseline.mjs",
     "wallet:check": "node scripts/check-testnet-funding.mjs",
     "control:weigh-family": "node scripts/analyze-weigh-family.mjs",
     "control:protocol": "node scripts/run-protocol-control.mjs",

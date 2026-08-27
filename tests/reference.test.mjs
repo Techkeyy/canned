@@ -1,13 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { encodeFunctionData, parseAbi } from "viem";
+import { contentHashes } from "../src/core.mjs";
 import { deriveAgentRecord } from "../src/marketplace/model.mjs";
 import { AltanaAuthorityProvider, buildAltanaSessionPolicy, createOfficialAltanaAuthority, validateAltanaCall, validateAltanaSessionPolicy } from "../src/reference/altana.mjs";
 import { ReferenceAgentRuntime } from "../src/reference/foundation.mjs";
 import { processFundedReferenceJob } from "../src/reference/erc8183-seller.mjs";
 import { buildHealthFactorDeliverable, buildIndependentHealthFactorControl, manualHealthFactorBaselinePacket } from "../src/reference/health-factor.mjs";
 import { REFERENCE_AGENT_SPECS, REFERENCE_ERC8183_COMMERCE_PROXY, REFERENCE_ORIGIN, referenceAgentCandidate, referenceFleetCatalog } from "../src/reference/constants.mjs";
-import { createHealthBenchDefinition, createHumanBaselineAttempt, completeHumanBaseline, baselineContainsSecretAnswer, publicHealthBenchPacket, publicHealthBenchSource } from "../src/reference/health-benchmark.mjs";
+import { createHealthBenchDefinition, createHumanBaselineAttempt, completeHumanBaseline, baselineContainsSecretAnswer, healthBenchAgentInput, healthBenchProviderTask, healthBenchRunDefinition, validateHealthBenchAgentInput, publicHealthBenchPacket, publicHealthBenchSource } from "../src/reference/health-benchmark.mjs";
 import { publicHealthGuardMetadata, publicReadinessSummary, validatePublicReferenceConfig } from "../src/reference/public-service.mjs";
 
 const account = "0x0000000000000000000000000000000000000001";
@@ -140,6 +141,29 @@ test("HealthBench freezes the authoritative source and keeps the answer out of i
   assert.equal(source.rawOnchainEvidence.blockHash, frozenSnapshot.blockHash);
   assert.equal(baselineContainsSecretAnswer(packet), false);
   assert.equal(baselineContainsSecretAnswer({ agentOutput: { assessment: "hidden" } }), true);
+});
+
+test("HealthBench provider input is bound to the frozen snapshot and excludes baseline/evaluator content", () => {
+  const definition = createHealthBenchDefinition({ snapshot: frozenSnapshot, account });
+  const input = healthBenchAgentInput(definition);
+  assert.equal(input.benchmarkId, "HealthBench_v1");
+  assert.equal(input.evidence.snapshot.blockHash, frozenSnapshot.blockHash);
+  assert.equal(input.evidence.snapshotHash, contentHashes(frozenSnapshot).keccak256);
+  assert.equal(input.humanBaseline, undefined);
+  assert.equal(input.agentOutput, undefined);
+  assert.equal(input.groundTruth, undefined);
+  assert.equal(baselineContainsSecretAnswer(input), false);
+  assert.equal(validateHealthBenchAgentInput({ definition, input }).valid, true);
+  assert.equal(validateHealthBenchAgentInput({ definition, input: { ...input, evidence: { ...input.evidence, snapshotHash: "0xwrong" } } }).valid, false);
+  const providerTask = healthBenchProviderTask(definition, { jobId: 701 });
+  assert.equal(providerTask.jobId, 701);
+  assert.equal(providerTask.authoritativeSnapshot.blockHash, frozenSnapshot.blockHash);
+  assert.equal(providerTask.automaticActionTaken, false);
+  assert.equal(baselineContainsSecretAnswer(providerTask), false);
+  const runDefinition = healthBenchRunDefinition(definition);
+  assert.equal(runDefinition.id, "HealthBench_v1");
+  assert.equal(runDefinition.evaluator.version, "health-factor-deterministic-v1");
+  assert.equal(runDefinition.control.sameFrozenEvidence, true);
 });
 
 test("human baseline preserves raw submission and server timing without evaluation", () => {

@@ -1,4 +1,4 @@
-import { contentHashes, id, nowIso } from "../core.mjs";
+import { canonicalJson, contentHashes, id, nowIso } from "../core.mjs";
 import { CATEGORIES } from "../domain.mjs";
 import { validateAuthoritativeVenusSnapshot } from "./venus.mjs";
 import { REFERENCE_CHAIN_ID, REFERENCE_ORIGIN } from "./constants.mjs";
@@ -6,6 +6,7 @@ import { REFERENCE_CHAIN_ID, REFERENCE_ORIGIN } from "./constants.mjs";
 export const HEALTH_BENCHMARK_ID = "HealthBench_v1";
 export const HEALTH_BENCHMARK_VERSION = "1.0.0";
 export const HEALTH_EVALUATOR_VERSION = "health-factor-deterministic-v1";
+export const HEALTH_CONTROL_VERSION = "health-factor-control-v1";
 
 const REQUIRED_HUMAN_FIELDS = Object.freeze([
   "positionFacts",
@@ -19,6 +20,16 @@ function assertSnapshot(snapshot) {
   const result = validateAuthoritativeVenusSnapshot(snapshot);
   if (!result.valid) throw new Error(`HealthBench requires an authoritative Venus snapshot: ${result.errors.join(", ")}`);
   if (!snapshot.asOfBlock || !snapshot.blockHash || !snapshot.blockTimestamp) throw new Error("HealthBench requires a frozen block number, block hash, and timestamp.");
+}
+
+function assertFrozenDefinition(definition) {
+  if (!definition || definition.immutable !== true || definition.benchmarkId !== HEALTH_BENCHMARK_ID || definition.version !== HEALTH_BENCHMARK_VERSION) {
+    throw new Error("An immutable HealthBench_v1 definition is required.");
+  }
+  assertSnapshot(definition.frozenEvidence?.snapshot);
+  if (definition.frozenEvidence.snapshot.account.toLowerCase() !== definition.position?.account?.toLowerCase()) {
+    throw new Error("HealthBench frozen snapshot and position account do not match.");
+  }
 }
 
 export function createHealthBenchDefinition({ snapshot, account, createdAt = nowIso(), sourceUrls = [], priorSnapshot = null } = {}) {
@@ -89,6 +100,100 @@ export function publicHealthBenchSource(definition) {
     priorRawOnchainEvidence: definition.frozenEvidence.priorSnapshot,
     disclosure: "Raw authoritative reads only. No health classification, recommendation, evaluator result, or agent output is included.",
   };
+}
+
+/**
+ * Build the only benchmark-bound input that may be sent to a provider.
+ * It contains the frozen protocol evidence and task contract, never the human
+ * submission, evaluator result, ground truth, or any other prior answer.
+ */
+export function healthBenchAgentInput(definition) {
+  assertFrozenDefinition(definition);
+  const snapshot = structuredClone(definition.frozenEvidence.snapshot);
+  const priorSnapshot = definition.frozenEvidence.priorSnapshot ? structuredClone(definition.frozenEvidence.priorSnapshot) : null;
+  return {
+    benchmarkId: HEALTH_BENCHMARK_ID,
+    version: HEALTH_BENCHMARK_VERSION,
+    chain: structuredClone(definition.chain),
+    position: structuredClone(definition.position),
+    task: {
+      question: definition.task.question,
+      expectedOutputSchema: [...definition.task.expectedOutputSchema],
+      permittedInformationSources: [...definition.task.permittedInformationSources],
+      prohibitedAssistance: [...definition.task.prohibitedAssistance],
+    },
+    evidence: {
+      snapshot,
+      priorSnapshot,
+      snapshotHash: contentHashes(snapshot).keccak256,
+      priorSnapshotHash: priorSnapshot ? contentHashes(priorSnapshot).keccak256 : null,
+    },
+  };
+}
+
+/**
+ * Adapt the frozen benchmark input to the reference seller's task schema.
+ * This is deliberately separate from the public packet so the provider gets
+ * exactly the same snapshot while the human baseline remains out of scope.
+ */
+export function healthBenchProviderTask(definition, { jobId = null } = {}) {
+  const input = healthBenchAgentInput(definition);
+  return {
+    benchmarkId: input.benchmarkId,
+    version: input.version,
+    jobId: jobId === null ? null : Number(jobId),
+    account: input.position.account,
+    protocol: String(input.position.protocol).toLowerCase(),
+    poolType: input.position.poolType,
+    authoritativeSnapshot: input.evidence.snapshot,
+    previousSnapshot: input.evidence.priorSnapshot,
+    automaticActionTaken: false,
+  };
+}
+
+export function healthBenchControlTask(definition) {
+  const task = healthBenchProviderTask(definition);
+  return {
+    account: task.account,
+    protocol: task.protocol,
+    poolType: task.poolType,
+    authoritativeSnapshot: task.authoritativeSnapshot,
+    previousSnapshot: task.previousSnapshot,
+  };
+}
+
+/**
+ * Framework-compatible metadata for a real HealthBench run. The evaluator is
+ * custom because the Health Guard deliverable is structured protocol evidence,
+ * not the five prose fields used by the human baseline form.
+ */
+export function healthBenchRunDefinition(definition) {
+  const input = healthBenchAgentInput(definition);
+  return {
+    id: HEALTH_BENCHMARK_ID,
+    version: HEALTH_BENCHMARK_VERSION,
+    category: definition.category,
+    task: definition.task.question,
+    control: {
+      id: HEALTH_CONTROL_VERSION,
+      description: "Compute the same frozen Venus position assessment independently with no agent and no capital movement.",
+      sameFrozenEvidence: true,
+      inputHash: contentHashes(healthBenchControlTask(definition)).keccak256,
+    },
+    expectedOutputFields: [],
+    requiredAgentFields: [],
+    input,
+    evaluator: { version: HEALTH_EVALUATOR_VERSION, mode: "healthbench-specific", baselineRequired: true },
+  };
+}
+
+export function validateHealthBenchAgentInput({ definition, input } = {}) {
+  const errors = [];
+  let expected = null;
+  try { expected = healthBenchAgentInput(definition); } catch (error) { errors.push(error.message); }
+  if (expected && canonicalJson(input) !== canonicalJson(expected)) errors.push("agent_input_does_not_match_frozen_definition");
+  if (baselineContainsSecretAnswer(input)) errors.push("agent_input_contains_forbidden_answer_key");
+  return { valid: errors.length === 0, errors, snapshotHash: expected?.evidence.snapshotHash || null };
 }
 
 export function createHumanBaselineAttempt({ benchmarkId, startedAt = nowIso() } = {}) {
