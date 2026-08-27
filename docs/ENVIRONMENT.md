@@ -60,6 +60,8 @@ Mainnet funds, a local BSC node, WSL, custom Solidity contracts, AWS AgentCore, 
 
 The repository may define names such as `CANNED_8004SCAN_API_KEY`, `CANNED_DATABASE_URL`, `CANNED_STORAGE_TOKEN`, and `CANNED_WALLET_ADDRESS`. It must never contain a private key, wallet keystore, seed phrase, deployment secret, or an API key. BNB Agent Studio's `WALLET_PASSWORD` and provider credentials belong in a local secret manager or ignored environment file only.
 
+Directive #7 also adds an ignored local first-party provider keystore under `data/state/reference-provider-wallets/` with a separate password reference at `data/state/reference-provider-wallet-password.txt`. The generated public address is metadata; the keystore and password reference are not tracked or printed with secret contents. The reference seller remains blocked until the operator explicitly enables the BSC testnet write flag.
+
 ## Reproducibility record
 
 Checks performed for this slice:

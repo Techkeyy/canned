@@ -1,6 +1,6 @@
 # Architecture and Marketplace Alpha
 
-This is the implemented Marketplace Alpha slice. It keeps the proven discovery, evidence, benchmark, and protocol boundaries while adding four category shelves, evidence ladder projections, comparison, protocol-aware activation review, negative history, and conservative scheduler policy.
+This is the implemented Marketplace Alpha plus Reference Fleet Foundation slice. It keeps the proven discovery, evidence, benchmark, and protocol boundaries while adding four category shelves, evidence ladder projections, comparison, protocol-aware activation review, negative history, conservative scheduler policy, and an explicitly first-party Health Factor reference module.
 
 ## Recommended stack
 
@@ -47,6 +47,7 @@ canned/
   web/inspection.html          Marketplace Alpha surface
   src/marketplace/             agent projections, trust states, metrics, adapters
   src/scheduler/               paused repeat-run safety policy
+  src/reference/               first-party fleet specs, Health Factor task, Venus reads, seller runtime, Altana policy checks
   data/inventory/              verified discovery artifact
 ```
 
@@ -103,6 +104,8 @@ Adapters isolate protocol differences:
 
 `AuthorityGrant`: optional Altana session public key, calls allowlist, spend cap, expiry, registration transaction, and revoke transaction.
 
+`ReferenceFleetSpec`: explicit `CANNED_REFERENCE` origin, category task contract, implementation status, provider configuration state, and bounded execution policy. Reference records never masquerade as third-party identities.
+
 `Artifact`: canonical media type, content hash, storage URI, redaction policy, and retention status.
 
 ## State model
@@ -124,6 +127,8 @@ The canonical manifest is content-addressed. A keccak256 commitment can be place
 The current external inventory is 32 detailed BSC testnet records from a bounded 70-result semantic search. Weigh identities 1923, 1925, and 1926 are discoverable but quarantined from new paid attempts. No non-Weigh candidate currently passes all fresh endpoint, quote, signature, category, and ERC-8183 hire guards. `RebalanceBench v1` still declares a fixed initial LP range, pool, observation window, slippage/gas limits, and decision policy. The control holds the position unchanged over the same window. Metrics include time in range, fees earned, gas and agent cost, execution failures, price impact, and inventory drift.
 
 If the PancakeSwap endpoint is not available for reproducible testnet execution, use the official BNB Agent Studio/SDK seller example only as an infrastructure smoke test and keep the Rebalancing listing blocked. Do not turn the example into a category claim.
+
+The first-party Health Factor vertical uses the Venus Core `getAccountLiquidity` read seam and requires authoritative position data. It is recommendation-only, preserves raw protocol fields, distinguishes endpoint from worker liveness, and returns unknown when the data source is not authoritative. The seller path is wired to the official SDK watcher and `submitResult` primitives but is blocked until a separate testnet provider wallet and explicit operator confirmation exist.
 
 ## Failure behavior
 

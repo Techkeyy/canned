@@ -13,6 +13,8 @@
     "inventory": "node scripts/run-inventory.mjs",
     "benchmark:fixture": "node scripts/run-fixture.mjs",
     "wallet:create": "node scripts/create-testnet-wallet.mjs",
+    "reference:wallet:create": "node scripts/create-reference-provider.mjs",
+    "reference:agent": "node scripts/run-reference-agent.mjs",
     "wallet:check": "node scripts/check-testnet-funding.mjs",
     "control:weigh-family": "node scripts/analyze-weigh-family.mjs",
     "control:protocol": "node scripts/run-protocol-control.mjs",
@@ -21,6 +23,7 @@
     "serve": "node src/server.mjs"
   },
   "dependencies": {
+    "@altananetwork/sdk": "0.7.1",
     "@bnbagent/sdk": "0.5.4"
   }
 }

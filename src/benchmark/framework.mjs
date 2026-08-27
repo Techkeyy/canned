@@ -104,7 +104,7 @@ export async function runBenchmark({ agent, benchmark, input, agentOutput, contr
       fixture: runType === RUN_TYPES.FIXTURE,
       infrastructureSmokeTest: runType === RUN_TYPES.INFRASTRUCTURE_SMOKE_TEST,
     },
-    agent: { identity: agent.identity, name: agent.name, category: benchmark.category },
+    agent: { identity: agent.identity, name: agent.name, category: benchmark.category, origin: agent.origin || "THIRD_PARTY_DISCOVERY" },
     benchmark: { id: benchmark.id, version: benchmark.version, category: benchmark.category, task: benchmark.task, control: benchmark.control },
     manifest: { hash: manifest.manifestHash, offchainContentHash: manifest.offchainContentHash, evidence: manifestEvidence, level: protocolJob?.precommitBinding?.level || manifest.evidenceLevel, publicPrecommitAnchor: protocolJob?.precommitBinding?.method || manifest.publicPrecommitAnchor },
     artifacts: { agentOutput: agentEvidence, controlOutput: controlEvidence },

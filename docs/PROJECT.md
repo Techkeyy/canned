@@ -1,6 +1,6 @@
 # Canned project understanding
 
-Status: Directive #6 Marketplace Alpha. Directive #3 and Directive #4 have two real BSC testnet paid timeout/refund records; the current inventory still has no successful non-Weigh external delivery.
+Status: Directive #7 Reference Fleet Foundation. Directive #3 and Directive #4 have three real BSC testnet paid timeout/refund records; the current inventory still has no successful non-Weigh external delivery. The first-party Health Factor module is implemented but has not yet produced a live paid observation.
 
 ## One-sentence product
 
@@ -77,7 +77,7 @@ At least one credible BSC agent endpoint can be resolved and invoked for a repro
 
 MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, readiness/cooldown selection, and two real paid timeout/refund records; it does not yet have a submitted provider deliverable.
 
-Next: a non-Weigh external delivery or explicitly labelled Canned Reference Agent where external inventory remains unavailable, followed by Altana scoped sessions, verified x402/B402 support where applicable, and three qualifying TermiX pairs.
+Next: configure and fund the explicitly labelled Health Factor reference seller, register its BSC testnet identity, complete one operator-confirmed ERC-8183 run, then perform an uncontaminated human baseline. Continue non-Weigh discovery in parallel, followed by the Altana session adapter, verified x402/B402 support where applicable, and three qualifying TermiX pairs.
 
 Non-goals for this milestone: mainnet execution, a general-purpose wallet, an opaque agent ranking model, a fake multi-agent directory, automatic investment advice, unbounded approvals, and a claim that benchmark results guarantee profit or safety.
 

@@ -1,6 +1,6 @@
 # Altana Leash plan
 
-Status: architecture review only. Altana is not integrated in Directive #6.
+Status: Directive #7 policy boundary and official `@altananetwork/sdk@0.7.1` adapter are implemented. No session write was performed because no admin wallet/session grant was explicitly authorized.
 
 ## Intended boundary
 
@@ -23,10 +23,10 @@ The session request should bind:
 4. The worker executes only allowlisted calls and records session, transaction, and revoke references in Evidence.
 5. The session expires at the task deadline or is revoked after completion, failure, or operator pause.
 
-The current ERC-8183 buyer path remains a separate adapter. It must not silently become an Altana session or imply that an ERC-8183 escrow controls unrelated agent calls.
+The current ERC-8183 buyer path remains a separate adapter. It must not silently become an Altana session or imply that an ERC-8183 escrow controls unrelated agent calls. `src/reference/altana.mjs` now builds a BNB testnet policy with explicit Commerce/Router addresses, exact ERC-8183 method signatures, a daily U-token cap, and an expiry. It deliberately excludes token approval from the session; approval must be a separate exact-amount buyer operation.
 
 ## Implementation sequence
 
-First add an `AuthorityProvider` interface with `prepare`, `grant`, `inspect`, `revoke`, and `execute` methods. Implement a read-only mock for tests only. Then integrate the official Altana TypeScript SDK, testnet Keystore registration, session key, call allowlist, spend cap, expiry, and revocation transaction. The UI should expose the actual grant state, not decorative authority controls.
+`AltanaAuthorityProvider` now exposes `prepare`, `grant`, `inspect`, `revoke`, and `execute` boundaries, and `createOfficialAltanaAuthority` selects the official SDK’s `BNB_TESTNET` client with chain ID 97. The policy validation remains independent and testable. The live adapter must persist the exact serialized session, verify the returned grant transaction, enforce byte-exact session calls, show cap/expiry/allowlist/revocation, and record all session evidence. The UI should expose the actual grant state, not decorative authority controls.
 
 No mainnet authority, user-fund movement, or production skill execution belongs in this step. Altana sessions must be independently audited before they are allowed to widen any Canned category beyond read-only or bounded testnet actions.
