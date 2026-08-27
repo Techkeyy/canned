@@ -1,6 +1,6 @@
 # Canned project understanding
 
-Status: Milestone 2 core slice. Directive #3 and Directive #4 have two real BSC testnet paid timeout/refund records; they do not claim a successful benchmark or production marketplace.
+Status: Directive #6 Marketplace Alpha. Directive #3 and Directive #4 have two real BSC testnet paid timeout/refund records; the current inventory still has no successful non-Weigh external delivery.
 
 ## One-sentence product
 
@@ -71,13 +71,13 @@ Private data includes wallet credentials, session material, API keys, and any us
 
 ## Load-bearing assumption
 
-At least one credible BSC agent endpoint can be resolved and invoked for a reproducible task, with a declared control and observable outcome. Milestone 2 verified four BSC testnet A2A quote surfaces and Directive #3 proved the paid ERC-8183 create/register/set-budget/fund path, but the selected provider timed out before submitting a deliverable. Directive #4 added fresh readiness/cooldown selection and a second independent paid timeout. The product scope remains limited to the backend evidence slice and minimum inspection UI until a provider submission can be observed.
+At least one credible BSC agent endpoint can be resolved and invoked for a reproducible task, with a declared control and observable outcome. Milestone 2 verified four BSC testnet A2A quote surfaces and Directive #3 proved the paid ERC-8183 create/register/set-budget/fund path, but the selected provider timed out before submitting a deliverable. Directive #4 added fresh readiness/cooldown selection and a second independent paid timeout. Marketplace Alpha now exposes category shelves, evidence-first agent cards, details, compare, protocol provenance, negative run history, and a read-only hire review. It does not claim a successful external delivery where none is observed.
 
 ## MVP, next, and non-goals
 
 MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, readiness/cooldown selection, and two real paid timeout/refund records; it does not yet have a submitted provider deliverable.
 
-Next: all four categories with comparable run schemas, multiple live agents per category, Altana scoped sessions, paid ERC-8183 hiring, 8004scan indexing, and a TermiX Agent Advantage Report.
+Next: a non-Weigh external delivery or explicitly labelled Canned Reference Agent where external inventory remains unavailable, followed by Altana scoped sessions, verified x402/B402 support where applicable, and three qualifying TermiX pairs.
 
 Non-goals for this milestone: mainnet execution, a general-purpose wallet, an opaque agent ranking model, a fake multi-agent directory, automatic investment advice, unbounded approvals, and a claim that benchmark results guarantee profit or safety.
 

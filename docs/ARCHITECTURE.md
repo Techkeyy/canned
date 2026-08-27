@@ -1,6 +1,6 @@
-# Architecture and vertical slice
+# Architecture and Marketplace Alpha
 
-This is the implemented Milestone 2 core slice. It is intentionally small enough to prove discovery, evidence, benchmark, and protocol boundaries before adding marketplace breadth.
+This is the implemented Marketplace Alpha slice. It keeps the proven discovery, evidence, benchmark, and protocol boundaries while adding four category shelves, evidence ladder projections, comparison, protocol-aware activation review, negative history, and conservative scheduler policy.
 
 ## Recommended stack
 
@@ -41,10 +41,12 @@ canned/
   src/benchmark/               four definitions and deterministic runner
   src/persistence/             local persistent index and evidence store
   src/doctor.mjs               environment and write-safety diagnostics
-  src/server.mjs               minimal inspection API/page
+  src/server.mjs               marketplace and inspection API/page
   scripts/                     inventory and fixture entrypoints
   tests/                       deterministic and failure-path tests
-  web/inspection.html          minimum inspection surface
+  web/inspection.html          Marketplace Alpha surface
+  src/marketplace/             agent projections, trust states, metrics, adapters
+  src/scheduler/               paused repeat-run safety policy
   data/inventory/              verified discovery artifact
 ```
 
@@ -81,11 +83,21 @@ Adapters isolate protocol differences:
 
 ## Data model at a glance
 
-`Agent`: identity reference, endpoint, protocol, category capabilities, declared constraints, current health, and source metadata.
+`Agent`: canonical identity, owner/provider, categories, metadata, services, and current availability.
+
+`ServiceCapability`: advertised protocol, endpoint, Canned-verified status, successful-use status, and last probe. Advertised is never silently promoted to verified.
+
+`HireAttempt`: agent, protocol, price, start/end, status, payment provenance, and failure reason. It remains separate from benchmark and protocol-job state.
 
 `Benchmark`: versioned task definition, category, initial-state rules, control definition, metric definitions, evaluator version, and task hash.
 
-`Run`: agent, benchmark version, inputs hash, control version, start/deadline, internal state, protocol references, output artifact references, metric result, and final classification.
+`BenchmarkRun`: agent, benchmark version, inputs hash, control version, start/deadline, internal state, protocol references, output artifacts, metric result, and final classification.
+
+`ControlRun`: paired baseline output and timing. It is not an agent listing or public paid job.
+
+`TrackRecord`: derived only from qualifying observed deliveries and benchmarks; it never uses fixtures.
+
+`AgentStatus`: derived from current probes and retained history, including timeout and unavailable states.
 
 `Job`: optional ERC-8183 client/provider/evaluator, budget token, job ID, payment transaction, description hash, deliverable hash, and protocol state.
 
@@ -109,7 +121,7 @@ The canonical manifest is content-addressed. A keccak256 commitment can be place
 
 ## First vertical slice
 
-The current selection hypothesis is Rebalancing through `weighrange-agent`, BSC testnet identity 1923, selected from a live 8004scan inventory after a reachable A2A card and accepted quote probe. This is not yet a real benchmark selection because no Canned buyer wallet has funded an ERC-8183 job. `RebalanceBench v1` declares a fixed initial LP range, pool, observation window, slippage/gas limits, and decision policy. The control holds the position unchanged over the same window. Metrics include time in range, fees earned, gas and agent cost, execution failures, price impact, and inventory drift. It must not reduce success to raw return.
+The current external inventory is 32 detailed BSC testnet records from a bounded 70-result semantic search. Weigh identities 1923, 1925, and 1926 are discoverable but quarantined from new paid attempts. No non-Weigh candidate currently passes all fresh endpoint, quote, signature, category, and ERC-8183 hire guards. `RebalanceBench v1` still declares a fixed initial LP range, pool, observation window, slippage/gas limits, and decision policy. The control holds the position unchanged over the same window. Metrics include time in range, fees earned, gas and agent cost, execution failures, price impact, and inventory drift.
 
 If the PancakeSwap endpoint is not available for reproducible testnet execution, use the official BNB Agent Studio/SDK seller example only as an infrastructure smoke test and keep the Rebalancing listing blocked. Do not turn the example into a category claim.
 

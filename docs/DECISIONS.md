@@ -59,3 +59,27 @@ Reason: the evidence boundary and failure behavior can be tested now without pre
 Decision: use `@bnbagent/sdk@0.5.4` for ERC-8183 buyer construction and lifecycle calls. Keep writes disabled unless the network is exactly BSC testnet, the explicit testnet-write flag is true, and a dedicated wallet configuration is present. Mainnet writes always fail closed.
 
 Reason: this follows the current official TypeScript SDK surface while keeping the first buyer integration independent of the unresolved Studio CLI installation. No SDK call is allowed to turn a quote probe or fixture into a public benchmark result.
+
+## ADR-013: Trust is an evidence ladder
+
+Decision: expose LISTED, ENDPOINT VERIFIED, QUOTE VERIFIED, HIRE ATTEMPTED, DELIVERY OBSERVED, BENCHMARKED, and REPEATEDLY OBSERVED as separate derived states. Do not compress them into a composite Canned score until sample methodology is defensible.
+
+Reason: a live endpoint or verified quote is useful discovery evidence, but it is not proof that a provider delivered work. Unknown values remain unknown rather than becoming zero.
+
+## ADR-014: Hiring is protocol-aware
+
+Decision: the marketplace records advertised, Canned-verified, and successfully used protocol capabilities separately. A Hire action is enabled only for a verified adapter with a bounded testnet activation path. ERC-8183, x402/B402, A2A, HTTP task APIs, and MCP are not interchangeable.
+
+Reason: the Weigh control diagnosis showed that nominal ERC-8183 compatibility and accepted `notify_funded` do not prove delivery. The marketplace must represent actual activation semantics.
+
+## ADR-015: Quarantine implementation families, not identities forever
+
+Decision: keep Weigh-family identities 1923, 1925, and 1926 discoverable with factual failure history, but block new paid attempts while the systemic guard is active. This is not a permanent blacklist or a claim of misconduct.
+
+## ADR-016: Conservative repeat scheduler
+
+Decision: provide a paused scheduler policy with testnet-only chain guard, 1.0 U aggregate cap, 0.25 U daily cap, one attempt per provider, 24-hour failure cooldown, and no automatic retry. Every future run requires a fresh precommit.
+
+## ADR-017: Reference agents are explicit fallback inventory
+
+Decision: build a Canned Reference Agent only when a fresh bounded inventory review leaves a required category without a defensible external path. Reference agents get separate identities and labels and cannot count as third-party agent diversity.
