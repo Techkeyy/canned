@@ -80,6 +80,8 @@ await new Promise((resolve) => server.listen(port, bindHost, resolve));
 console.log(JSON.stringify({ status: "public_reference_service_ready", network: REFERENCE_NETWORK, chainId: REFERENCE_CHAIN_ID, providerAddress: wallet.address, identity: runtime.spec.identity, protocol: "ERC-8183", endpoint: agentUrl, storage: seller.storageMode, fulfillmentEnabled, secretOutput: "none" }, null, 2));
 
 const abort = new AbortController();
+const heartbeatTimer = setInterval(() => runtime.refreshHeartbeats(), 30_000);
+heartbeatTimer.unref?.();
 process.on("SIGINT", () => abort.abort());
 process.on("SIGTERM", () => abort.abort());
 if (fulfillmentEnabled) {
@@ -87,5 +89,6 @@ if (fulfillmentEnabled) {
 } else {
   await new Promise((resolve) => abort.signal.addEventListener("abort", resolve, { once: true }));
 }
+clearInterval(heartbeatTimer);
 wallet.destroy();
 server.close();

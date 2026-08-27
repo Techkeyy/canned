@@ -58,6 +58,21 @@ test("reference runtime separates endpoint liveness from worker heartbeat", asyn
   assert.equal(runtime.metrics().jobsWorked, 1);
 });
 
+test("reference runtime refreshes existing worker and watcher heartbeats", () => {
+  let now = 1_800_000_000_000;
+  const runtime = new ReferenceAgentRuntime({ spec: REFERENCE_AGENT_SPECS[0], clock: () => now, workerStaleMs: 1_000, taskHandler: async () => ({ ok: true }) });
+  runtime.heartbeat({ state: "idle" });
+  runtime.watcherHeartbeat({ state: "watching" });
+  now += 1_001;
+  assert.equal(runtime.readiness().worker.alive, false);
+  assert.equal(runtime.readiness().watcher.alive, false);
+  runtime.refreshHeartbeats();
+  assert.equal(runtime.readiness().worker.alive, true);
+  assert.equal(runtime.readiness().watcher.alive, true);
+  assert.equal(runtime.readiness().worker.status, "idle");
+  assert.equal(runtime.readiness().watcher.status, "watching");
+});
+
 test("seller path verifies a funded job, computes the task, and submits the deliverable", async () => {
   const calls = [];
   const runtime = new ReferenceAgentRuntime({ spec: REFERENCE_AGENT_SPECS[0], taskHandler: ({ task, jobId }) => buildHealthFactorDeliverable({ task, jobId }) });

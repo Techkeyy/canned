@@ -24,6 +24,13 @@ export class ReferenceAgentRuntime {
     return this.watcher;
   }
 
+  refreshHeartbeats() {
+    const heartbeatAt = new Date(this.clock()).toISOString();
+    if (this.worker.heartbeatAt) this.worker = { ...this.worker, heartbeatAt };
+    if (this.watcher.heartbeatAt) this.watcher = { ...this.watcher, heartbeatAt };
+    return { worker: this.worker, watcher: this.watcher };
+  }
+
   health() {
     return { ok: true, origin: REFERENCE_ORIGIN, identity: this.spec.identity, network: REFERENCE_NETWORK, chainId: REFERENCE_CHAIN_ID, endpointAlive: true, startedAt: this.startedAt };
   }
