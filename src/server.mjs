@@ -15,12 +15,16 @@ import { completeHumanBaseline, createHumanBaselineAttempt, publicHealthBenchPac
 import { buildRangeKeeperDeliverable } from "./reference/range-keeper.mjs";
 import { completeRebalanceBaseline, createRebalanceBaselineAttempt, publicRebalanceBenchPacket, publicRebalanceBenchSource, rebalanceContainsSecretAnswer, REBALANCE_BENCHMARK_ID } from "./reference/rebalance-benchmark.mjs";
 import { summarizeRangeTrackRecord } from "./reference/range-track-record.mjs";
+import { buildYieldScoutDeliverable } from "./reference/yield-scout.mjs";
+import { completeYieldBaseline, createYieldBaselineAttempt, publicYieldBenchPacket, publicYieldBenchSource, yieldContainsSecretAnswer, YIELD_BENCHMARK_ID } from "./reference/yield-benchmark.mjs";
+import { summarizeYieldTrackRecord } from "./reference/yield-track-record.mjs";
 import { contentHashes } from "./core.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
 const baselineHtml = await readFile(path.resolve(process.cwd(), "web/health-baseline.html"), "utf8");
 const rebalanceBaselineHtml = await readFile(path.resolve(process.cwd(), "web/rebalance-baseline.html"), "utf8");
+const yieldBaselineHtml = await readFile(path.resolve(process.cwd(), "web/yield-baseline.html"), "utf8");
 const port = Number(process.env.PORT || 8787);
 const healthFactorRuntime = new ReferenceAgentRuntime({
   spec: referenceSpec("health-factor"),
@@ -29,6 +33,10 @@ const healthFactorRuntime = new ReferenceAgentRuntime({
 const rangeKeeperRuntime = new ReferenceAgentRuntime({
   spec: referenceSpec("rebalancing"),
   taskHandler: ({ jobId, task }) => buildRangeKeeperDeliverable({ jobId, task }),
+});
+const yieldScoutRuntime = new ReferenceAgentRuntime({
+  spec: referenceSpec("yield"),
+  taskHandler: ({ jobId, task }) => buildYieldScoutDeliverable({ jobId, task }),
 });
 
 async function referenceProviderAddress() {
@@ -60,6 +68,22 @@ async function rangeIdentityRecord() {
   return store.loadJson("state/reference-range-identity.json", null);
 }
 
+async function yieldBenchDefinition() {
+  return store.loadJson("state/yieldbench-v1.json", null);
+}
+
+async function yieldBaseline() {
+  return store.loadJson("state/yield-baseline.json", null);
+}
+
+async function yieldIdentityRecord() {
+  return store.loadJson("state/reference-yield-identity.json", null);
+}
+
+async function yieldDecisions() {
+  return (await store.loadJson("state/yield-decisions.json", { decisions: [] })).decisions || [];
+}
+
 async function rangeDecisions() {
   return (await store.loadJson("state/range-decisions.json", { decisions: [] })).decisions || [];
 }
@@ -78,13 +102,13 @@ async function snapshot() {
     store.loadJson("inventory/verified-candidates.json", { candidates: [], categorySummary: {} }),
     store.loadRuns(),
   ]);
-  const [identityRecord, rangeRecord, baseline, rangeBaselineRecord] = await Promise.all([referenceIdentityRecord(), rangeIdentityRecord(), humanBaseline(), rebalanceBaseline()]);
+  const [identityRecord, rangeRecord, yieldRecord, baseline, rangeBaselineRecord, yieldBaselineRecord] = await Promise.all([referenceIdentityRecord(), rangeIdentityRecord(), yieldIdentityRecord(), humanBaseline(), rebalanceBaseline(), yieldBaseline()]);
   const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({
     endpointBase: `http://127.0.0.1:${port}`,
     providerAddress: await referenceProviderAddress(),
     allowLocalProbe: false,
-    identityRecords: { "health-factor": identityRecord, rebalancing: rangeRecord },
-    baselineSealedByKey: { "health-factor": baseline?.status === "submitted", rebalancing: rangeBaselineRecord?.status === "submitted" },
+    identityRecords: { "health-factor": identityRecord, rebalancing: rangeRecord, yield: yieldRecord },
+    baselineSealedByKey: { "health-factor": baseline?.status === "submitted", rebalancing: rangeBaselineRecord?.status === "submitted", yield: yieldBaselineRecord?.status === "submitted" },
   })];
   const marketplace = buildMarketplaceSnapshot({ report: { ...report, candidates }, runs });
   return { report: { ...report, candidates }, runs, marketplace, metrics: deriveMarketplaceMetrics({ candidates, runs }) };
@@ -110,6 +134,11 @@ const server = createServer(async (request, response) => {
     if (request.url === "/" || request.url === "/inspection") {
       response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       response.end(html);
+      return;
+    }
+    if (request.url === "/baseline/yield") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(yieldBaselineHtml);
       return;
     }
     if (request.url === "/baseline/rebalance") {
@@ -168,6 +197,66 @@ const server = createServer(async (request, response) => {
         const expiry = Math.floor(Date.now() / 1000) + 900;
         json(response, 200, { status: "policy_ready", officialDeployments: official, policy: buildAltanaSessionPolicy({ commerceAddress, routerAddress, expiry, maxSpendRaw: process.env.CANNED_REFERENCE_MAX_SPEND_RAW || "1000000000000000" }) });
       } catch (error) { json(response, 422, { status: "blocked", reason: error.message }); }
+      return;
+    }
+    if (url.pathname === "/api/reference/yield" && request.method === "GET") { json(response, 200, yieldScoutRuntime.health()); return; }
+    if (url.pathname === "/api/reference/yield/readiness") { json(response, 200, yieldScoutRuntime.readiness()); return; }
+    if (url.pathname === "/api/reference/yield/metrics") { json(response, 200, yieldScoutRuntime.metrics()); return; }
+    if (url.pathname === "/api/reference/yield/track-record") {
+      const definition = await yieldBenchDefinition();
+      json(response, 200, {
+        agent: "Canned Yield Scout",
+        venue: "Venus",
+        benchmark: definition ? { id: definition.benchmarkId, version: definition.version, positionAsset: definition.position.assetSymbol, positionAmount: definition.position.amount, horizonDays: definition.horizonDays, marketsCompared: definition.frozenEvidence.snapshot.markets.length, referenceBlock: definition.referenceBlock, marketDataChain: definition.executionBoundary.marketDataChain, marketDataAccess: definition.executionBoundary.marketDataAccess } : null,
+        latestResult: null,
+        ...summarizeYieldTrackRecord({ decisions: await yieldDecisions() }),
+      });
+      return;
+    }
+    if (url.pathname === "/api/baseline/yield" && request.method === "GET") {
+      const definition = await yieldBenchDefinition();
+      if (!definition) { json(response, 404, { status: "not_ready", reason: "YieldBench v1 has not been frozen." }); return; }
+      const current = await yieldBaseline();
+      const packet = publicYieldBenchPacket(definition);
+      packet.baseline = { ...packet.baseline, status: current?.status || "not_started", attemptId: current?.attemptId || null, startedAt: current?.startedAt || null, sourceAvailable: current?.status === "started" };
+      json(response, 200, packet);
+      return;
+    }
+    if (url.pathname === "/api/baseline/yield/start" && request.method === "POST") {
+      const definition = await yieldBenchDefinition();
+      if (!definition) { json(response, 404, { status: "not_ready", reason: "YieldBench v1 has not been frozen." }); return; }
+      const current = await yieldBaseline();
+      if (current?.status === "submitted") { json(response, 409, { status: "already_submitted", attemptId: current.attemptId }); return; }
+      const attempt = current?.status === "started" ? current : createYieldBaselineAttempt({ benchmarkId: definition.benchmarkId });
+      if (!current || current.status !== "started") await store.saveJson("state/yield-baseline.json", attempt);
+      const packet = publicYieldBenchPacket(definition);
+      packet.baseline = { ...packet.baseline, status: "started", attemptId: attempt.attemptId, startedAt: attempt.startedAt, sourceAvailable: true };
+      json(response, 200, packet);
+      return;
+    }
+    if (url.pathname === "/api/baseline/yield/source" && request.method === "GET") {
+      const definition = await yieldBenchDefinition();
+      const current = await yieldBaseline();
+      if (!definition || current?.status !== "started") { json(response, 403, { status: "blocked", reason: "Start the baseline before requesting the frozen source packet." }); return; }
+      const source = publicYieldBenchSource(definition);
+      if (yieldContainsSecretAnswer(source)) { json(response, 500, { status: "blocked", reason: "The source packet failed its contamination check." }); return; }
+      json(response, 200, source);
+      return;
+    }
+    if (url.pathname === "/api/baseline/yield/submit" && request.method === "POST") {
+      const definition = await yieldBenchDefinition();
+      const current = await yieldBaseline();
+      if (!definition || current?.status !== "started") { json(response, 403, { status: "blocked", reason: "A started YieldBench baseline is required." }); return; }
+      const incoming = await readJsonBody(request);
+      const completed = completeYieldBaseline({ attempt: current, submission: incoming.body, submittedAt: nowIso(), elapsedMs: Math.max(0, Date.now() - Date.parse(current.startedAt)) });
+      completed.rawSubmissionJson = incoming.raw;
+      completed.groundTruth = null;
+      completed.agentOutput = null;
+      const hashes = contentHashes(incoming.raw);
+      completed.evidence = { sha256: hashes.sha256, keccak256: hashes.keccak256, preservationStatus: "exact_raw_response_preserved_content_addressed" };
+      await store.saveJson("state/yield-baseline.json", completed);
+      await store.saveEvidence({ kind: "yieldbench_human_baseline", benchmarkId: YIELD_BENCHMARK_ID, attemptId: completed.attemptId, precommit: definition.precommit, startedAt: completed.startedAt, submittedAt: completed.submittedAt, elapsedMs: completed.elapsedMs, rawSubmissionJson: completed.rawSubmissionJson, rawSubmissionSha256: hashes.sha256, rawSubmissionKeccak256: hashes.keccak256, agentOutputBeforeSubmission: false, groundTruthBeforeSubmission: false });
+      json(response, 200, { status: "submitted", attemptId: completed.attemptId, benchmarkId: completed.benchmarkId, submittedAt: completed.submittedAt, elapsedMs: completed.elapsedMs, evidenceSha256: hashes.sha256, preserved: true, evaluated: false, agentRun: "not_started" });
       return;
     }
     if (url.pathname === "/api/reference/rebalancing" && request.method === "GET") { json(response, 200, rangeKeeperRuntime.health()); return; }

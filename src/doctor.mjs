@@ -29,7 +29,13 @@ function commandCheck(command, args = [], timeoutMs = 8_000) {
 export async function runDoctor({ env = process.env, print = true } = {}) {
   const network = env.CANNED_NETWORK || "bsc-testnet";
   const chainIdExpected = network === "bsc-mainnet" ? 56 : 97;
-  const rpcUrl = env.CANNED_RPC_URL || (network === "bsc-mainnet" ? "https://bsc-rpc.publicnode.com" : "https://bsc-testnet-rpc.publicnode.com");
+  // One endpoint going down should not report the whole environment as broken.
+  // The declared endpoints are tried in order and the first that answers wins.
+  const rpcCandidates = (network === "bsc-mainnet"
+    ? [env.CANNED_RPC_URL, env.RPC_URL_BSC_MAINNET, "https://bsc-rpc.publicnode.com", "https://bsc-dataseed1.bnbchain.org"]
+    : [env.CANNED_RPC_URL, env.RPC_URL_BSC_TESTNET, "https://bsc-testnet-rpc.publicnode.com", "https://bsc-prebsc-dataseed.bnbchain.org"]
+  ).filter(Boolean);
+  const rpcUrl = rpcCandidates[0];
   const checks = [];
   const add = (name, status, detail) => checks.push({ name, status, detail });
   add("environment", network === "bsc-testnet" ? "PASS" : network === "bsc-mainnet" ? "WARN" : "FAIL", `network=${network} expectedChainId=${chainIdExpected}`);
@@ -37,9 +43,22 @@ export async function runDoctor({ env = process.env, print = true } = {}) {
   if (safety.writesRequested && !safety.safe) add("write_safety", "FAIL", safety.errors.join(" "));
   else add("write_safety", "PASS", safety.writesRequested ? "explicit testnet writes with dedicated wallet configuration" : "writes disabled");
 
-  const rpc = await requestJson(rpcUrl, { method: "POST", body: { jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }, headers: { "Content-Type": "application/json" }, timeoutMs: 8_000 });
-  const chainIdActual = rpc.body?.result ? Number.parseInt(rpc.body.result, 16) : null;
-  add("rpc", rpc.ok && chainIdActual === chainIdExpected ? "PASS" : "FAIL", rpc.ok ? `chainId=${chainIdActual}` : rpc.error || `HTTP ${rpc.status}`);
+  let rpc = null;
+  let chainIdActual = null;
+  let answeringRpcUrl = null;
+  const rpcAttempts = [];
+  for (const candidate of rpcCandidates) {
+    const attempt = await requestJson(candidate, { method: "POST", body: { jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] }, headers: { "Content-Type": "application/json" }, timeoutMs: 8_000 });
+    const observed = attempt.body?.result ? Number.parseInt(attempt.body.result, 16) : null;
+    rpcAttempts.push({ url: candidate, ok: attempt.ok === true, chainId: observed });
+    if (attempt.ok && observed === chainIdExpected) { rpc = attempt; chainIdActual = observed; answeringRpcUrl = candidate; break; }
+    rpc = attempt;
+    chainIdActual = observed;
+  }
+  const rpcHealthy = Boolean(answeringRpcUrl);
+  add("rpc", rpcHealthy ? "PASS" : "FAIL", rpcHealthy
+    ? `chainId=${chainIdActual}${answeringRpcUrl === rpcCandidates[0] ? "" : ` via fallback ${answeringRpcUrl}`}`
+    : `no declared endpoint answered on chain ${chainIdExpected}; tried ${rpcAttempts.length}`);
 
   const store = new FileStore(env.CANNED_DATA_DIR);
   try { const storage = await store.probe(); add("storage", "PASS", `${storage.kind} root=${storage.root}`); } catch (error) { add("storage", "FAIL", error.message); }
@@ -56,7 +75,7 @@ export async function runDoctor({ env = process.env, print = true } = {}) {
   add("optional_agentcore_cli", agentcore.status, `optional AWS deployment tooling; ${agentcore.detail}`);
   add("execution_wallet", safety.walletConfigured ? "PASS" : "WARN", safety.walletConfigured ? "configured, secret values withheld" : "not configured; protocol writes remain blocked");
   add("fixture_boundary", env.CANNED_MODE === "fixture" ? "WARN" : "PASS", env.CANNED_MODE === "fixture" ? "fixture mode is active; public metrics are excluded" : "live mode is active; fixtures remain opt-in");
-  const report = { network, rpcUrl, checks, ok: checks.every((check) => check.status !== "FAIL") };
+  const report = { network, rpcUrl: answeringRpcUrl || rpcUrl, rpcAttempts, checks, ok: checks.every((check) => check.status !== "FAIL") };
   if (print) {
     for (const check of checks) console.log(`${check.status} ${check.name}: ${check.detail}`);
     console.log(`SUMMARY ${report.ok ? "PASS" : "FAIL"} checks=${checks.length}`);
