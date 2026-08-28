@@ -190,3 +190,30 @@ Before any human saw the task, the rubric was tested against four responders: th
 Methodology `range-keeper-track-record-v1`. A decision is recorded when it is made, with its reference block, position state, recommended action, recommended range, and observation horizon. Its `outcome` stays null until a *later independent read* of the same pool exists; a decision is never scored by the read that produced it.
 
 Settlement measures what is actually measurable: whether the position, or the recommended replacement range, still contained the price at the follow-up block. That is range retention, not profit — fees earned, gas paid, and impermanent loss are not settled. Below five settled decisions no rate is published at all and the summary says so.
+
+## Verified Run #2 result
+
+Job 700, ERC-8004 identity `97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2005`, PancakeSwap V3 pool `0x172fcD41E0913e95784454622d1c3724f546f849`, position NFT 7261944, frozen mainnet block 118445030.
+
+| Metric | Without agent | With Range Keeper |
+| --- | ---: | ---: |
+| Time | 152,528 ms | 69,923 ms |
+| Cost | 0 U, no gas | 0.001 U + 0.000060257 tBNB |
+| Quality | 30 / 100 | 100 / 100 |
+
+`agentAdvantage = true`. Range Keeper was faster by 82.6 seconds and scored 70 points higher.
+
+The correct answer was **HOLD**: the position sat 70 ticks from the nearer bound of a 200-tick range, and the hour's drift was 7.5% of the range width and moving *away* from that bound. Range Keeper said hold and proposed no replacement range. The human said they would rebalance, called a small move "decently big", and answered "none" to the risks question.
+
+### Disclosed evaluator limitations
+
+Reviewing the graded human answer afterwards, two of the six dimensions were scored 0 where the answer was arguably correct:
+
+- `positionStatus: "yes it is"` — a correct answer to the form's question "Is the position still in range?", but the frozen evaluator matches phrases such as "in range" rather than a bare affirmative, so `range_state_correct` did not fire.
+- `edgeProximity: "around 5 USDT per wbnb"` — numerically right; the true distance to the nearer bound is 4.986 USDT. The evaluator's `nearest_bound_identified` check looks for the bound's tick or price, not the distance to it, so it did not fire.
+
+**These were not corrected retroactively.** The evaluator was frozen before the human answered, and changing scoring after seeing an answer would invalidate the comparison. The published score is what the frozen evaluator produced.
+
+As a sensitivity check, crediting both checks would move the human from 36/120 (30.0) to 56/120 (46.7), against the agent's 120/120. The result direction is unchanged. Both gaps are recorded as work for evaluator v2, which would apply to future runs only.
+
+The human's substantive errors are independent of those gaps: recommending a rebalance where holding was correct, mischaracterising the size of the move, and claiming there were no risks.

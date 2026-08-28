@@ -163,3 +163,27 @@ Reason: the plumbing was written for a single agent and hardcoded Health Guard's
 Decision: Range Keeper never removes liquidity, mints liquidity, swaps, or approves spending. A justified rebalance produces a `PLANNED_NOT_AUTHORIZED` plan with a contract allowlist, a method allowlist, a slippage cap, an expiry, and required operator confirmation.
 
 Reason: it keeps RebalanceBench scientifically clean — the human and the agent are compared on the same judgement, with neither moving capital — and it means adding Altana later is a matter of granting a session that already has a declared shape, not redesigning the agent.
+
+## ADR-031: A frozen evaluator is never retuned after seeing an answer
+
+Decision: when review of a graded answer reveals that the evaluator under-credited a semantically correct response, the score stands. The limitation is disclosed alongside the result, a sensitivity figure is published, and the fix is scheduled for the next evaluator version.
+
+Reason: RebalanceBench v1 scored two of the human's six dimensions at zero where the answer was defensible — "yes it is" to an in-range question, and a correct distance where the evaluator wanted the bound. Correcting those after the fact would have raised the human's score using knowledge of the human's answer, which is exactly what a precommitted evaluator exists to prevent. Publishing the gap costs nothing; hiding it or quietly patching it would make every future score unfalsifiable.
+
+## ADR-032: Qualification flags are recomputed at grading, not edited
+
+Decision: a run's qualification flags are derived twice — provisionally at hire time, then recomputed by `deriveQualificationFlags` once deterministic grading has produced an evaluation status. The grading step never edits individual flags.
+
+Reason: `qualifiesForPublicMetrics` depends on `performanceDataSufficient`, which cannot be known before the evaluator has run. Writing it at hire time necessarily produced a provisional `false`. Recomputing keeps the public metric derived rather than asserted, and keeps the reason for a change auditable.
+
+## ADR-033: A dropped request is not an unready provider
+
+Decision: the paid-hire preflight retries each readiness probe a bounded number of times and reports transport failure separately from a readiness verdict.
+
+Reason: a single transient network failure made all four readiness probes fail at once and rendered as eleven readiness failures, which reads like a broken agent rather than a dropped connection. The run correctly refused to spend either way, but the distinction matters for diagnosing a provider fairly.
+
+## ADR-034: TermiX category status is stated per pair, from the pair's own category
+
+Decision: the TermiX qualification string is generated from the pair's category and the current pair count rather than from a fixed sentence.
+
+Reason: the message hardcoded "Health Factor Monitoring does not satisfy that category requirement", which stayed in the output after a PancakeSwap trading pair existed and satisfied it. Published qualification text has to track the evidence.

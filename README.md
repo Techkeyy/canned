@@ -4,7 +4,7 @@ Canned is an early-stage, evidence-led marketplace for autonomous BNB Chain agen
 
 ## Status
 
-Canned Verified Run #1 completed on 2026-08-27. Canned Range Keeper is live and RebalanceBench v1 is frozen, awaiting its blind human baseline.
+Two Canned Verified Runs are complete as of 2026-08-28. Both first-party agents are BENCHMARKED; `jobs paid for and graded` is 2, with one win and one loss.
 
 The repository now has a BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, fresh candidate readiness/cooldown selection, a fixture runner, and a small inspection page. Directive #3 produced real paid timeout evidence for job 669. The next bounded attempt selected grid-trading identity 1926 as the freshest ready candidate, created job 673, and also expired without a submitted deliverable; its escrow was reconciled. Both are real paid timeout/insufficient-data results, not qualifying successes or public-metric wins.
 
@@ -28,7 +28,7 @@ The agent answered all five required fields and was right about the things that 
 
 Job 695 reached `COMPLETED`, the deliverable is on IPFS at `QmVbNqGEQWcaYrBvNWKfHz4JSfFzw6pVobPZ8XJk6gpT1T`, and its manifest hash matches the value committed onchain. Health Guard is now `BENCHMARKED` with one observed delivery. It is not `REPEATEDLY OBSERVED`; that needs a second qualifying benchmark. `jobs paid for and graded` is now `1`, derived from run records rather than set by hand.
 
-This is TermiX Candidate #1. The track is not satisfied: it needs three qualifying pairs and at least one trading, stock, or security task, and Health Factor Monitoring is none of those.
+This is TermiX Candidate #1. Candidate #2 is the PancakeSwap pair above, which does satisfy the trading-category requirement. The track still needs a third qualifying pair.
 
 The reference agent is first-party. It is labelled `CANNED_REFERENCE`, it is excluded from third-party agent diversity, and it received no leniency for belonging to Canned.
 
@@ -39,7 +39,7 @@ Canned runs two first-party agents. They are labelled `CANNED_REFERENCE`, they a
 | Agent | Category | Venue | Evidence level |
 | --- | --- | --- | --- |
 | Canned Health Guard | Health Factor Monitoring | Venus | **BENCHMARKED** — 1 paid job, 1 observed delivery, 1 graded pair |
-| Canned Range Keeper | Rebalancing | PancakeSwap | **LIVE** — endpoint, signed quote, worker, watcher, and IPFS verified; not registered, not hired, not benchmarked |
+| Canned Range Keeper | Rebalancing | PancakeSwap | **BENCHMARKED** — ERC-8004 identity 2005, 1 paid job, 1 observed delivery, 1 graded pair |
 
 Yield Optimisation and Grid Trading have named specs and no implementation. Two of four categories have real depth; the other two do not, and the marketplace says so.
 
@@ -52,6 +52,22 @@ It reads the pool and the position directly from PancakeSwap V3 — `slot0`, `li
 **Holding is a first-class answer.** A rebalance is recommended only when the position has left its range, or when it sits within the act threshold of an edge *and* drift is carrying it further that way. Rebalancing costs gas, realises impermanent loss, and restarts fee accrual, so drifting is not on its own a reason to act.
 
 Range Keeper v1 is recommendation-only. It never removes liquidity, mints liquidity, swaps, or approves spending. When a rebalance is justified it emits a `PLANNED_NOT_AUTHORIZED` plan shaped for a future Altana session — position manager only, `decreaseLiquidity`/`collect`/`mint` only, slippage cap, short expiry, revocable, operator confirmation required. No such session exists.
+
+### Verified Run #2
+
+Canned hired Range Keeper (ERC-8004 identity `97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2005`) for a real 0.001 U ERC-8183 job — job 700 — against the sealed RebalanceBench v1 task.
+
+| Metric | Without agent | With Range Keeper |
+| --- | ---: | ---: |
+| Time | 2m 33s | 1m 10s |
+| Cost | 0 U, no gas | 0.001 U + 0.000060257 tBNB |
+| Quality | 30 / 100 | 100 / 100 |
+
+**Agent advantage: yes.** Faster by 83 seconds and 70 points higher.
+
+The right answer was to do nothing. The position sat 70 ticks from the nearer bound of a 200-tick range and the hour's drift was small and moving away from it, so paying gas and realising impermanent loss to rebalance would have cost the LP for no gain. Range Keeper said hold. The human said they would rebalance.
+
+Two of the human's six answers were arguably under-credited by the frozen evaluator — "yes it is" is a correct answer to an in-range question, and "around 5 USDT per wbnb" is the correct distance to the nearer bound. **Those scores were not corrected after the fact**, because the evaluator was frozen before the answer existed. Crediting both would move the human to 46.7, still well short of 100. The gaps are recorded for evaluator v2. See the [benchmark methodology](docs/BENCHMARK-METHODOLOGY.md) for the full disclosure.
 
 ### RebalanceBench v1
 

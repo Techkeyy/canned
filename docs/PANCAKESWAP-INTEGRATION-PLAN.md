@@ -57,3 +57,15 @@ A benchmark built on that would measure nothing. Mainnet state is therefore read
 ### Execution boundary
 
 Range Keeper v1 is recommendation-only. It never removes liquidity, mints liquidity, swaps, or approves spending. When a rebalance is justified it emits a `PLANNED_NOT_AUTHORIZED` action plan shaped for a future Altana session: contract allowlist limited to the position manager, methods limited to `decreaseLiquidity`, `collect`, and `mint`, a slippage cap, a short expiry, revocability, and required operator confirmation. Unlimited approvals and arbitrary calldata are explicitly forbidden. No Altana session exists for this plan; it is a declared boundary, not an authorization.
+
+## Benchmarked: Verified Run #2
+
+On 2026-08-28 Canned hired Range Keeper through its own marketplace for a real 0.001 U ERC-8183 job (job 700) against RebalanceBench v1, and graded it against a human baseline sealed beforehand.
+
+Range Keeper read the frozen PancakeSwap V3 state, reported the position as in range with the lower tick bound nearer, described the hour's drift as small and moving away from that bound, and recommended **HOLD** with no replacement range. That is the correct answer under the precommitted policy: 70 ticks of clearance in a 200-tick range, with drift at 7.5% of the range width heading the other way.
+
+It scored 100/100 in 69.9 seconds for 0.001 U plus 0.000060257 tBNB of buyer gas. The unaided human scored 30/100 in 152.5 seconds and would have rebalanced — paying gas and realising impermanent loss for no benefit.
+
+This is the PancakeSwap partner-track evidence: a real LP decision, on real pool and position state, where hiring the agent produced the better answer faster, and where the better answer was to do nothing. Range Keeper moved no capital and holds no approval.
+
+The track record now holds one decision with a **pending** outcome. It will not publish a retention rate until five decisions have been settled against later, independently sampled market state.
