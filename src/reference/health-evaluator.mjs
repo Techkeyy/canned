@@ -338,8 +338,15 @@ export function termixCandidateQualification({ pair, run, priorQualifyingPairs =
     requiredPairCount: 3,
     highValueCategorySatisfied: highValueCategory,
     trackComplete: qualifies && pairCount >= 3 && highValueCategory,
+    categoryOfThisPair: category,
     reason: qualifies
-      ? `Real paired with/without evidence captured. TermiX still needs ${Math.max(0, 3 - pairCount)} more qualifying pair(s) and at least one trading, stock, or security task; Health Factor Monitoring does not satisfy that category requirement.`
+      ? [
+          "Real paired with/without evidence captured.",
+          pairCount >= 3 ? "The three-pair minimum is met." : `TermiX still needs ${3 - pairCount} more qualifying pair(s).`,
+          highValueCategory
+            ? `This pair is a ${String(category).toLowerCase()} task, which satisfies the trading, stock, or security category requirement.`
+            : `This pair is ${String(category).replace(/_/g, " ")}, which does not satisfy the trading, stock, or security category requirement.`,
+        ].join(" ")
       : `Pair does not qualify: ${Object.entries(checks).filter(([, value]) => !value).map(([key]) => key).join(", ")}.`,
   };
 }

@@ -48,7 +48,8 @@ const pair = buildAgentAdvantagePair({
 });
 const pairEvidence = await store.saveEvidence({ kind: "agent_advantage_pair", runId: run.runId, pair });
 
-const priorQualifyingPairs = (await store.loadJson("state/agent-advantage-pairs.json", { pairs: [] })).pairs.filter((item) => item.runId !== run.runId && item.termix?.termixCandidatePair === true).length;
+const storedPairs = await store.loadJson("state/agent-advantage-pairs.json", { pairs: [] });
+const priorQualifyingPairs = storedPairs.pairs.filter((item) => item.runId !== run.runId && item.termix?.termixCandidatePair === true && Date.parse(item.runCreatedAt || item.gradedAt || 0) < Date.parse(run.createdAt)).length;
 const termix = termixCandidateQualification({ pair, run, priorQualifyingPairs, category: CATEGORIES.HEALTH_FACTOR_MONITORING });
 const verified = deriveVerifiedRunGates({ run, pair, truth, deliverableValidation: runRecord.deliverable.validation, agentIdentity: run.agent.identity, providerAddress: runRecord.provider });
 
@@ -91,8 +92,7 @@ if (runIndex >= 0) {
   };
   await store.saveJson("state/benchmark-runs.json", allRuns);
 }
-const existing = await store.loadJson("state/agent-advantage-pairs.json", { pairs: [] });
-const pairs = [...existing.pairs.filter((item) => item.runId !== run.runId), { runId: run.runId, jobId: runRecord.jobId, benchmarkId: HEALTH_BENCHMARK_ID, category: CATEGORIES.HEALTH_FACTOR_MONITORING, task: pair.task, identity: run.agent.identity, pair, termix, verifiedRun: verified, gradedAt: graded.gradedAt }];
+const pairs = [...storedPairs.pairs.filter((item) => item.runId !== run.runId), { runId: run.runId, jobId: runRecord.jobId, benchmarkId: HEALTH_BENCHMARK_ID, category: CATEGORIES.HEALTH_FACTOR_MONITORING, task: pair.task, identity: run.agent.identity, pair, termix, verifiedRun: verified, runCreatedAt: run.createdAt, gradedAt: graded.gradedAt }];
 await store.saveJson("state/agent-advantage-pairs.json", { schemaVersion: 1, kind: "canned_agent_advantage_pairs", updatedAt: nowIso(), pairs });
 
 console.log(JSON.stringify({
