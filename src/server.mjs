@@ -175,10 +175,34 @@ const server = createServer(async (request, response) => {
     if (url.pathname === "/api/reference/rebalancing/metrics") { json(response, 200, rangeKeeperRuntime.metrics()); return; }
     if (url.pathname === "/api/reference/rebalancing/track-record") {
       const definition = await rebalanceBenchDefinition();
+      const runs = await store.loadRuns();
+      const latest = runs.filter((item) => item?.benchmark?.id === REBALANCE_BENCHMARK_ID && item?.grading).sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))[0] || null;
+      const grading = latest ? await store.loadJson(`state/rebalancebench-grading-${latest.runId}.json`, null) : null;
+      const runRecord = latest ? await store.loadJson(`state/rebalancebench-run-${latest.runId}.json`, null) : null;
       json(response, 200, {
         agent: "Canned Range Keeper",
         venue: "PancakeSwap",
-        benchmark: definition ? { id: definition.benchmarkId, version: definition.version, pool: definition.pool.address, pair: `${definition.pool.token0.symbol}/${definition.pool.token1.symbol}`, feeTier: definition.pool.fee, referenceBlock: definition.referenceBlock } : null,
+        benchmark: definition ? { id: definition.benchmarkId, version: definition.version, pool: definition.pool.address, pair: `${definition.pool.token0.symbol}/${definition.pool.token1.symbol}`, feeTier: definition.pool.fee, tickSpacing: definition.pool.tickSpacing, positionTokenId: definition.position.tokenId, tickLower: definition.position.tickLower, tickUpper: definition.position.tickUpper, referenceBlock: definition.referenceBlock, marketDataChain: definition.executionBoundary.marketDataChain, marketDataAccess: definition.executionBoundary.marketDataAccess } : null,
+        latestResult: grading ? {
+          runId: latest.runId,
+          jobId: grading.jobId,
+          identity: grading.identity,
+          evaluatorVersion: grading.evaluatorVersion,
+          recommendation: grading.agent.rawOutput?.decision?.action ?? null,
+          rebalanceRecommended: grading.agent.rawOutput?.decision?.rebalanceRecommended ?? null,
+          proposedRange: grading.agent.rawOutput?.proposedRange ?? null,
+          humanQualityScore: grading.human.score.qualityScore,
+          agentQualityScore: grading.agent.score.qualityScore,
+          humanElapsedMs: grading.human.elapsedMs,
+          agentElapsedMs: grading.agent.elapsedMs,
+          agentAdvantage: grading.pair.comparison.agentAdvantage,
+          serviceFeeRaw: runRecord?.economics?.serviceFeeRaw ?? null,
+          buyerGasWei: runRecord?.economics?.buyerGasWei ?? null,
+          deliverableCid: grading.agent.deliverableCid,
+          termix: grading.termix,
+          verifiedRun: grading.verifiedRun,
+          gradedAt: grading.gradedAt,
+        } : null,
         ...summarizeRangeTrackRecord({ decisions: await rangeDecisions() }),
       });
       return;

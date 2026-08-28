@@ -87,10 +87,23 @@
         +cell('Pool',bench?bench.pair:'Not enough data',bench?('PancakeSwap V3 '+(bench.feeTier/10000)+'% fee tier'):'')
         +cell('Benchmark',bench?bench.id:'Not enough data',bench?('reference block '+bench.referenceBlock.number):'')
         +cell('Execution','Recommendation only','never removes, mints, swaps, or approves')
+        +cell('Recommendation',record.latestResult?record.latestResult.recommendation:'Not enough data',record.latestResult?(record.latestResult.rebalanceRecommended?'a rebalance was justified':'holding beat rebalancing'):'')
         +cell('Observed deliveries',trust?String(trust.deliveryCount):'0','paid jobs with a submitted deliverable')
         +cell('Benchmarks completed',trust?String(trust.benchmarkCount):'0','graded against a sealed human baseline')
         +cell('Track record',record.hasEnoughObservations?(Math.round(record.rangeRetentionRate*100)+'% range retention'):'Not enough observations',record.settledDecisions+' of '+record.minimumObservations+' settled decisions')
         +'</div>'
+        +(record.latestResult?'<div class="venue-grid" style="margin-top:12px;">'
+            +cell('Without agent',record.latestResult.humanQualityScore+' / 100',ms(record.latestResult.humanElapsedMs)+', no fee')
+            +cell('With Range Keeper',record.latestResult.agentQualityScore+' / 100',ms(record.latestResult.agentElapsedMs)+', '+uAmount(record.latestResult.serviceFeeRaw)+' + gas')
+            +cell('Agent advantage',record.latestResult.agentAdvantage?'yes':'no',record.latestResult.agentAdvantage?'faster and higher quality':'did not win on both time and quality')
+            +'</div>'
+            +'<p class="venue-note">ERC-8183 job '+esc(String(record.latestResult.jobId))+' &middot; '+esc(record.latestResult.identity)+' &middot; evaluator '+esc(record.latestResult.evaluatorVersion)+' &middot; frozen block '+esc(String(record.benchmark.referenceBlock.number))+' &middot; position NFT '+esc(String(record.benchmark.positionTokenId))+'</p>'
+            +'<div class="pair-links">'
+            +(record.latestResult.deliverableCid?'<a href="https://gateway.pinata.cloud/ipfs/'+esc(record.latestResult.deliverableCid)+'" target="_blank" rel="noreferrer">IPFS deliverable</a>':'')
+            +'<a href="https://testnet.8004scan.io/agents/97/'+esc(record.latestResult.identity.split(':').pop())+'" target="_blank" rel="noreferrer">ERC-8004 identity</a>'
+            +'<a href="https://bscscan.com/address/'+esc(record.benchmark.pool)+'" target="_blank" rel="noreferrer">PancakeSwap pool</a>'
+            +'<a href="#advantage">side by side</a></div>'
+            :'')
         +'<p class="venue-note">'+esc(record.statement)+'</p>'
         +'<p class="venue-note">'+esc(record.limitations[0])+'</p>'
         +(agent&&agent.activation.selection.status!=='ready'?'<p class="venue-note">Not hireable yet: '+esc(agent.activation.selection.reason)+'</p>':'')
