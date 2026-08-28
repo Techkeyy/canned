@@ -421,8 +421,10 @@ test("the two reference agents keep separate identities, endpoints, and readines
     },
     baselineSealedByKey: { "health-factor": true, rebalancing: false },
   });
-  assert.equal(candidates.length, 2);
-  const [health, range] = candidates;
+  // Three agents are implemented now; this test is about the two with identities.
+  assert.equal(candidates.length, 3);
+  const health = candidates.find((entry) => entry.referenceKey === "health-factor");
+  const range = candidates.find((entry) => entry.referenceKey === "rebalancing");
   assert.notEqual(health.identity, range.identity);
   assert.equal(health.identity, `97:${registry}:2003`);
   assert.equal(range.identity, `97:${registry}:2100`);
