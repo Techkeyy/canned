@@ -1,0 +1,25 @@
+[Unit]
+Description=Canned Yield Scout ERC-8183 seller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=canned
+Group=canned
+WorkingDirectory=/opt/canned
+EnvironmentFile=/etc/canned/yield-scout.env
+ExecStart=/usr/bin/node /opt/canned/scripts/run-public-yield-scout.mjs
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/opt/canned /etc/canned/yieldbench-v1.json
+ReadWritePaths=/var/lib/canned
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

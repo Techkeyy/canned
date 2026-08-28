@@ -44,16 +44,25 @@ export const REFERENCE_AGENT_SPECS = Object.freeze([
   },
   {
     key: "yield",
-    identity: "CANNED_REFERENCE_YIELD_V1",
+    identity: "CANNED_REFERENCE_YIELD_OPTIMISATION_V1",
     name: "Canned Yield Scout",
     category: CATEGORIES.YIELD_OPTIMISATION,
-    description: "Planned reference module for comparing executable BNB-chain yield routes under declared risk and spend limits.",
-    problem: "Compare the available yield routes for this capital, show the assumptions, and recommend only a bounded next step.",
+    description: "Reads authoritative lending-market state across venues at one block, prices what moving would actually cost, and recommends the best risk-adjusted destination or staying put.",
+    problem: "I have this asset earning interest. Is there a better place for it right now, and after the swap and gas is moving actually worth it over my horizon?",
     endpointPath: "/api/reference/yield",
-    implemented: false,
+    implemented: true,
+    serviceVersion: "yield-scout-service-v1",
+    venue: "Venus",
     protocols: ["ERC-8183"],
     priceRaw: "1000000000000000",
-    capabilities: ["route_comparison", "risk_disclosure", "bounded_recommendation"],
+    capabilities: [
+      "venus_authoritative_multi_market_read",
+      "supply_apy_derivation",
+      "utilisation_and_liquidity_assessment",
+      "reallocation_cost_quoting",
+      "break_even_analysis",
+      "risk_adjusted_recommendation",
+    ],
     executionPolicy: { readOnlyByDefault: true, capitalMovement: false, automaticIntervention: false },
   },
   {
@@ -168,13 +177,55 @@ export function implementedReferenceAgentCandidates({ identityRecords = {}, base
 export const REFERENCE_IDENTITY_FILES = Object.freeze({
   "health-factor": "state/reference-health-identity.json",
   rebalancing: "state/reference-range-identity.json",
+  yield: "state/reference-yield-identity.json",
 });
 
 /** Each reference agent signs with its own keystore; none of them are shared. */
 export const REFERENCE_WALLET_PATHS = Object.freeze({
   "health-factor": { walletsDir: "reference-provider-wallets", passwordFile: "reference-provider-wallet-password.txt", passwordEnv: "CANNED_REFERENCE_PROVIDER_PASSWORD" },
   rebalancing: { walletsDir: "range-provider-wallets", passwordFile: "range-provider-wallet-password.txt", passwordEnv: "CANNED_RANGE_PROVIDER_PASSWORD" },
+  yield: { walletsDir: "yield-provider-wallets", passwordFile: "yield-provider-wallet-password.txt", passwordEnv: "CANNED_YIELD_PROVIDER_PASSWORD" },
 });
+
+/**
+ * Per-agent deliverable and benchmark namespaces, so no two reference agents
+ * share an evidence directory, a frozen benchmark, or a watcher state file.
+ */
+export const REFERENCE_NAMESPACES = Object.freeze({
+  "health-factor": { deliverables: "reference-deliverables", benchmarkFile: "state/healthbench-v1.json", benchmarkId: "HealthBench_v1", port: 8790 },
+  rebalancing: { deliverables: "range-deliverables", benchmarkFile: "state/rebalancebench-v1.json", benchmarkId: "RebalanceBench_v1", port: 8791 },
+  yield: { deliverables: "yield-deliverables", benchmarkFile: "state/yieldbench-v1.json", benchmarkId: "YieldBench_v1", port: 8792 },
+});
+
+/**
+ * Fail loudly if two reference agents would share anything that must be unique.
+ * Each new agent has surfaced another place the plumbing assumed a single one.
+ */
+export function referenceNamespaceCollisions(namespaces = REFERENCE_NAMESPACES, walletPaths = REFERENCE_WALLET_PATHS, identityFiles = REFERENCE_IDENTITY_FILES) {
+  const collisions = [];
+  const seen = (label, values) => {
+    const counts = new Map();
+    for (const [key, value] of values) {
+      if (value === undefined || value === null) continue;
+      if (counts.has(value)) collisions.push(`${label}:${counts.get(value)}+${key}`);
+      else counts.set(value, key);
+    }
+  };
+  seen("shared_deliverable_namespace", Object.entries(namespaces).map(([key, entry]) => [key, entry.deliverables]));
+  seen("shared_benchmark_file", Object.entries(namespaces).map(([key, entry]) => [key, entry.benchmarkFile]));
+  seen("shared_benchmark_id", Object.entries(namespaces).map(([key, entry]) => [key, entry.benchmarkId]));
+  seen("shared_port", Object.entries(namespaces).map(([key, entry]) => [key, entry.port]));
+  seen("shared_wallet_directory", Object.entries(walletPaths).map(([key, entry]) => [key, entry.walletsDir]));
+  seen("shared_wallet_password_file", Object.entries(walletPaths).map(([key, entry]) => [key, entry.passwordFile]));
+  seen("shared_wallet_password_env", Object.entries(walletPaths).map(([key, entry]) => [key, entry.passwordEnv]));
+  seen("shared_identity_file", Object.entries(identityFiles).map(([key, entry]) => [key, entry]));
+  const implemented = REFERENCE_AGENT_SPECS.filter((spec) => spec.implemented);
+  seen("shared_service_version", implemented.map((spec) => [spec.key, spec.serviceVersion]));
+  seen("shared_internal_identity", implemented.map((spec) => [spec.key, spec.identity]));
+  seen("shared_endpoint_path", implemented.map((spec) => [spec.key, spec.endpointPath]));
+  seen("shared_category", implemented.map((spec) => [spec.key, spec.category]));
+  return [...new Set(collisions)];
+}
 
 export function referenceFleetCatalog() {
   return REFERENCE_AGENT_SPECS.map((spec) => ({

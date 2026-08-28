@@ -1,0 +1,8 @@
+# Append this block; do not edit the Health Guard or Range Keeper blocks above it.
+yield-scout.103-195-188-198.sslip.io {
+    encode gzip
+    reverse_proxy 127.0.0.1:8792
+    header {
+        -Server
+    }
+}
