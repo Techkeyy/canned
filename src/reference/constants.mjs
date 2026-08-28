@@ -170,6 +170,12 @@ export const REFERENCE_IDENTITY_FILES = Object.freeze({
   rebalancing: "state/reference-range-identity.json",
 });
 
+/** Each reference agent signs with its own keystore; none of them are shared. */
+export const REFERENCE_WALLET_PATHS = Object.freeze({
+  "health-factor": { walletsDir: "reference-provider-wallets", passwordFile: "reference-provider-wallet-password.txt", passwordEnv: "CANNED_REFERENCE_PROVIDER_PASSWORD" },
+  rebalancing: { walletsDir: "range-provider-wallets", passwordFile: "range-provider-wallet-password.txt", passwordEnv: "CANNED_RANGE_PROVIDER_PASSWORD" },
+});
+
 export function referenceFleetCatalog() {
   return REFERENCE_AGENT_SPECS.map((spec) => ({
     key: spec.key,
