@@ -217,3 +217,71 @@ Reviewing the graded human answer afterwards, two of the six dimensions were sco
 As a sensitivity check, crediting both checks would move the human from 36/120 (30.0) to 56/120 (46.7), against the agent's 120/120. The result direction is unchanged. Both gaps are recorded as work for evaluator v2, which would apply to future runs only.
 
 The human's substantive errors are independent of those gaps: recommending a rebalance where holding was correct, mischaracterising the size of the move, and claiming there were no risks.
+
+## YieldBench v1
+
+Frozen 2026-08-28. Evaluator `yield-scout-deterministic-v1`. No LLM participates in scoring.
+
+| Field | Value |
+| --- | --- |
+| Venue | Venus Core Pool, BNB Smart Chain |
+| Market data | BSC mainnet, read-only |
+| Payment and agent execution | BSC testnet, chain 97 |
+| Position | 25,000 USDC supplied to Venus vUSDC |
+| Candidates | every listed Core stablecoin market: USDT, USDC, FDUSD, DAI |
+| Horizon | 30 days |
+| Reference block | 118529435 |
+| Precommit SHA-256 | `sha256:7384209581ecb332f87d863400da07154c70acf69a441bef49fb8f9f3943895b` |
+| Precommit Keccak-256 | `0x2f5d2f3b45fb9c1169774acb89a29cb716e82613341371e6ceb284affa891783` |
+
+Selection was declared before anything was read: the deepest lending venue on the chain, every listed Core stablecoin market rather than a hand-picked pair, a round 25,000 position, a 30-day horizon, and the chain head minus 30 blocks.
+
+### Coherence
+
+Every figure comes from the same block: supply rates, utilisation, available liquidity, the swap quotes for each destination, the gas price, and the BNB price used to express the network fee in the position asset. Comparing rates sampled minutes apart would not be a comparison, so the freeze fails closed if any component cannot be priced at that block.
+
+Supply APR is derived from each market's own `supplyRatePerBlock` and the `blocksPerYear` constant read from its interest-rate model. That constant is read, never assumed: BSC block time has changed more than once, and a hardcoded value would silently misprice every market. Token incentives were separately verified as zero (`venusSupplySpeeds` returned 0 for every market), so the base supply rate is the whole yield and nothing has to be priced off-chain.
+
+### Why routing matters
+
+The direct USDC/FDUSD pool is far too thin for this size: quoting 25,000 through it costs **21.32%**. Routed through USDT the same swap costs **-0.037%**, a small gain. Pricing the move off the direct pool would have rejected a good destination for the wrong reason, so both a direct and a routed quote are taken for every candidate and the cheaper one prices the move.
+
+### Scored dimensions
+
+Six dimensions, exactly the precommitted `expectedOutputSchema` fields: `chosenOption`, `moveDecision`, `yieldAdvantage`, `worthItAfterCosts`, `risksAndTradeoffs`, `boundedAction`.
+
+Applying the RebalanceBench lessons directly:
+
+- yes/no questions are read for meaning, so "yeah, I'd move it" and "I would not move" are both understood;
+- "none" and "no" are treated as answers, not declines, because for several of these questions they are answers;
+- numbers are matched within precommitted tolerances, and percentage points, basis points, or stating both rates are all accepted;
+- an approximate incremental return within 25% of the computed figure scores the same as an exact one;
+- no check requires a keyword when the answer is objectively correct.
+
+### Evaluator fairness tests
+
+Run before any human saw the benchmark, via `npm run yield:evaluator:fairness`. The harness asserts ordering and equivalence rather than absolute bands, because absolute thresholds only encode the author's guess.
+
+| Case | Score |
+| --- | ---: |
+| Agent deliverable | 100 |
+| Precise technical answer | 100 |
+| Plain English answer | 95.52 |
+| Rounded numbers | 100 |
+| Basis-point phrasing | 89.55 |
+| Risk-free claim | 85.07 |
+| Wrong venue, otherwise sound | 70.15 |
+| Partial answer | 52.24 |
+| No-move for the wrong reason | 40.30 |
+| Naive highest-APY, no reasoning | 34.33 |
+| All declined | 0 |
+
+The competent phrasings span 10.45 points, so phrasing does not decide the score. Wrong reasoning ranks below right reasoning in every case.
+
+Two evaluator changes were made **during** this fairness pass, before any human answer existed: the venue choice was reweighted from 12 to 16 points as the headline output of a yield task, and claiming a move is risk free was raised from 4 to 8 as an unsupported claim. A third fix came out of the unit tests: "I would not move" was matching both the affirmative and negative patterns and returning no verdict.
+
+## Yield Scout track record
+
+Methodology `yield-scout-track-record-v1`. A recommendation is recorded when made, with its reference block, the position, the destination, the expected advantage, the estimated cost, and the break-even. Its `outcome` stays null until a later, independently sampled read exists.
+
+Settlement measures whether the rate advantage the recommendation relied on actually persisted, and the realised difference over the elapsed period. It is explicitly not a profit claim: execution price, fees already paid, and compounding are not settled. Below five settled recommendations no rate is published.

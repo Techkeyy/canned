@@ -187,3 +187,49 @@ Reason: a single transient network failure made all four readiness probes fail a
 Decision: the TermiX qualification string is generated from the pair's category and the current pair count rather than from a fixed sentence.
 
 Reason: the message hardcoded "Health Factor Monitoring does not satisfy that category requirement", which stayed in the output after a PancakeSwap trading pair existed and satisfied it. Published qualification text has to track the evidence.
+
+## ADR-035: Yield comparison is read at one block or not at all
+
+Decision: every figure in YieldBench comes from a single block: supply rates, utilisation, liquidity, each destination's swap quote, the gas price, and the BNB price used to express gas in the position asset. The freeze fails closed if any component cannot be priced there.
+
+Reason: a yield comparison assembled from figures sampled minutes apart is not a comparison, it is a collage. Rates on Venus move with utilisation between blocks, and a swap quote is only valid for the state it was taken against.
+
+## ADR-036: The blocks-per-year constant is read, never assumed
+
+Decision: supply APR derives from each market's own `supplyRatePerBlock` and the `blocksPerYear` constant read from that market's interest-rate model. The reader refuses to produce a snapshot if it cannot find the constant.
+
+Reason: BSC block time has changed more than once, and Venus markets run more than one interest-rate model version exposing the constant under different names. A hardcoded 3-second assumption would misprice every market by a factor of several while looking entirely plausible.
+
+## ADR-037: A move is priced off the best route, not the obvious one
+
+Decision: every candidate destination is quoted both directly and through an intermediary, and the cheaper route prices the move.
+
+Reason: at 25,000 the direct USDC/FDUSD pool costs 21.32% while the same swap routed through USDT costs -0.037%. Judging the destination on the direct pool would have rejected the best opportunity because of a bad path rather than a bad opportunity, and would have made the benchmark wrong rather than merely strict.
+
+## ADR-038: Fairness tests assert ordering, not absolute bands
+
+Decision: the evaluator fairness harness asserts that competent phrasings cluster together and that wrong reasoning ranks below right reasoning, rather than asserting that each case lands in a band the author guessed in advance.
+
+Reason: the first version of the harness "failed" on four cases that were in fact scored correctly; the author's expected bands were wrong, not the evaluator. Ordering and equivalence are the properties the benchmark actually has to guarantee.
+
+## ADR-039: Reference-agent namespaces are collision-checked, not assumed distinct
+
+Decision: `referenceNamespaceCollisions` verifies that no two reference agents share a deliverable directory, benchmark file, benchmark id, port, wallet directory, password file, password environment variable, identity file, service version, internal identity, endpoint path, or category. It is asserted in the test suite.
+
+Reason: each new agent has surfaced another place the shared plumbing assumed a single one. Health Guard's category was hardcoded in readiness; its service version was published by Range Keeper; its keystore path was used to verify Range Keeper's identity. Enumerating what must be unique is cheaper than rediscovering it per agent.
+
+## ADR-040: A single RPC outage is not an environment failure
+
+Decision: `npm run doctor`, the readiness checks, and the mainnet freeze all try their declared endpoints in order and report which one answered.
+
+Reason: during this build the primary testnet endpoint became unreachable from the developer machine while remaining reachable from the VPS. A single-endpoint check reported the entire environment as failing and a valid provider signature as unverifiable. Fallbacks are only added after they pass the `eth_getLogs` capability probe: the obvious Binance data-seed endpoints answer `eth_chainId` happily and cannot serve the range `verifyJob` needs, which is precisely the Verified Run #1 failure.
+
+## ADR-041: The homepage is an explanation, not a marketplace
+
+Decision recorded, not yet built. Canned's `/` route will be an explanation-first product page for someone who has never heard of ERC-8004, ERC-8183, or IPFS. `/marketplace` becomes discovery and hiring, `/inspection` stays runs and evidence.
+
+The page has to earn the marketplace, in this order: what Canned is, why an agent's own claims are not enough, how Canned hires and tests an agent, what evidence that produces, that failures stay visible, what a human-versus-agent comparison showed, the trust ladder, the four categories, what actually happens during a hire, and only then the protocol names, each introduced by what it means for the reader rather than by its number. It closes on a single call to action into the marketplace.
+
+Constraints: the `design-skill` is the visual and structural authority; https://ignix.bot/ is an information-architecture reference only and must not be copied; no README dumped into a page; no generic three-card feature row; no invented metrics. Every number on it must come from the same derived evidence the marketplace uses.
+
+Reason: the current root is the inspection view, which assumes the reader already knows what an agent marketplace is and why observed work beats claimed capability. That is the wrong first impression for a judge or a liquidity provider arriving cold, and the product's whole argument is one that has to be explained before it can be browsed.

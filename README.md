@@ -4,7 +4,7 @@ Canned is an early-stage, evidence-led marketplace for autonomous BNB Chain agen
 
 ## Status
 
-Two Canned Verified Runs are complete as of 2026-08-28. Both first-party agents are BENCHMARKED; `jobs paid for and graded` is 2, with one win and one loss.
+Two Canned Verified Runs are complete as of 2026-08-28, and a third agent is live awaiting its blind baseline. `jobs paid for and graded` is 2, with one win and one loss.
 
 The repository now has a BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, fresh candidate readiness/cooldown selection, a fixture runner, and a small inspection page. Directive #3 produced real paid timeout evidence for job 669. The next bounded attempt selected grid-trading identity 1926 as the freshest ready candidate, created job 673, and also expired without a submitted deliverable; its escrow was reconciled. Both are real paid timeout/insufficient-data results, not qualifying successes or public-metric wins.
 
@@ -40,8 +40,9 @@ Canned runs two first-party agents. They are labelled `CANNED_REFERENCE`, they a
 | --- | --- | --- | --- |
 | Canned Health Guard | Health Factor Monitoring | Venus | **BENCHMARKED** — 1 paid job, 1 observed delivery, 1 graded pair |
 | Canned Range Keeper | Rebalancing | PancakeSwap | **BENCHMARKED** — ERC-8004 identity 2005, 1 paid job, 1 observed delivery, 1 graded pair |
+| Canned Yield Scout | Yield Optimisation | Venus | **LIVE** — endpoint, signed quote, worker, watcher, IPFS, and RPC capability verified; not registered, not hired, not benchmarked |
 
-Yield Optimisation and Grid Trading have named specs and no implementation. Two of four categories have real depth; the other two do not, and the marketplace says so.
+Grid Trading has a named spec and no implementation. Three of four categories have a working first-party agent; two of those are benchmarked, one is not yet, and Grid Trading is nothing but a spec. The marketplace says so.
 
 ## Canned Range Keeper
 
@@ -79,6 +80,26 @@ The evaluator is deterministic and was written and frozen before anyone answered
 
 One thing this pool forced into the open: it is quoted USDT-per-WBNB, so a *rising tick* is a *falling* price, and the nearer bound is simultaneously the lower tick and the higher price. Scoring "up" or "lower" would have marked a correct human answer wrong for choosing the other convention. Movement is therefore scored against the position's own range, and the nearer bound on unambiguous identification. Tested before any human saw it: the agent and a competent human answer written in *either* convention all score 100.
 
+## Canned Yield Scout
+
+Yield Scout answers the question a stablecoin holder actually has: *is there a better place for this right now, and after the swap and the gas is moving actually worth it over my horizon?*
+
+It reads every listed Venus Core stablecoin market at one block — supply rate, utilisation, available liquidity, incentive speed — derives each market's APR from its own `blocksPerYear` constant rather than an assumed block time, quotes what moving to each destination would really cost, and applies a policy declared before any data was read.
+
+**The highest advertised yield is not the answer by default.** A destination has to be materially larger than the position, keep the position a small share of that market, repay the move's cost inside the horizon, and still be ahead by a margin. Otherwise staying put is correct.
+
+Yield Scout v1 is recommendation-only: it never withdraws, supplies, swaps, borrows, repays, bridges, or approves spending. A justified move produces a `PLANNED_NOT_AUTHORIZED` plan shaped for a future Altana session, with a protocol and method allowlist, an amount cap, a maximum swap cost, a short expiry, and required operator confirmation.
+
+### YieldBench v1
+
+Frozen at BSC mainnet block 118529435: a 25,000 USDC position in Venus vUSDC, compared against every listed Core stablecoin market over a 30-day horizon. Market data is read-only; every payment and agent execution stays on BSC testnet, and no capital is ever moved.
+
+Every figure comes from the same block — rates, liquidity, swap quotes, gas price, and the BNB price used to express gas in USDC. The freeze fails closed rather than mixing moments.
+
+One finding shaped the design: quoting 25,000 USDC into FDUSD through the **direct** pool costs 21.32%, while the same swap **routed through USDT** costs -0.037%. Pricing a destination off the obvious pool would have rejected a good opportunity for the wrong reason, so both routes are quoted for every candidate and the cheaper one prices the move.
+
+The evaluator was written, tested against nine different answer styles, and frozen before anyone answered. A plain-English answer, a rounded-numbers answer, and a basis-points answer all score within 10.45 points of a precise technical one. Wrong reasoning ranks below right reasoning in every case. See the [benchmark methodology](docs/BENCHMARK-METHODOLOGY.md) for the full table.
+
 ## Project documents
 
 - [Project understanding](docs/PROJECT.md)
@@ -106,8 +127,12 @@ npm run health:baseline:audit
 npm run health:grade
 npm run rpc:check
 npm run range:baseline:audit
+npm run yield:baseline:audit
+npm run yield:evaluator:fairness
 npm run serve
 ```
+
+The blind YieldBench baseline is at `http://localhost:8787/baseline/yield`. `npm run yield:evaluator:fairness` runs the pre-answer fairness cases, and `npm run yield:baseline:audit` proves no ranking, decision, or evaluator output reaches that page before it is answered.
 
 The blind RebalanceBench baseline is at `http://localhost:8787/baseline/rebalance`. It shows only the frozen task and the raw position data, starts a server-side timer, preserves exactly what is typed, and seals and hashes the answer on submission. `npm run range:baseline:audit` proves no classification, decision, replacement range, or evaluator output reaches that page before it is answered.
 
