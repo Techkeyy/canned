@@ -19,11 +19,44 @@ import { buildYieldScoutDeliverable } from "./reference/yield-scout.mjs";
 import { completeYieldBaseline, createYieldBaselineAttempt, publicYieldBenchPacket, publicYieldBenchSource, yieldContainsSecretAnswer, YIELD_BENCHMARK_ID } from "./reference/yield-benchmark.mjs";
 import { summarizeYieldTrackRecord } from "./reference/yield-track-record.mjs";
 import { contentHashes } from "./core.mjs";
+import { buildHomepageEvidence, buildMarketplace, buildPublicAgent, publicRunsOnly } from "./marketplace/public-api.mjs";
+import { assessBnbEligibility } from "./marketplace/eligibility.mjs";
+import { createListing, LISTING_STATES, updateListing, validateListingSubmission } from "./marketplace/listings.mjs";
+import { challengeState, consumeChallenge, createChallenge, isAddress, ownershipRecord, verifyOwnership } from "./marketplace/ownership.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
 const baselineHtml = await readFile(path.resolve(process.cwd(), "web/health-baseline.html"), "utf8");
 const rebalanceBaselineHtml = await readFile(path.resolve(process.cwd(), "web/rebalance-baseline.html"), "utf8");
+const homeHtml = await readFile(path.resolve(process.cwd(), "web/home.html"), "utf8");
+const marketplaceHtml = await readFile(path.resolve(process.cwd(), "web/marketplace.html"), "utf8");
+const agentHtml = await readFile(path.resolve(process.cwd(), "web/agent.html"), "utf8");
+const listHtml = await readFile(path.resolve(process.cwd(), "web/list.html"), "utf8");
+const cannedCss = await readFile(path.resolve(process.cwd(), "web/canned.css"), "utf8");
+
+// Ownership challenges are short lived and single use, so they live in memory
+// rather than on disk. A restart invalidates them, which is the safe direction.
+const ownershipChallenges = new Map();
+const verifiedSessions = new Map();
+
+async function agentListings() {
+  return (await store.loadJson("state/agent-listings.json", { listings: {} })).listings || {};
+}
+
+async function saveAgentListings(listings) {
+  await store.saveJson("state/agent-listings.json", { schemaVersion: 1, kind: "canned_agent_listings", updatedAt: nowIso(), listings });
+}
+
+/** Candidates the public marketplace draws from: discovered plus first-party. */
+async function marketplaceCandidates() {
+  const current = await snapshot();
+  return current.report?.candidates || [];
+}
+
+async function publicMarketplace() {
+  const [candidates, runs, listings] = await Promise.all([marketplaceCandidates(), store.loadRuns(), agentListings()]);
+  return buildMarketplace({ candidates, runs: publicRunsOnly(runs), listings });
+}
 const yieldBaselineHtml = await readFile(path.resolve(process.cwd(), "web/yield-baseline.html"), "utf8");
 const port = Number(process.env.PORT || 8787);
 const healthFactorRuntime = new ReferenceAgentRuntime({
@@ -151,24 +184,79 @@ async function snapshot() {
   return { report: { ...report, candidates }, runs, marketplace, metrics: deriveMarketplaceMetrics({ candidates, runs }) };
 }
 
-async function readBody(request) {
+/** A fault in what the caller sent, which is a 400 rather than a 500. */
+class BadRequestError extends Error {}
+
+/** Anything a listing may legitimately carry fits well inside this. */
+const MAX_REQUEST_BODY_BYTES = 64 * 1024;
+
+async function readRawBody(request) {
   const chunks = [];
-  for await (const chunk of request) chunks.push(chunk);
-  if (!chunks.length) return {};
-  try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new Error("Request body must be valid JSON."); }
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    // Refuse before buffering more: a public write endpoint must not let an
+    // unbounded body accumulate in memory.
+    if (size > MAX_REQUEST_BODY_BYTES) throw new BadRequestError("Request body is too large.");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
+/**
+ * Parse a request body as a JSON object. A JSON array or scalar would make
+ * every `body?.field` read silently undefined, so the object shape the
+ * handlers assume is required rather than hoped for.
+ */
+function parseJsonObject(raw) {
+  let body;
+  try { body = JSON.parse(raw); } catch { throw new BadRequestError("Request body must be valid JSON."); }
+  if (body === null || typeof body !== "object" || Array.isArray(body)) throw new BadRequestError("Request body must be a JSON object.");
+  return body;
+}
+
+async function readBody(request) {
+  const raw = await readRawBody(request);
+  if (!raw) return {};
+  return parseJsonObject(raw);
+}
+
+/** The raw text is kept alongside the parsed body so it can be content addressed. */
 async function readJsonBody(request) {
-  const chunks = [];
-  for await (const chunk of request) chunks.push(chunk);
-  const raw = Buffer.concat(chunks).toString("utf8");
+  const raw = await readRawBody(request);
   if (!raw) return { body: {}, raw: "{}" };
-  try { return { body: JSON.parse(raw), raw }; } catch { throw new Error("Request body must be valid JSON."); }
+  return { body: parseJsonObject(raw), raw };
 }
 
 const server = createServer(async (request, response) => {
   try {
-    if (request.url === "/" || request.url === "/inspection") {
+    const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+    if (url.pathname === "/canned.css") {
+      response.writeHead(200, { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(cannedCss);
+      return;
+    }
+    if (request.url === "/" || url.pathname === "/home") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(homeHtml);
+      return;
+    }
+    if (url.pathname === "/marketplace" || url.pathname === "/compare") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(marketplaceHtml);
+      return;
+    }
+    if (url.pathname.startsWith("/agent/")) {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(agentHtml);
+      return;
+    }
+    if (url.pathname === "/list") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(listHtml);
+      return;
+    }
+    if (request.url === "/inspection") {
       response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       response.end(html);
       return;
@@ -188,7 +276,6 @@ const server = createServer(async (request, response) => {
       response.end(baselineHtml);
       return;
     }
-    const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
     if (url.pathname === "/api/health") { json(response, 200, { ok: true, network: "bsc-testnet", chainId: 97, mode: process.env.CANNED_MODE || "live", mainnetWrites: false }); return; }
     if (url.pathname === "/api/inventory") { json(response, 200, await store.loadJson("inventory/verified-candidates.json", { candidates: [], categorySummary: {} })); return; }
     if (url.pathname === "/api/runs") { const runs = await store.loadRuns(); json(response, 200, { runs, publicMetrics: publicMetrics(runs) }); return; }
@@ -380,6 +467,125 @@ const server = createServer(async (request, response) => {
       json(response, 200, { status: "submitted", attemptId: completed.attemptId, benchmarkId: completed.benchmarkId, submittedAt: completed.submittedAt, elapsedMs: completed.elapsedMs, evidenceSha256: hashes.sha256, preserved: true, evaluated: false, agentRun: "not_started" });
       return;
     }
+    if (url.pathname === "/api/agents") {
+      const market = await publicMarketplace();
+      const category = url.searchParams.get("category");
+      const search = (url.searchParams.get("q") || "").trim().toLowerCase();
+      const sort = url.searchParams.get("sort") || "evidence";
+      let agents = market.agents;
+      if (category && category !== "all") agents = agents.filter((agent) => agent.category.claimedCategory === category);
+      if (search) agents = agents.filter((agent) => [agent.name, agent.description, agent.purpose, agent.identity].filter(Boolean).some((field) => String(field).toLowerCase().includes(search)));
+      const rank = (agent) => agent.trust.reached.length * 100 + agent.trackRecord.qualifyingBenchmarks * 10 + (agent.availability.reachable ? 1 : 0);
+      const sorters = {
+        evidence: (left, right) => rank(right) - rank(left),
+        recent: (left, right) => Date.parse(right.trust.lastTested || 0) - Date.parse(left.trust.lastTested || 0),
+        name: (left, right) => String(left.name).localeCompare(String(right.name)),
+      };
+      agents = [...agents].sort(sorters[sort] || sorters.evidence);
+      json(response, 200, { agents, categories: market.categories, pendingEligibilityCount: market.pendingEligibility.length, total: agents.length, sort, appliedCategory: category || "all", query: search || null });
+      return;
+    }
+    if (url.pathname === "/api/homepage") {
+      const [market, runs, current, storedPairs] = await Promise.all([publicMarketplace(), store.loadRuns(), snapshot(), store.loadJson("state/agent-advantage-pairs.json", { pairs: [] })]);
+      json(response, 200, buildHomepageEvidence({ agents: market.agents, runs: publicRunsOnly(runs), metrics: current.metrics, pairs: storedPairs.pairs || [] }));
+      return;
+    }
+    if (url.pathname.startsWith("/api/agent/")) {
+      const identity = decodeURIComponent(url.pathname.slice("/api/agent/".length));
+      const [candidates, runs, listings] = await Promise.all([marketplaceCandidates(), store.loadRuns(), agentListings()]);
+      const candidate = candidates.find((item) => item.identity === identity);
+      if (!candidate) { json(response, 404, { error: "not_found", reason: "Canned has no record of this agent." }); return; }
+      const agent = buildPublicAgent({ candidate, runs: publicRunsOnly(runs), listing: listings[identity] || null });
+      const storedPairs = await store.loadJson("state/agent-advantage-pairs.json", { pairs: [] });
+      agent.agentAdvantage = (storedPairs.pairs || []).filter((entry) => entry.identity === identity);
+      json(response, 200, agent);
+      return;
+    }
+    if (url.pathname === "/api/listings") {
+      const listings = await agentListings();
+      json(response, 200, { count: Object.keys(listings).length, listings: Object.values(listings).map((entry) => ({ identity: entry.identity, state: entry.state, claimedBy: entry.claimedBy, claimedAt: entry.claimedAt, listing: entry.listing })) });
+      return;
+    }
+    if (url.pathname === "/api/list/resolve" && request.method === "GET") {
+      const identity = (url.searchParams.get("identity") || "").trim();
+      if (!identity) { json(response, 400, { error: "identity_required", reason: "Enter the agent identity you want to list." }); return; }
+      const [candidates, listings] = await Promise.all([marketplaceCandidates(), agentListings()]);
+      const candidate = candidates.find((item) => item.identity === identity) || null;
+      const eligibility = assessBnbEligibility(candidate || { identity });
+      const existing = listings[identity] || null;
+      json(response, 200, {
+        identity,
+        found: Boolean(candidate),
+        eligibility,
+        alreadyClaimed: existing?.state === LISTING_STATES.CLAIMED,
+        claimedBy: existing?.claimedBy || null,
+        resolved: candidate ? { name: candidate.name, description: candidate.description, owner: candidate.ownerAddress, endpoint: candidate.services?.[0]?.endpoint || null, chainId: candidate.chainId, network: candidate.network, origin: candidate.origin } : null,
+        reason: candidate ? null : "Canned has not discovered this identity yet. Run discovery, or check the identity is on BNB Chain.",
+      });
+      return;
+    }
+    if (url.pathname === "/api/claim/challenge" && request.method === "POST") {
+      const incoming = await readJsonBody(request);
+      const identity = String(incoming.body?.identity || "").trim();
+      const address = String(incoming.body?.address || "").trim();
+      if (!identity || !isAddress(address)) { json(response, 400, { error: "identity_and_address_required", reason: "Connect a wallet and choose the agent you want to claim." }); return; }
+      const candidates = await marketplaceCandidates();
+      const candidate = candidates.find((item) => item.identity === identity);
+      if (!candidate) { json(response, 404, { error: "unknown_identity", reason: "Canned has no record of this agent." }); return; }
+      for (const [key, value] of ownershipChallenges) { if (Date.parse(value.expiresAt) <= Date.now()) ownershipChallenges.delete(key); }
+      const challenge = createChallenge({ identity, address });
+      ownershipChallenges.set(challenge.nonce, challenge);
+      json(response, 200, { nonce: challenge.nonce, message: challenge.message, expiresAt: challenge.expiresAt, identity, address: challenge.address, onchainOwner: candidate.ownerAddress || null });
+      return;
+    }
+    if (url.pathname === "/api/claim/verify" && request.method === "POST") {
+      const incoming = await readJsonBody(request);
+      const nonce = String(incoming.body?.nonce || "");
+      const signature = String(incoming.body?.signature || "");
+      const identity = String(incoming.body?.identity || "");
+      const challenge = ownershipChallenges.get(nonce) || null;
+      const state = challengeState(challenge);
+      if (!state.valid) { json(response, 400, { verified: false, error: state.error, reason: "This verification request is no longer valid. Start again." }); return; }
+      const candidates = await marketplaceCandidates();
+      const candidate = candidates.find((item) => item.identity === challenge.identity);
+      if (!candidate) { json(response, 404, { verified: false, error: "unknown_identity" }); return; }
+      const { recoverMessageAddress } = await import("viem");
+      const result = await verifyOwnership({
+        challenge, signature, identity: identity || challenge.identity,
+        onchainOwner: candidate.ownerAddress,
+        recoverAddress: ({ message, signature: sig }) => recoverMessageAddress({ message, signature: sig }),
+      });
+      // Single use either way: a failed attempt burns the challenge too.
+      ownershipChallenges.set(nonce, consumeChallenge(challenge));
+      if (!result.verified) { json(response, 401, { verified: false, error: result.error, reason: "That wallet does not control this agent onchain." }); return; }
+      const proof = ownershipRecord({ verification: result, identity: challenge.identity });
+      verifiedSessions.set(nonce, { ...result, identity: challenge.identity, proof });
+      json(response, 200, { verified: true, sessionToken: nonce, identity: challenge.identity, owner: result.onchainOwner, expiresAt: result.sessionExpiresAt, proof });
+      return;
+    }
+    if (url.pathname === "/api/list/submit" && request.method === "POST") {
+      const incoming = await readJsonBody(request);
+      const sessionToken = String(incoming.body?.sessionToken || "");
+      const session = verifiedSessions.get(sessionToken) || null;
+      if (!session || Date.parse(session.sessionExpiresAt) <= Date.now()) { json(response, 401, { error: "verification_required", reason: "Verify wallet ownership before submitting a listing." }); return; }
+      const submission = incoming.body?.listing || {};
+      const validation = validateListingSubmission(submission);
+      if (!validation.valid) { json(response, 400, { error: "listing_rejected", errors: validation.errors, reason: "Some of that information is set by Canned from evidence and cannot be supplied here." }); return; }
+      const [listings, candidates] = await Promise.all([agentListings(), marketplaceCandidates()]);
+      const candidate = candidates.find((item) => item.identity === session.identity);
+      try {
+        const existing = listings[session.identity] || null;
+        const record = existing
+          ? updateListing({ existing, submission, ownership: session.proof })
+          : createListing({ identity: session.identity, submission, ownership: session.proof, discoveredAt: candidate?.probes?.[0]?.observedAt || null });
+        listings[session.identity] = record;
+        await saveAgentListings(listings);
+        await store.saveEvidence({ kind: "agent_listing", identity: session.identity, listing: record });
+        const agent = buildPublicAgent({ candidate, runs: publicRunsOnly(await store.loadRuns()), listing: record });
+        json(response, 200, { status: "listed", identity: session.identity, state: record.state, trust: agent.trust, note: "Your agent is listed at the evidence level Canned has actually observed. Trust states advance only when Canned verifies them." });
+      } catch (error) { json(response, 400, { error: "listing_rejected", reason: error.message }); }
+      return;
+    }
     if (url.pathname === "/api/agent-advantage") {
       const stored = await store.loadJson("state/agent-advantage-pairs.json", { pairs: [] });
       const runs = await store.loadRuns();
@@ -480,6 +686,10 @@ const server = createServer(async (request, response) => {
     }
     json(response, 404, { error: "Not found" });
   } catch (error) {
+    if (error instanceof BadRequestError) {
+      json(response, 400, { error: "bad_request", reason: error.message });
+      return;
+    }
     json(response, 500, { error: "The inspection data could not be loaded.", detail: error.message });
   }
 });
