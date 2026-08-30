@@ -247,3 +247,27 @@ Decision: the two YieldBench evaluator gaps found while grading Run #3 — a cur
 Reason: this is the second run where reviewing a graded human answer revealed defensible responses the rubric could not read. The precedent set in ADR-031 holds: a rubric frozen before the answer exists is only worth anything if it stays frozen after. The fix belongs to the next version, applied to future runs.
 
 Both runs also show the same failure mode in the rubric design: checks that look for vocabulary rather than meaning. Evaluator v2 for both benchmarks should accept an answer expressed in any equivalent unit, and should test cost, fee, and erosion language against the trade-off dimension.
+
+## ADR-044: Marketplace facts are derived; only product copy is written by hand
+
+Decision: every factual datum on a public page — an agent count, a category count, a trust label, a price, a delivery count, a win, a loss, a run number, a job id, a hash — is produced by `src/marketplace/public-api.mjs` from evidence records. Page files carry sentences, headings, and labels, and nothing else. `tests/productization.test.mjs` scans the four public pages for hand-written figures and fails the build if one appears.
+
+Reason: a marketplace whose selling point is that it publishes observed work cannot have a homepage with a typed number on it. The moment one figure is written into HTML, no reader can tell which of the others were. Keeping the boundary mechanical rather than cultural means the rule survives a rushed edit.
+
+## ADR-045: BNB eligibility is read from the chain, never inferred from the name
+
+Decision: `assessBnbEligibility` resolves the chain id and registry an identity actually points at. Chain 56 or 97 against the known ERC-8004 registry is eligible; any other chain is ineligible and never reaches a public shelf; an identity Canned could not resolve is `BNB_ELIGIBILITY_UNVERIFIED`, held in a separate bucket rather than being called ineligible. Testnet identities are eligible and carry `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED`.
+
+Reason: an agent named "BNB Yield Optimiser" proves nothing about the chain it lives on, and a marketplace that filtered on names would be trivially gamed. Unresolved is a statement about Canned's own looking, not a verdict on the agent, so it stays distinct from a chain Canned checked and rejected. Whether the published hackathon rules settle testnet against mainnet is not established by the material available, so Canned records the distinction rather than picking an answer.
+
+## ADR-046: A developer owns presentation; Canned owns evidence
+
+Decision: a listing may write nine presentation fields (display name, description, claimed category, capability statement, four URLs, developer name). Every field Canned derives — trust, status, benchmarks, deliveries, prices, wins, losses, track record, origin — is on a forbidden list, and a submission containing any of them is rejected whole rather than filtered. A claimed category is stored with `claimedCategoryIsUnverified: true` and never counts as a verified capability.
+
+Reason: rejecting the submission rather than stripping the field means a developer who tries to set `benchmarkCount` gets an error instead of a silent success that looks like it worked. The claimed category is genuinely useful for browsing and genuinely worthless as evidence, so it is stored as what it is: a claim.
+
+## ADR-047: "List your agent" must not become an SSRF or stored-XSS feature
+
+Decision: ownership is proved by a wallet signature over a challenge that names the product, the agent, the wallet, a nonce, and a five minute expiry. The recovered signer must equal both the challenged address and the owner the registry reports. Challenges are single use, so a captured signature cannot be replayed. All listing text is stripped of control characters and angle brackets and length-capped before storage. All listing URLs must be absolute http(s) on a public host: loopback, RFC1918, link-local including the cloud metadata address, unique-local and link-local IPv6, `.local`/`.internal`, and bare hostnames are refused.
+
+Reason: this is the only place in Canned where a stranger writes data that Canned later renders and may fetch. A signature that is valid but from the wrong wallet is not ownership, which is why the registry read is a separate check rather than an alternative to it. Sanitising on the way in rather than on the way out means the stored record is safe for every consumer, not just the one page that happens to escape correctly. Canned never asks for a private key, a seed phrase, or a wallet password, and a test asserts those words appear on a public page only inside a sentence refusing them.

@@ -124,6 +124,28 @@ The evaluator was written, tested against nine different answer styles, and froz
 - [Benchmark methodology](docs/BENCHMARK-METHODOLOGY.md)
 - [Architecture decisions](docs/DECISIONS.md)
 - [Environment and readiness](docs/ENVIRONMENT.md)
+- [The public marketplace](docs/MARKETPLACE.md)
+- [Security](docs/SECURITY.md)
+
+## The public product
+
+Canned has a public surface a visitor can use without knowing what ERC-8004 is.
+
+| Route | What it is for |
+| --- | --- |
+| `/` | Explanation. What Canned is, why an agent's claims are not enough, and the evidence produced so far. |
+| `/marketplace` | Discovery. Search, filter by category, sort, compare agents side by side. |
+| `/agent/:identity` | One agent, leading with what was observed. Identity and hashes sit behind a disclosure. |
+| `/list` | List or claim an agent by proving wallet ownership with a signature. |
+| `/inspection` | The unchanged evidence view: runs, gradings, advantage pairs, raw records. |
+
+Two rules govern that surface.
+
+**Marketplace facts are derived; only product copy is written by hand.** Every count, price, trust label, win, loss, run number, and hash comes from `src/marketplace/public-api.mjs`, computed from evidence records. The sentences around them are written. A test scans the four public pages and fails the build if a figure was typed into HTML. See [ADR-044](docs/DECISIONS.md).
+
+**Unknown stays unknown.** An untested agent reports `wins: null`, not `0`, and no price rather than an advertised one. A win rate appears only at two or more benchmarks. Grid Trading currently has agents listed and none tested, and is shown exactly that way rather than filled in.
+
+Canned proves ownership with a wallet signature and **never asks for a private key, a seed phrase, or a wallet password**. See [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Local setup
 

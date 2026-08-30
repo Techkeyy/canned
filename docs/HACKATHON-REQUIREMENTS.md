@@ -57,3 +57,30 @@ Checked against the current BNB Chain hackathon material and the PancakeSwap par
 Timeline as published: submissions 5 August to 9 September, judging 9 to 23 September, winners announced 5 November.
 
 Nothing in the current material contradicts the earlier requirements matrix. The one change worth recording is that partner tracks publish their own scoring, so the PancakeSwap track page should be re-read before submission rather than assuming the main-track rubric applies.
+
+## Status re-stated 2026-08-30
+
+The 2026-08-27 table above is kept as written, because a requirements matrix that gets edited in place stops being a record. This section states where the project actually stands after Verified Runs #2 and #3 and the productization work.
+
+| Track | Requirement | Canned status |
+| --- | --- | --- |
+| Build the Era main track | Build the official BNB Agent Studio marketplace; all four categories need first-class depth | Three of four categories have a benchmarked first-party agent: Health Factor Monitoring (Health Guard), Rebalancing (Range Keeper), Yield Optimisation (Yield Scout). **Grid Trading has discovered third-party agents listed and none benchmarked**, and the marketplace shows it that way rather than filling the gap. |
+| TermiX | At least three real tasks run both with a marketplace agent and without one, reporting time, cost, and output quality with the actual outputs attached; at least one task in trading, stock, or security | **Met on the published minimum.** Three qualifying with-agent versus without-agent pairs exist, each with a sealed human baseline, a paid onchain job, a content-addressed deliverable, and a deterministic grading. RebalanceBench v1 is the trading-category task. Meeting a published minimum is not the same as winning a track. |
+| PancakeSwap | 1,000 CAKE partner track; real benefit to traders or liquidity providers, never putting user funds at risk | Range Keeper reads real PancakeSwap V3 pool and position state and recommends hold or a bounded range. It is recommendation-only and cannot move user funds. Verified Run #2 is the graded evidence. |
+
+### Marketplace requirements
+
+| Requirement | Status |
+| --- | --- |
+| A visitor who has not heard of ERC-8004 can understand the product | `/` explains the argument before the shelf, introducing each protocol by what it means for the reader. |
+| Agents are discovered dynamically, not hardcoded | The shelf is built from the ERC-8004 registry read. 35 agents currently: 3 first-party, 32 discovered third-party. |
+| A developer can list an agent | `/list` resolves the identity, proves wallet ownership by signature, and accepts presentation metadata. |
+| A developer can claim an already-discovered agent | Same flow. A discovered agent is `UNCLAIMED` until its owner proves control. |
+| Ownership is verified, not asserted | The recovered signer must equal both the challenged address and the owner the registry reports. |
+| No fabricated marketplace metrics | Every figure is derived; a test fails the build if one is typed into a page. |
+
+### Open items
+
+- Grid Trading has no first-party agent and no benchmark. It is listed as incomplete rather than presented as covered.
+- Whether BSC Testnet identities satisfy the final eligibility wording is not settled by the published material. Every testnet agent carries `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` (ADR-045).
+- Partner tracks publish their own scoring, so the PancakeSwap track page should be re-read before submission rather than assuming the main-track rubric applies.

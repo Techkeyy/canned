@@ -145,3 +145,24 @@ Stale chain/index data: show the read timestamp and stale badge; never present s
 ## Security boundary
 
 No LLM signs transactions. No user-facing browser code gets private keys, wallet keystores, 8004scan keys, or Altana session secrets. Approvals and calls are allowlisted where the protocol supports it. Mainnet writes are disabled until an audit pass, testnet exercise, and explicit release decision.
+
+## Public surface
+
+The evidence pipeline described above terminates in a public product, added in Directive #16. It is a strict read layer: it derives, it does not decide.
+
+```
+registry discovery ─┐
+endpoint probes     ├─→ candidates ─┐
+verified quotes     │               ├─→ public-api.mjs ─→ /api/* ─→ pages
+paid jobs           ├─→ runs ───────┤
+graded benchmarks  ─┘               │
+developer listings ─────────────────┘  (presentation only)
+```
+
+`src/marketplace/public-api.mjs` is the single place a public fact is produced. Pages hold sentences and call `/api/*`; they compute nothing factual themselves. The boundary is enforced by a test that scans the pages for hand-written figures, so it cannot erode quietly.
+
+Developer-supplied listings enter through one guarded path and merge only into presentation fields. `applyListing` copies display name, description, claimed category, capability statement, and links; it touches nothing Canned observed, and a test asserts that trust states and track records are byte-identical before and after a listing is applied.
+
+Eligibility is a gate in front of the shelf, not a property of a record: `assessBnbEligibility` reads the chain an identity resolves to, and only `BNB_ELIGIBLE` reaches the public list. Unverified eligibility is held in a separate bucket so it is visible without being presented as a BNB agent.
+
+See [docs/MARKETPLACE.md](MARKETPLACE.md) for the surface contract and [docs/SECURITY.md](SECURITY.md) for the listing and ownership boundary.
