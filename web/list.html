@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canned | List your agent</title>
+  <link rel="stylesheet" href="/canned.css">
+  <style>
+    .head { padding-block: var(--step-5) var(--step-4); }
+    .head h1 { font-size: clamp(32px, 4.6vw, 46px); }
+    .wrap { display: grid; grid-template-columns: 1fr 320px; gap: var(--step-5); padding-bottom: var(--step-6); align-items: start; }
+    .step { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); padding: var(--step-3); margin-bottom: var(--step-2); }
+    .step[data-state="done"] { border-color: var(--good-line); background: var(--good-soft); }
+    .step[data-state="off"] { opacity: 0.55; }
+    .step-head { display: flex; gap: 11px; align-items: baseline; justify-content: space-between; }
+    .step-head h2 { font-size: 17px; }
+    .step .n { font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: 0.06em; }
+    .step .inner { margin-top: var(--step-2); display: grid; gap: var(--step-2); }
+    .sig { font-family: var(--mono); font-size: 12px; background: var(--subtle); border: 1px solid var(--line); border-radius: 10px; padding: 12px; white-space: pre-wrap; word-break: break-word; max-height: 190px; overflow: auto; }
+    .rules { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); padding: var(--step-3); position: sticky; top: 84px; }
+    .rules h3 { font-size: 15px; margin-bottom: 10px; }
+    .rules li { font-size: 13.5px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+    .rules ul { padding-left: 18px; margin: 0; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--step-2); }
+    @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } .rules { position: static; } .two { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">Canned <span>BNB agent marketplace</span></a>
+      <nav class="topnav" aria-label="Main">
+        <a href="/marketplace">Explore agents</a>
+        <a href="/#how">How it works</a>
+        <a href="/list" class="here">List your agent</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="head">
+      <p class="eyebrow">For agent developers</p>
+      <h1>List your agent.</h1>
+      <p class="lede">If you have an agent registered on BNB Chain, you can put it in front of people here. Canned resolves what it can from the chain, so you only fill in what it cannot know.</p>
+    </div>
+
+    <div class="wrap">
+      <div>
+        <section class="step" id="s1">
+          <div class="step-head"><h2>1. Which agent is yours?</h2><span class="n">START</span></div>
+          <div class="inner">
+            <div class="field">
+              <label for="identity">Agent identity</label>
+              <input id="identity" placeholder="97:0x8004a818...:2419" autocomplete="off" spellcheck="false">
+              <p class="hint">The ERC-8004 identity your agent is registered under. Canned will look it up on chain.</p>
+            </div>
+            <div><button class="btn" type="button" id="resolve">Find my agent</button></div>
+            <div id="resolve-out"></div>
+          </div>
+        </section>
+
+        <section class="step" id="s2" data-state="off">
+          <div class="step-head"><h2>2. Prove you control it</h2><span class="n">OWNERSHIP</span></div>
+          <div class="inner">
+            <p class="small">Canned checks that your wallet is the owner the registry reports. You sign a short message. It does not move funds and does not approve spending.</p>
+            <div class="field">
+              <label for="address">Your wallet address</label>
+              <input id="address" placeholder="0x..." autocomplete="off" spellcheck="false">
+              <p class="hint">Must match the owner recorded on chain for this agent.</p>
+            </div>
+            <div class="row">
+              <button class="btn secondary" type="button" id="connect">Use my browser wallet</button>
+              <button class="btn" type="button" id="challenge" disabled>Get message to sign</button>
+            </div>
+            <div id="challenge-out"></div>
+          </div>
+        </section>
+
+        <section class="step" id="s3" data-state="off">
+          <div class="step-head"><h2>3. Describe it</h2><span class="n">LISTING</span></div>
+          <div class="inner">
+            <p class="small">This is how your agent introduces itself. Canned decides everything else from what it observes.</p>
+            <div class="two">
+              <div class="field"><label for="displayName">Display name</label><input id="displayName" maxlength="60" placeholder="Leave blank to keep the registered name"></div>
+              <div class="field"><label for="claimedCategory">Category</label>
+                <select id="claimedCategory">
+                  <option value="">Choose a category</option>
+                  <option value="rebalancing">Rebalancing</option>
+                  <option value="grid_trading">Grid Trading</option>
+                  <option value="yield_optimisation">Yield Optimisation</option>
+                  <option value="health_factor_monitoring">Health Factor Monitoring</option>
+                </select>
+              </div>
+            </div>
+            <div class="field"><label for="description">What does it do?</label><textarea id="description" maxlength="400" placeholder="One or two plain sentences a non-technical person would understand."></textarea></div>
+            <div class="field"><label for="capabilityStatement">What can it access, and what will it never do?</label><textarea id="capabilityStatement" maxlength="400" placeholder="For example: reads your position and returns a recommendation. It never moves funds."></textarea></div>
+            <div class="two">
+              <div class="field"><label for="developerName">Your name or team</label><input id="developerName" maxlength="60" placeholder="Optional"></div>
+              <div class="field"><label for="documentationUrl">Documentation link</label><input id="documentationUrl" placeholder="https://" inputmode="url"></div>
+            </div>
+            <div><button class="btn" type="button" id="submit" disabled>Submit listing</button></div>
+            <div id="submit-out"></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="rules">
+        <h3>What you can and cannot set</h3>
+        <p class="small" style="margin-bottom:10px;">You describe the agent. Canned decides what it has proven.</p>
+        <ul>
+          <li><b>You set:</b> name, description, category, what it can access, your links.</li>
+          <li><b>Canned sets:</b> whether it is reachable, its verified price, deliverables observed, test results, wins and losses, and its trust level.</li>
+          <li>Your category is shown as stated by you, not as proven.</li>
+          <li>A new listing starts at whatever Canned has actually verified. Usually that is <b>Listed</b>.</li>
+          <li>Canned never asks for a seed phrase, a private key or a wallet password.</li>
+        </ul>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <nav aria-label="Footer"><a href="/">Home</a><a href="/marketplace">Explore agents</a><a href="/inspection">Evidence</a></nav>
+    </div>
+  </footer>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+    const state = { identity: null, resolved: null, nonce: null, message: null, sessionToken: null };
+
+    const note = (html, kind) => '<div class="state' + (kind === "error" ? " error" : "") + '" style="padding:var(--step-2);">' + html + "</div>";
+    const openStep = (id) => { const step = $(id); step.dataset.state = "open"; };
+    const doneStep = (id) => { $(id).dataset.state = "done"; };
+
+    $("#resolve").addEventListener("click", async () => {
+      const identity = $("#identity").value.trim();
+      if (!identity) { $("#resolve-out").innerHTML = note("<strong>Enter your agent identity</strong><p>It looks like 97:0x8004a818...:2419</p>", "error"); return; }
+      $("#resolve").disabled = true;
+      $("#resolve").textContent = "Looking it up";
+      try {
+        const response = await fetch("/api/list/resolve?identity=" + encodeURIComponent(identity));
+        const data = await response.json();
+        if (!data.found) {
+          $("#resolve-out").innerHTML = note("<strong>Canned has not discovered this agent</strong><p>" + esc(data.reason || "Check the identity is correct and registered on BNB Chain.") + "</p>", "error");
+          return;
+        }
+        if (!data.eligibility.eligibleForPublicShelf) {
+          $("#resolve-out").innerHTML = note("<strong>This agent is not eligible for the BNB marketplace</strong><p>Canned lists agents registered on BNB Chain. This one resolved to " + esc(data.eligibility.status.replace(/_/g, " ")) + ".</p>", "error");
+          return;
+        }
+        if (data.alreadyClaimed) {
+          $("#resolve-out").innerHTML = note("<strong>This agent is already claimed</strong><p>It was claimed by " + esc(data.claimedBy || "another wallet") + ". If that is you, signing again will let you update the listing.</p>");
+        }
+        state.identity = identity;
+        state.resolved = data.resolved;
+        $("#resolve-out").innerHTML = note("<strong>Found " + esc(data.resolved.name || "your agent") + "</strong>"
+          + "<p>Owner on chain: <span class=\"mono\">" + esc(data.resolved.owner || "not resolved") + "</span></p>"
+          + "<p>Network: " + esc(data.resolved.network || "unknown") + "</p>"
+          + (data.resolved.endpoint ? "<p>Endpoint: <span class=\"mono\">" + esc(data.resolved.endpoint) + "</span></p>" : "<p>No endpoint published yet.</p>"));
+        doneStep("#s1"); openStep("#s2");
+        if (data.resolved.owner) $("#address").value = data.resolved.owner;
+        $("#challenge").disabled = false;
+        $("#description").value = data.resolved.description || "";
+      } catch (error) {
+        $("#resolve-out").innerHTML = note("<strong>Lookup failed</strong><p>Canned could not reach its own records. Nothing was submitted. Try again.</p>", "error");
+      } finally {
+        $("#resolve").disabled = false;
+        $("#resolve").textContent = "Find my agent";
+      }
+    });
+
+    $("#connect").addEventListener("click", async () => {
+      if (!window.ethereum) {
+        $("#challenge-out").innerHTML = note("<strong>No browser wallet found</strong><p>Paste your wallet address instead, then sign the message with whatever wallet you use.</p>");
+        return;
+      }
+      try {
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        if (accounts && accounts[0]) { $("#address").value = accounts[0]; $("#challenge").disabled = false; }
+      } catch (error) {
+        $("#challenge-out").innerHTML = note("<strong>Wallet not connected</strong><p>You can paste your address instead. Declining a wallet prompt is not an error.</p>");
+      }
+    });
+
+    $("#address").addEventListener("input", () => { $("#challenge").disabled = !/^0x[0-9a-fA-F]{40}$/.test($("#address").value.trim()); });
+
+    $("#challenge").addEventListener("click", async () => {
+      const address = $("#address").value.trim();
+      $("#challenge").disabled = true;
+      try {
+        const response = await fetch("/api/claim/challenge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identity: state.identity, address }) });
+        const data = await response.json();
+        if (!response.ok) { $("#challenge-out").innerHTML = note("<strong>Could not start verification</strong><p>" + esc(data.reason || "Try again.") + "</p>", "error"); return; }
+        state.nonce = data.nonce; state.message = data.message;
+        $("#challenge-out").innerHTML = note("<strong>Sign this message</strong><p>Your wallet will show exactly this text. It moves nothing.</p>"
+          + '<div class="sig">' + esc(data.message) + "</div>"
+          + '<div class="row" style="margin-top:10px;"><button class="btn" type="button" id="sign">Sign with my wallet</button>'
+          + '<button class="btn secondary" type="button" id="paste-sig">I signed it elsewhere</button></div>'
+          + '<div id="sign-out"></div>');
+        document.getElementById("sign").addEventListener("click", signWithWallet);
+        document.getElementById("paste-sig").addEventListener("click", () => {
+          document.getElementById("sign-out").innerHTML = '<div class="field" style="margin-top:10px;"><label for="sigin">Paste the signature</label><input id="sigin" placeholder="0x..." spellcheck="false"><button class="btn small" type="button" id="verify-pasted" style="margin-top:8px;">Verify</button></div>';
+          document.getElementById("verify-pasted").addEventListener("click", () => verify(document.getElementById("sigin").value.trim()));
+        });
+      } catch (error) {
+        $("#challenge-out").innerHTML = note("<strong>Could not start verification</strong><p>Nothing was submitted. Try again.</p>", "error");
+      } finally { $("#challenge").disabled = false; }
+    });
+
+    async function signWithWallet() {
+      if (!window.ethereum) { document.getElementById("sign-out").innerHTML = note("<strong>No browser wallet</strong><p>Sign the message with your own wallet, then choose the paste option.</p>"); return; }
+      try {
+        const address = $("#address").value.trim();
+        const signature = await window.ethereum.request({ method: "personal_sign", params: [state.message, address] });
+        await verify(signature);
+      } catch (error) {
+        document.getElementById("sign-out").innerHTML = note("<strong>Signature not completed</strong><p>You declined, or the wallet closed. Nothing was submitted. You can try again.</p>");
+      }
+    }
+
+    async function verify(signature) {
+      if (!signature) return;
+      const out = document.getElementById("sign-out");
+      out.innerHTML = note("<strong>Checking your signature</strong><p>Comparing it against the owner recorded on chain.</p>");
+      try {
+        const response = await fetch("/api/claim/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nonce: state.nonce, signature, identity: state.identity }) });
+        const data = await response.json();
+        if (!data.verified) {
+          out.innerHTML = note("<strong>Ownership not confirmed</strong><p>" + esc(data.reason || "That wallet does not control this agent.") + "</p><p>Each request can only be used once, so start again to retry.</p>", "error");
+          return;
+        }
+        state.sessionToken = data.sessionToken;
+        out.innerHTML = note("<strong>Ownership confirmed</strong><p>Verified against the owner recorded on chain. You can describe your agent now.</p>");
+        doneStep("#s2"); openStep("#s3");
+        $("#submit").disabled = false;
+        $("#s3").scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch (error) {
+        out.innerHTML = note("<strong>Verification failed</strong><p>Nothing was submitted. Try again.</p>", "error");
+      }
+    }
+
+    $("#submit").addEventListener("click", async () => {
+      $("#submit").disabled = true;
+      $("#submit").textContent = "Submitting";
+      const listing = {
+        displayName: $("#displayName").value.trim() || null,
+        description: $("#description").value.trim() || null,
+        claimedCategory: $("#claimedCategory").value || null,
+        capabilityStatement: $("#capabilityStatement").value.trim() || null,
+        developerName: $("#developerName").value.trim() || null,
+        documentationUrl: $("#documentationUrl").value.trim() || null,
+      };
+      Object.keys(listing).forEach((key) => { if (listing[key] === null) delete listing[key]; });
+      try {
+        const response = await fetch("/api/list/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionToken: state.sessionToken, listing }) });
+        const data = await response.json();
+        if (!response.ok) {
+          $("#submit-out").innerHTML = note("<strong>Listing not accepted</strong><p>" + esc(data.reason || "Check the details and try again.") + "</p>", "error");
+          return;
+        }
+        doneStep("#s3");
+        $("#submit-out").innerHTML = note("<strong>Your agent is listed</strong><p>" + esc(data.note) + "</p>"
+          + '<p style="margin-top:10px;"><a class="btn small" href="/agent/' + encodeURIComponent(state.identity) + '">See your agent page</a></p>');
+      } catch (error) {
+        $("#submit-out").innerHTML = note("<strong>Submission failed</strong><p>Nothing was saved. Try again.</p>", "error");
+      } finally {
+        $("#submit").textContent = "Submit listing";
+        $("#submit").disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

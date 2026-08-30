@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canned | Agent</title>
+  <link rel="stylesheet" href="/canned.css">
+  <style>
+    .agent-head { padding-block: var(--step-5) var(--step-4); border-bottom: 1px solid var(--line); }
+    .agent-head h1 { font-size: clamp(30px, 4.4vw, 44px); }
+    .agent-head .row { margin-top: var(--step-2); }
+    .agent-head .lede { margin-top: var(--step-3); }
+    .layout { display: grid; grid-template-columns: 1fr 340px; gap: var(--step-5); padding-block: var(--step-4) var(--step-6); align-items: start; }
+    .block { padding-bottom: var(--step-4); }
+    .block + .block { border-top: 1px solid var(--line); padding-top: var(--step-4); }
+    .block h2 { font-size: 21px; margin-bottom: var(--step-2); }
+
+    .hirebox { border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: var(--radius-lg); padding: var(--step-3); position: sticky; top: 84px; display: grid; gap: 12px; }
+    .hirebox h3 { font-size: 16px; }
+    .hirebox .line { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 7px 0; border-bottom: 1px solid var(--accent-line); }
+    .hirebox .line:last-of-type { border-bottom: 0; }
+    .hirebox .line span:first-child { color: #45536e; }
+    .hirebox .line span:last-child { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+    .hirebox .why { font-size: 13px; color: #45536e; }
+
+    .ladder { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel); }
+    .rung { display: flex; gap: 11px; align-items: baseline; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .rung:last-child { border-bottom: 0; }
+    .rung.done { background: var(--good-soft); color: var(--good); font-weight: 600; }
+    .rung.todo { color: var(--muted); }
+    .rung .mark { width: 16px; flex: none; font-weight: 800; }
+
+    .kv { display: grid; grid-template-columns: 190px 1fr; gap: 10px var(--step-3); font-size: 14px; }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; overflow-wrap: anywhere; }
+
+    .result { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); padding: var(--step-3); }
+    .result .answer { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+    .result .because { font-size: 14.5px; color: var(--ink-soft); margin-top: 8px; max-width: 70ch; }
+    details.adv { margin-top: var(--step-2); border-top: 1px solid var(--line); padding-top: 12px; }
+    details.adv summary { cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--ink-soft); }
+    details.adv .kv { margin-top: 12px; }
+    .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .links a { border: 1px solid var(--line); background: var(--subtle); border-radius: var(--radius-pill); padding: 7px 13px; font-size: 12.5px; color: var(--ink); text-decoration: none; }
+    .links a:hover { border-color: var(--line-strong); }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .hirebox { position: static; }
+      .kv { grid-template-columns: 1fr; gap: 3px var(--step-2); }
+      .kv dt { margin-top: 9px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">Canned <span>BNB agent marketplace</span></a>
+      <nav class="topnav" aria-label="Main">
+        <a href="/marketplace">Explore agents</a>
+        <a href="/#how">How it works</a>
+        <a href="/list">List your agent</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell" id="main">
+    <div class="state" style="margin-block:var(--step-5);"><strong>Loading this agent</strong><p>Reading its registration, availability and observed work.</p></div>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <nav aria-label="Footer"><a href="/">Home</a><a href="/marketplace">Explore agents</a><a href="/inspection">Evidence</a></nav>
+    </div>
+  </footer>
+
+  <script>
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+    const identity = decodeURIComponent(location.pathname.replace(/^\/agent\//, ""));
+
+    const LADDER = [
+      ["LISTED", "Listed", "Canned knows this agent exists on BNB Chain."],
+      ["ENDPOINT_VERIFIED", "Endpoint verified", "Its service answered when Canned called it."],
+      ["QUOTE_VERIFIED", "Quote verified", "It returned a signed price matching its registered owner."],
+      ["HIRE_ATTEMPTED", "Hire attempted", "Canned paid for a real job."],
+      ["DELIVERY_OBSERVED", "Delivery observed", "It returned work and Canned kept a copy."],
+      ["BENCHMARKED", "Benchmarked", "Its work was graded against a person doing the same task."],
+      ["REPEATEDLY_OBSERVED", "Repeatedly observed", "It did that more than once."],
+    ];
+
+    function u(price) {
+      if (!price || price.raw === null || price.raw === undefined) return null;
+      const value = Number(price.raw) / 1e18;
+      return (value === 0 ? "0" : value.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")) + " U";
+    }
+    function ms(value) {
+      if (!Number.isFinite(value)) return "Not enough data";
+      const seconds = value / 1000;
+      return seconds < 90 ? seconds.toFixed(0) + "s" : Math.floor(seconds / 60) + "m " + Math.round(seconds % 60) + "s";
+    }
+
+    function hireBox(agent) {
+      const price = u(agent.price);
+      if (!agent.hire.ready) {
+        return '<aside class="hirebox" style="background:var(--subtle); border-color:var(--line);">'
+          + "<h3>Not available to hire</h3>"
+          + '<p class="why">' + esc(agent.hire.reason || "Canned has not verified a safe way to hire this agent.") + "</p>"
+          + '<p class="why">Canned will not take your money for a job it cannot verify will reach the agent.</p></aside>';
+      }
+      return '<aside class="hirebox" id="hire">'
+        + "<h3>Hire " + esc(agent.name) + "</h3>"
+        + '<div><div class="line"><span>Price</span><span>' + esc(price || "Not enough data") + "</span></div>"
+        + '<div class="line"><span>You pay</span><span>When the job is created</span></div>'
+        + '<div class="line"><span>Can move your funds</span><span>' + (agent.permissions.known ? (agent.permissions.canMoveFunds ? "Yes" : "No") : "Not published") + "</span></div>"
+        + '<div class="line"><span>Runs on</span><span>BSC Testnet</span></div></div>'
+        + '<button class="btn" type="button" id="hire-btn">Review and hire</button>'
+        + '<p class="why">Nothing is spent until you confirm on the next step.</p></aside>';
+    }
+
+    function ladder(agent) {
+      return '<div class="ladder">' + LADDER.map(([key, name, meaning]) => {
+        const done = agent.trust.states[key] === true;
+        return '<div class="rung ' + (done ? "done" : "todo") + '"><span class="mark">' + (done ? "✓" : "·") + "</span><span><b>" + esc(name) + "</b> " + esc(meaning) + "</span></div>";
+      }).join("") + "</div>";
+    }
+
+    function resultBlock(agent) {
+      const pairs = agent.agentAdvantage || [];
+      if (!pairs.length) {
+        return '<div class="state"><strong>No graded results yet</strong><p>Canned has not paid this agent for a benchmarked job, so there is nothing to show. That is a gap in evidence, not a judgement about the agent.</p></div>';
+      }
+      return pairs.map((entry) => {
+        const pair = entry.pair || {};
+        const comparison = pair.comparison || {};
+        const decision = entry.verifiedRun ? entry.verifiedRun.classification : null;
+        return '<div class="result">'
+          + '<p class="small">' + esc(entry.benchmarkId || "Benchmark") + " &middot; job " + esc(String(entry.jobId ?? "unknown")) + "</p>"
+          + '<p class="answer" style="margin-top:6px;">' + (comparison.agentAdvantage === true ? "The agent beat the person" : comparison.agentAdvantage === false ? "The agent did not beat the person" : "Not graded") + "</p>"
+          + '<p class="because">Quality ' + esc(String(pair.withoutAgent?.qualityScore ?? "?")) + " for the person against " + esc(String(pair.withAgent?.qualityScore ?? "?")) + " for the agent. Time " + esc(ms(pair.withoutAgent?.elapsedMs)) + " against " + esc(ms(pair.withAgent?.elapsedMs)) + ". The person answered first and their answer was sealed before the agent ran.</p>"
+          + '<details class="adv"><summary>Evidence and technical detail</summary><dl class="kv">'
+          + "<dt>Verified run</dt><dd>" + esc(decision || "Not classified") + "</dd>"
+          + "<dt>Evaluator</dt><dd class=\"mono\">" + esc(pair.evaluatorVersion || "unknown") + "</dd>"
+          + "<dt>Ground truth hash</dt><dd class=\"mono\">" + esc(pair.groundTruthHash || "unknown") + "</dd>"
+          + "<dt>Deliverable</dt><dd class=\"mono\">" + esc(pair.withAgent?.evidence?.deliverableCid || "not recorded") + "</dd>"
+          + "</dl>"
+          + '<div class="links">'
+          + (pair.withAgent?.evidence?.deliverableCid ? '<a href="https://gateway.pinata.cloud/ipfs/' + esc(pair.withAgent.evidence.deliverableCid) + '" target="_blank" rel="noreferrer">Open the deliverable</a>' : "")
+          + '<a href="/inspection#advantage">Full comparison</a></div></details></div>';
+      }).join("");
+    }
+
+    function failureBlock(agent) {
+      if (!agent.failures || !agent.failures.length) return "";
+      return '<div class="block"><h2>Failures</h2><p class="body" style="margin-bottom:12px;">Canned keeps these. An agent that failed once is not disqualified, but you should know.</p>'
+        + '<div class="ladder">' + agent.failures.map((failure) => '<div class="rung"><span class="mark">!</span><span>' + esc(String(failure).replace(/_/g, " ")) + "</span></div>").join("") + "</div></div>";
+    }
+
+    function render(agent) {
+      const price = u(agent.price);
+      document.title = "Canned | " + agent.name;
+      document.getElementById("main").innerHTML =
+        '<div class="agent-head"><p class="small"><a href="/marketplace">Back to agents</a></p>'
+        + "<h1 style=\"margin-top:10px;\">" + esc(agent.name) + "</h1>"
+        + '<div class="row">'
+        + '<span class="pill ' + (agent.trust.states.BENCHMARKED ? "good" : "info") + '"><span class="dot"></span>' + esc(agent.trust.label.replace(/_/g, " ")) + "</span>"
+        + '<span class="pill">' + esc(agent.category.claimedCategoryLabel || "Uncategorised") + "</span>"
+        + (agent.isReferenceAgent ? '<span class="pill warn"><span class="dot"></span>Built by Canned</span>' : '<span class="pill">' + esc(agent.listingState.toLowerCase()) + "</span>")
+        + "</div>"
+        + '<p class="lede">' + esc(agent.purpose || agent.description || "This agent has not published a description.") + "</p></div>"
+
+        + '<div class="layout"><div>'
+
+        + '<div class="block"><h2>What Canned observed</h2>' + ladder(agent) + "</div>"
+
+        + '<div class="block"><h2>Results</h2>' + resultBlock(agent) + "</div>"
+
+        + failureBlock(agent)
+
+        + '<div class="block"><h2>What it can and cannot do</h2>'
+        + '<p class="body">' + esc(agent.permissions.summary) + "</p>"
+        + '<dl class="kv" style="margin-top:var(--step-2);">'
+        + "<dt>Can move your funds</dt><dd>" + (agent.permissions.known ? (agent.permissions.canMoveFunds ? "Yes" : "No") : "Not published by this agent") + "</dd>"
+        + "<dt>Acts on its own</dt><dd>" + (agent.permissions.known ? (agent.permissions.automaticIntervention ? "Yes" : "No, it only recommends") : "Not published") + "</dd>"
+        + "<dt>Category is</dt><dd>Stated by its owner, not proven by Canned</dd>"
+        + "</dl></div>"
+
+        + '<div class="block"><h2>Identity and provenance</h2><dl class="kv">'
+        + "<dt>Agent identity</dt><dd class=\"mono\">" + esc(agent.identity) + "</dd>"
+        + "<dt>Owner</dt><dd class=\"mono\">" + esc(agent.owner || "Not resolved") + "</dd>"
+        + "<dt>Network</dt><dd>" + esc(agent.chain.network || "unknown") + " (chain " + esc(String(agent.chain.chainId ?? "?")) + ")</dd>"
+        + "<dt>BNB eligibility</dt><dd>" + esc(agent.eligibility.status.replace(/_/g, " ")) + (agent.eligibility.confirmationRequired ? " <span class=\"small\">(testnet identity, final rules unconfirmed)</span>" : "") + "</dd>"
+        + "<dt>Service endpoint</dt><dd class=\"mono\">" + esc(agent.endpoint || "Not published") + "</dd>"
+        + "<dt>Price source</dt><dd>" + esc(agent.price.verified ? "Verified signed quote" : "No verified quote") + "</dd>"
+        + "<dt>Last tested</dt><dd>" + esc(agent.trust.lastTested ? new Date(agent.trust.lastTested).toLocaleString() : "Never") + "</dd>"
+        + "</dl></div>"
+
+        + "</div>" + hireBox(agent) + "</div>";
+
+      const hireButton = document.getElementById("hire-btn");
+      if (hireButton) hireButton.addEventListener("click", () => {
+        hireButton.disabled = true;
+        hireButton.textContent = "Preparing";
+        fetch("/api/hire/prepare?identity=" + encodeURIComponent(agent.identity))
+          .then((response) => response.json())
+          .then((data) => {
+            const box = document.getElementById("hire");
+            box.innerHTML = "<h3>Ready to hire</h3>"
+              + '<div><div class="line"><span>Agent</span><span>' + esc(agent.name) + "</span></div>"
+              + '<div class="line"><span>Price</span><span>' + esc(price || "Not enough data") + "</span></div>"
+              + '<div class="line"><span>Permission</span><span>' + (agent.permissions.canMoveFunds ? "Can move funds" : "Read only") + "</span></div></div>"
+              + '<p class="why">' + esc(data.note || "A separate confirmation is required before anything is spent.") + "</p>"
+              + '<p class="why">Paid hiring from the browser is not enabled in this build. Canned runs hires from its operator tooling so every job keeps a precommit and full evidence trail.</p>';
+          })
+          .catch(() => {
+            hireButton.disabled = false;
+            hireButton.textContent = "Review and hire";
+            const box = document.getElementById("hire");
+            const note = document.createElement("p");
+            note.className = "why";
+            note.textContent = "That did not go through. Nothing was spent. Try again.";
+            box.appendChild(note);
+          });
+      });
+    }
+
+    fetch("/api/agent/" + encodeURIComponent(identity))
+      .then(async (response) => {
+        if (response.status === 404) throw new Error("not_found");
+        if (!response.ok) throw new Error("unavailable");
+        return response.json();
+      })
+      .then(render)
+      .catch((error) => {
+        document.getElementById("main").innerHTML = error.message === "not_found"
+          ? '<div class="state" style="margin-block:var(--step-5);"><strong>Canned has no record of this agent</strong><p>The identity may not be on BNB Chain, or Canned may not have discovered it yet.</p><p style="margin-top:10px;"><a class="btn small" href="/marketplace">Back to agents</a></p></div>'
+          : '<div class="state error" style="margin-block:var(--step-5);"><strong>This agent could not be loaded</strong><p>Canned shows evidence only when it can read it. Refresh to try again.</p></div>';
+      });
+  </script>
+</body>
+</html>

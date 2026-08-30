@@ -1,0 +1,200 @@
+/*
+ * Canned design tokens.
+ *
+ * Product: a marketplace that ranks BNB Chain agents by observed work.
+ * Three traits it is actually trying to be: evidential, plain spoken, exacting.
+ *
+ * Type: one interface family. Monospace only where it carries meaning, which
+ * here means identities, hashes, addresses and aligned figures.
+ * Color: one accent, used for action only. Status colors stay semantic and are
+ * always paired with text, never carrying meaning alone.
+ * Theme: light, single. This is a public surface read in daylight, and a
+ * switcher would double the visual QA surface for no product reason.
+ */
+
+:root {
+  --ink: #142033;
+  --ink-soft: #35435c;
+  --muted: #667085;
+  --paper: #f7f7f3;
+  --panel: #ffffff;
+  --subtle: #fafaf8;
+  --line: #e5e7eb;
+  --line-strong: #cfd6e0;
+
+  --accent: #2155d6;
+  --accent-ink: #17408f;
+  --accent-soft: #edf2ff;
+  --accent-line: #cbd8f4;
+
+  --good: #176b57;
+  --good-soft: #e8f4ef;
+  --good-line: #b7e0c6;
+  --warn: #8a5b09;
+  --warn-soft: #fff5e2;
+  --warn-line: #f0d9a8;
+  --bad: #a43c37;
+  --bad-soft: #fdecec;
+  --bad-line: #f2c4c4;
+
+  --radius: 14px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  --step-1: 6px;
+  --step-2: 12px;
+  --step-3: 18px;
+  --step-4: 28px;
+  --step-5: 44px;
+  --step-6: 72px;
+  --step-7: 112px;
+
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+  --shell: min(1120px, 100% - 44px);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.6 var(--sans);
+  overflow-x: hidden;
+}
+
+.shell { width: var(--shell); margin-inline: auto; }
+
+/* Navigation. Three destinations, so no sidebar and no ten item navbar. */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(247, 247, 243, 0.92);
+  backdrop-filter: saturate(140%) blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--step-3); height: 64px; }
+.brand { display: inline-flex; align-items: baseline; gap: 8px; font-weight: 800; font-size: 19px; letter-spacing: -0.035em; color: var(--ink); text-decoration: none; }
+.brand span { font-weight: 500; font-size: 12px; color: var(--muted); letter-spacing: 0; }
+.topnav { display: flex; align-items: center; gap: var(--step-1); }
+.topnav a { color: var(--ink-soft); text-decoration: none; font-size: 14px; font-weight: 600; padding: 9px 12px; border-radius: 9px; }
+.topnav a:hover { background: rgba(20, 32, 51, 0.06); color: var(--ink); }
+.topnav a.here { color: var(--ink); background: rgba(20, 32, 51, 0.07); }
+
+/* Buttons. One primary per screen or region. */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 11px 18px;
+  border-radius: 10px; border: 1px solid var(--accent);
+  background: var(--accent); color: #fff;
+  font: inherit; font-size: 15px; font-weight: 700; text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+.btn.secondary { background: var(--panel); color: var(--ink); border-color: var(--line-strong); }
+.btn.secondary:hover { background: var(--subtle); border-color: var(--muted); }
+.btn.quiet { background: transparent; border-color: transparent; color: var(--accent); min-height: 0; padding: 4px 0; }
+.btn.quiet:hover { background: transparent; color: var(--accent-ink); text-decoration: underline; }
+/* On touch screens a quiet button is still a button, so it gets a real
+   target. On a mouse it stays a tight inline link and does not push the
+   card layout around. */
+@media (pointer: coarse) {
+  .btn.quiet { min-height: 44px; padding: 12px 0; }
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.small { min-height: 36px; padding: 7px 13px; font-size: 13px; }
+@media (pointer: coarse) { .btn.small { min-height: 44px; padding: 11px 15px; } }
+
+a { color: var(--accent); }
+a:hover { color: var(--accent-ink); }
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+h1, h2, h3 { margin: 0; letter-spacing: -0.035em; line-height: 1.15; }
+h1 { font-size: clamp(40px, 6.4vw, 68px); letter-spacing: -0.05em; }
+h2 { font-size: clamp(25px, 3.1vw, 34px); }
+h3 { font-size: 18px; letter-spacing: -0.02em; }
+p { margin: 0; }
+
+.eyebrow { font-size: 13px; font-weight: 800; letter-spacing: 0.13em; text-transform: uppercase; color: var(--accent); }
+.lede { font-size: clamp(17px, 1.9vw, 20px); line-height: 1.55; color: var(--ink-soft); max-width: 60ch; }
+.body { font-size: 16px; line-height: 1.6; color: var(--ink-soft); max-width: 68ch; }
+.small { font-size: 14px; line-height: 1.55; color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.num { font-variant-numeric: tabular-nums; }
+
+section { padding-block: var(--step-6); }
+section + section { border-top: 1px solid var(--line); }
+.section-head { max-width: 62ch; margin-bottom: var(--step-4); display: grid; gap: var(--step-2); }
+
+/* Status. Meaning is carried by the text; color only reinforces it. */
+.pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  border-radius: var(--radius-pill); padding: 5px 11px;
+  font-size: 12px; font-weight: 700; white-space: nowrap;
+  border: 1px solid var(--line); background: var(--subtle); color: var(--ink-soft);
+}
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.pill.good { background: var(--good-soft); border-color: var(--good-line); color: var(--good); }
+.pill.warn { background: var(--warn-soft); border-color: var(--warn-line); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); border-color: var(--bad-line); color: var(--bad); }
+.pill.info { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+
+.card { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); padding: var(--step-3); }
+
+/* The four states, with real content rather than a spinner and a shrug. */
+.state { border: 1px dashed var(--line-strong); border-radius: var(--radius-lg); background: rgba(255,255,255,0.6); padding: var(--step-4); display: grid; gap: 8px; }
+.state strong { font-size: 15px; }
+.state p { color: var(--muted); font-size: 14px; max-width: 56ch; }
+.state.error { border-style: solid; border-color: var(--bad-line); background: var(--bad-soft); }
+.state.error p { color: #7d2f2b; }
+
+.skeleton { border-radius: 8px; background: linear-gradient(90deg, #eceef1 25%, #f4f5f7 37%, #eceef1 63%); background-size: 400% 100%; animation: shimmer 1.3s ease infinite; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+
+.field { display: grid; gap: 6px; }
+.field > label { font-size: 13.5px; font-weight: 700; }
+.field .hint { font-size: 13px; color: var(--muted); }
+input, select, textarea {
+  width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: var(--panel); color: var(--ink); font: inherit; font-size: 15px;
+}
+textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
+input:disabled, textarea:disabled { background: var(--subtle); color: var(--muted); }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+th { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; background: var(--subtle); }
+tr:last-child td { border-bottom: 0; }
+.table-wrap { border: 1px solid var(--line); border-radius: var(--radius); overflow-x: auto; background: var(--panel); }
+
+.hidden { display: none !important; }
+.stack { display: grid; gap: var(--step-3); }
+.row { display: flex; flex-wrap: wrap; gap: var(--step-2); align-items: center; }
+.spread { display: flex; flex-wrap: wrap; gap: var(--step-2); align-items: baseline; justify-content: space-between; }
+
+.footer { border-top: 1px solid var(--line); padding-block: var(--step-4); color: var(--muted); font-size: 13.5px; }
+.footer a { color: var(--ink-soft); text-decoration: none; margin-right: var(--step-3); }
+.footer a:hover { color: var(--accent); }
+
+@media (max-width: 760px) {
+  :root { --shell: min(1120px, 100% - 32px); --step-6: 52px; --step-7: 72px; }
+  section { padding-block: var(--step-5); }
+  /* Two-line nav labels read as broken, so on narrow screens the bar keeps
+     each label on one line and scrolls sideways instead of wrapping. */
+  .topnav { gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .topnav::-webkit-scrollbar { display: none; }
+  .topnav a { padding: 11px 10px; font-size: 13.5px; white-space: nowrap; }
+  .brand span { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
