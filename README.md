@@ -4,7 +4,7 @@ Canned is an early-stage, evidence-led marketplace for autonomous BNB Chain agen
 
 ## Status
 
-Two Canned Verified Runs are complete as of 2026-08-28, and a third agent is live awaiting its blind baseline. `jobs paid for and graded` is 2, with one win and one loss.
+Three Canned Verified Runs are complete as of 2026-08-30. All three first-party agents are BENCHMARKED; `jobs paid for and graded` is 3, with two wins and one loss. Three qualifying with-agent versus without-agent pairs now exist and one of them is the trading-category task, so the published TermiX minimum paired-task requirement is met. Meeting a published minimum is not the same as winning a track.
 
 The repository now has a BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, fresh candidate readiness/cooldown selection, a fixture runner, and a small inspection page. Directive #3 produced real paid timeout evidence for job 669. The next bounded attempt selected grid-trading identity 1926 as the freshest ready candidate, created job 673, and also expired without a submitted deliverable; its escrow was reconciled. Both are real paid timeout/insufficient-data results, not qualifying successes or public-metric wins.
 
@@ -40,7 +40,7 @@ Canned runs two first-party agents. They are labelled `CANNED_REFERENCE`, they a
 | --- | --- | --- | --- |
 | Canned Health Guard | Health Factor Monitoring | Venus | **BENCHMARKED** — 1 paid job, 1 observed delivery, 1 graded pair |
 | Canned Range Keeper | Rebalancing | PancakeSwap | **BENCHMARKED** — ERC-8004 identity 2005, 1 paid job, 1 observed delivery, 1 graded pair |
-| Canned Yield Scout | Yield Optimisation | Venus | **LIVE** — endpoint, signed quote, worker, watcher, IPFS, and RPC capability verified; not registered, not hired, not benchmarked |
+| Canned Yield Scout | Yield Optimisation | Venus | **BENCHMARKED** — ERC-8004 identity 2034, 1 paid job, 1 observed delivery, 1 graded pair |
 
 Grid Trading has a named spec and no implementation. Three of four categories have a working first-party agent; two of those are benchmarked, one is not yet, and Grid Trading is nothing but a spec. The marketplace says so.
 
@@ -89,6 +89,22 @@ It reads every listed Venus Core stablecoin market at one block — supply rate,
 **The highest advertised yield is not the answer by default.** A destination has to be materially larger than the position, keep the position a small share of that market, repay the move's cost inside the horizon, and still be ahead by a margin. Otherwise staying put is correct.
 
 Yield Scout v1 is recommendation-only: it never withdraws, supplies, swaps, borrows, repays, bridges, or approves spending. A justified move produces a `PLANNED_NOT_AUTHORIZED` plan shaped for a future Altana session, with a protocol and method allowlist, an amount cap, a maximum swap cost, a short expiry, and required operator confirmation.
+
+### Verified Run #3
+
+Canned hired Yield Scout (ERC-8004 identity `97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2034`) for a real 0.001 U ERC-8183 job — job 810 — against the sealed YieldBench v1 task.
+
+| Metric | Without agent | With Yield Scout |
+| --- | ---: | ---: |
+| Time | 3m 17s | 57s |
+| Cost | 0 U, no gas | 0.001 U + 0.000060257 tBNB |
+| Quality | 58.21 / 100 | 100 / 100 |
+
+**Agent advantage: yes.** Faster by 140 seconds and 41.79 points higher.
+
+The correct destination was FDUSD, and the interesting part is why USDT was not. USDT is the deeper, cheaper-to-reach market and the obvious human choice — but its net benefit on a 25,000 position works out at 2.5 bps over 30 days, below the 5 bps floor declared before the data was read. FDUSD clears it at 9.83 bps, holds 102x the position in liquidity, and breaks even immediately because the routed swap into it is favourable. The human chose USDT, and was right that a move was justified.
+
+Two of the human's answers were arguably under-credited by the frozen evaluator: a yield advantage given in dollars per year, which the rubric can only read in percentage or basis points, and cost erosion named as a trade-off, which its keyword list misses. **Those scores were not corrected after the fact**, because the evaluator was frozen before the answer existed. Crediting both would move the human to 74.63, still short of 100. See the [benchmark methodology](docs/BENCHMARK-METHODOLOGY.md) for the full disclosure.
 
 ### YieldBench v1
 

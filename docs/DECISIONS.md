@@ -233,3 +233,17 @@ The page has to earn the marketplace, in this order: what Canned is, why an agen
 Constraints: the `design-skill` is the visual and structural authority; https://ignix.bot/ is an information-architecture reference only and must not be copied; no README dumped into a page; no generic three-card feature row; no invented metrics. Every number on it must come from the same derived evidence the marketplace uses.
 
 Reason: the current root is the inspection view, which assumes the reader already knows what an agent marketplace is and why observed work beats claimed capability. That is the wrong first impression for a judge or a liquidity provider arriving cold, and the product's whole argument is one that has to be explained before it can be browsed.
+
+## ADR-042: A value already in the frozen benchmark cannot be leakage
+
+Decision: the human-answer contamination guard excludes any submitted value that appears verbatim in the frozen benchmark, and records which fields were excluded.
+
+Reason: the YieldBench human answered `chosenOption: "USDT"`. A venue ticker must appear in the task, because the task's whole purpose is to present the options. Comparing raw substrings flagged it as leakage and blocked a legitimate run. The secret is which option is correct, not that the option exists. The guard still catches every distinctive phrase the human actually wrote, plus timing, attempt id, evidence hashes, and ground truth.
+
+## ADR-043: Frozen evaluators are not retuned, twice over
+
+Decision: the two YieldBench evaluator gaps found while grading Run #3 — a currency-per-year expression of the yield advantage, and cost erosion named as a trade-off — are published as limitations with a sensitivity figure, and scheduled for evaluator v2.
+
+Reason: this is the second run where reviewing a graded human answer revealed defensible responses the rubric could not read. The precedent set in ADR-031 holds: a rubric frozen before the answer exists is only worth anything if it stays frozen after. The fix belongs to the next version, applied to future runs.
+
+Both runs also show the same failure mode in the rubric design: checks that look for vocabulary rather than meaning. Evaluator v2 for both benchmarks should accept an answer expressed in any equivalent unit, and should test cost, fee, and erosion language against the trade-off dimension.

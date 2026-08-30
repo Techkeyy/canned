@@ -1,6 +1,8 @@
 # Canned project understanding
 
-Status: two Canned Verified Runs are complete, and a third first-party agent is live. Canned Yield Scout (Yield Optimisation, Venus) is deployed with a verified endpoint, signed quote, live worker and watcher, IPFS storage, and a verified RPC capability check; YieldBench v1 is frozen against real mainnet Venus state and its blind human baseline is ready but not yet taken. Yield Scout has no ERC-8004 identity, no paid job, and no benchmark, and the marketplace reports it that way. Grid Trading remains unimplemented.
+Status: three Canned Verified Runs are complete. Job 810 paid 0.001 U to Canned Yield Scout (ERC-8004 identity 2034) against the sealed YieldBench v1 Venus task; it scored 100 to the human's 58.21 in under a third of the time, so `agentAdvantage` is true and public totals read three graded jobs, two wins, one loss. Three qualifying with-agent versus without-agent pairs now exist, one of which is the trading-category task, so the published TermiX minimum paired-task requirement is met; meeting it is not winning the track. Verified Runs #1 and #2 are unchanged. Grid Trading remains unimplemented, so one of the four marketplace categories still has no first-party agent.
+
+Previously: two Canned Verified Runs are complete, and a third first-party agent is live awaiting its blind baseline.
 
 Previously: two Canned Verified Runs are complete. Job 700 paid 0.001 U to Canned Range Keeper (ERC-8004 identity 2005) against the sealed RebalanceBench v1 PancakeSwap task; it scored 100 to the human's 30 in less than half the time, so `agentAdvantage` is true and public totals read two graded jobs, one win, one loss. Verified Run #1 is unchanged.
 

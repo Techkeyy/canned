@@ -285,3 +285,30 @@ Two evaluator changes were made **during** this fairness pass, before any human 
 Methodology `yield-scout-track-record-v1`. A recommendation is recorded when made, with its reference block, the position, the destination, the expected advantage, the estimated cost, and the break-even. Its `outcome` stays null until a later, independently sampled read exists.
 
 Settlement measures whether the rate advantage the recommendation relied on actually persisted, and the realised difference over the elapsed period. It is explicitly not a profit claim: execution price, fees already paid, and compounding are not settled. Below five settled recommendations no rate is published.
+
+## Verified Run #3 result
+
+Job 810, ERC-8004 identity `97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2034`, Venus Core stablecoin markets, frozen mainnet block 118529435, 25,000 USDC over 30 days.
+
+| Metric | Without agent | With Yield Scout |
+| --- | ---: | ---: |
+| Time | 197,312 ms | 57,146 ms |
+| Cost | 0 U, no gas | 0.001 U + 0.000060257 tBNB |
+| Quality | 58.21 / 100 | 100 / 100 |
+
+`agentAdvantage = true`. Yield Scout was faster by 140.2 seconds and scored 41.79 points higher.
+
+Under the precommitted policy the correct destination was **FDUSD**: it clears the 5 bps minimum net benefit with $24.58 over the horizon, holds 102x the position in liquidity, and breaks even immediately because the routed swap into it is favourable. **USDT was disqualified** — deep and cheap to reach, but its net benefit of $6.32 on a 25,000 position is 2.5 bps, below the 5 bps floor. DAI failed on three counts.
+
+The human chose USDT and was scored wrong on venue choice. They were right that a move was justified, and that is credited in full.
+
+### Disclosed evaluator limitations
+
+Two of the human's failed checks are defensible answers the frozen evaluator could not read:
+
+- `yieldAdvantage: "$250 yearly"` — the true annualised advantage of the correct option is $218.50, and the declared tolerance says "within 0.15 percentage points, **or a correct relative statement**". The implementation only parses percentage points, basis points, or both rates; it cannot parse a currency-per-year figure at all. Under the incremental-return tolerance of 25 percent, $250 against $218.50 would have passed.
+- `risksAndTradeoffs: "just not much profit for the first year, due to movement costs"` — this names a real trade-off, cost erosion of first-year return. The keyword list does not include bare "cost", so it did not fire.
+
+**Neither was corrected.** The evaluator was frozen before the answer existed. Crediting both would move the human from 78/134 (58.21) to 100/134 (74.63), against the agent's 134/134. The result direction is unchanged. Both are recorded for evaluator v2 and apply to future runs only.
+
+The human's remaining misses are substantive: the wrong venue, no quantified benefit or break-even, no acknowledgement that Venus rates move with utilisation, and an unbounded action ("move my money to usdt" states no limit).
