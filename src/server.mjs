@@ -23,6 +23,7 @@ import { buildHomepageEvidence, buildMarketplace, buildPublicAgent, publicRunsOn
 import { assessBnbEligibility } from "./marketplace/eligibility.mjs";
 import { createListing, LISTING_STATES, updateListing, validateListingSubmission } from "./marketplace/listings.mjs";
 import { challengeState, consumeChallenge, createChallenge, isAddress, ownershipRecord, verifyOwnership } from "./marketplace/ownership.mjs";
+import { SlidingWindowLimiter, clientKey } from "./net/rate-limit.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
@@ -38,6 +39,18 @@ const cannedCss = await readFile(path.resolve(process.cwd(), "web/canned.css"), 
 // rather than on disk. A restart invalidates them, which is the safe direction.
 const ownershipChallenges = new Map();
 const verifiedSessions = new Map();
+// Public write endpoints are counted per client and per target. See
+// src/net/rate-limit.mjs for why both boundaries are needed.
+const publicWriteLimiter = new SlidingWindowLimiter();
+
+/** Refuse a rate-limited request with the wait, not with a bare error. */
+function refuseRateLimited(response, refused) {
+  json(response, 429, {
+    error: "rate_limited",
+    reason: "Too many attempts. Wait a moment and try again.",
+    retryAfterSeconds: refused.retryAfterSeconds ?? 60,
+  });
+}
 
 async function agentListings() {
   return (await store.loadJson("state/agent-listings.json", { listings: {} })).listings || {};
@@ -529,6 +542,12 @@ const server = createServer(async (request, response) => {
       const identity = String(incoming.body?.identity || "").trim();
       const address = String(incoming.body?.address || "").trim();
       if (!identity || !isAddress(address)) { json(response, 400, { error: "identity_and_address_required", reason: "Connect a wallet and choose the agent you want to claim." }); return; }
+      const challengeLimit = publicWriteLimiter.check([
+        ["challengePerIp", clientKey(request)],
+        ["challengePerAddress", address],
+        ["challengePerIdentity", identity],
+      ]);
+      if (!challengeLimit.allowed) { refuseRateLimited(response, challengeLimit.refused); return; }
       const candidates = await marketplaceCandidates();
       const candidate = candidates.find((item) => item.identity === identity);
       if (!candidate) { json(response, 404, { error: "unknown_identity", reason: "Canned has no record of this agent." }); return; }
@@ -543,6 +562,11 @@ const server = createServer(async (request, response) => {
       const nonce = String(incoming.body?.nonce || "");
       const signature = String(incoming.body?.signature || "");
       const identity = String(incoming.body?.identity || "");
+      const verifyLimit = publicWriteLimiter.check([
+        ["verifyPerIp", clientKey(request)],
+        ["verifyPerIdentity", identity || nonce],
+      ]);
+      if (!verifyLimit.allowed) { refuseRateLimited(response, verifyLimit.refused); return; }
       const challenge = ownershipChallenges.get(nonce) || null;
       const state = challengeState(challenge);
       if (!state.valid) { json(response, 400, { verified: false, error: state.error, reason: "This verification request is no longer valid. Start again." }); return; }
@@ -565,6 +589,8 @@ const server = createServer(async (request, response) => {
     }
     if (url.pathname === "/api/list/submit" && request.method === "POST") {
       const incoming = await readJsonBody(request);
+      const submitLimit = publicWriteLimiter.check([["submitPerIp", clientKey(request)]]);
+      if (!submitLimit.allowed) { refuseRateLimited(response, submitLimit.refused); return; }
       const sessionToken = String(incoming.body?.sessionToken || "");
       const session = verifiedSessions.get(sessionToken) || null;
       if (!session || Date.parse(session.sessionExpiresAt) <= Date.now()) { json(response, 401, { error: "verification_required", reason: "Verify wallet ownership before submitting a listing." }); return; }

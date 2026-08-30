@@ -1,4 +1,5 @@
 import { contentHashes, isObject, isPublicHttpUrl, nowIso, requestJson, safeError } from "../core.mjs";
+import { safeRequestJson, unpinnedRequestImplForTesting } from "../net/egress-guard.mjs";
 import { CATEGORIES, CATEGORY_LABELS } from "../domain.mjs";
 
 export const EIGHT004SCAN_BASE = "https://api.8004scan.io/api/v1";
@@ -119,11 +120,15 @@ function supportsFrom(detail, services, cards) {
 }
 
 export class Eight004ScanAdapter {
-  constructor({ baseUrl = EIGHT004SCAN_BASE, apiKey = process.env.CANNED_8004SCAN_API_KEY, timeoutMs = 12_000, fetchImpl = globalThis.fetch } = {}) {
+  constructor({ baseUrl = EIGHT004SCAN_BASE, apiKey = process.env.CANNED_8004SCAN_API_KEY, timeoutMs = 12_000, fetchImpl = globalThis.fetch, resolver = undefined } = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.apiKey = apiKey;
     this.timeoutMs = timeoutMs;
     this.fetchImpl = fetchImpl;
+    this.resolver = resolver;
+    // A fetch-like double cannot pin a socket, so it is only ever used when a
+    // test supplied one. Left undefined, probes take the pinned path.
+    this.probeRequestImpl = fetchImpl === globalThis.fetch ? undefined : unpinnedRequestImplForTesting(fetchImpl);
   }
 
   async get(path, params = {}) {
@@ -146,16 +151,26 @@ export class Eight004ScanAdapter {
     return this.get(`/agents/${chainId}/${encodeURIComponent(tokenId)}`);
   }
 
+  /**
+   * Probe an endpoint an agent published in the registry.
+   *
+   * The endpoint is written by a stranger, so it goes through the egress
+   * guard: the name is resolved, every answer is checked, and the socket is
+   * pinned to a checked address. A hostname test alone would let a name that
+   * resolves to an internal address through.
+   */
   async probeService(service) {
     const observedAt = nowIso();
-    if (!isPublicHttpUrl(service.endpoint)) {
-      return { ...service, observedAt, status: "blocked_private_or_local", reachable: false, callable: false, elapsedMs: 0, reason: "Private or local endpoints are not probed by the discovery service." };
-    }
-    const response = await requestJson(service.endpoint, {
+    const response = await safeRequestJson(service.endpoint, {
       timeoutMs: this.timeoutMs,
-      fetchImpl: this.fetchImpl,
+      resolver: this.resolver,
+      // Injected only by tests; production keeps the pinned request path.
+      requestImpl: this.probeRequestImpl,
       headers: { "User-Agent": "canned-inventory/0.1" },
     });
+    if (response.blocked) {
+      return { ...service, observedAt, status: "blocked_private_or_local", reachable: false, callable: false, elapsedMs: 0, reason: `Endpoint refused by the egress guard: ${response.error}.` };
+    }
     const skills = Array.isArray(response.body?.skills) ? response.body.skills : [];
     const text = `${response.rawText} ${JSON.stringify(response.body || {})}`.toLowerCase();
     const callable = response.ok && (skills.some((skill) => /negotiate|notify.?funded|execute|trade|yield|health/i.test(JSON.stringify(skill))) || /message\/send|erc.?8183|notify.?funded|negotiate/.test(text));

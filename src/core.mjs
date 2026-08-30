@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { loadEnvFile } from "node:process";
 import { keccak256, stringToHex } from "viem";
+import { assertPublicUrl } from "./net/egress-guard.mjs";
 
 const localEnvPath = path.resolve(process.cwd(), ".env.local");
 if (existsSync(localEnvPath)) {
@@ -69,19 +70,19 @@ export function safeUrl(value) {
   }
 }
 
-function isPrivateIpv4(hostname) {
-  const parts = hostname.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) return false;
-  return parts[0] === 10 || parts[0] === 127 || (parts[0] === 192 && parts[1] === 168) ||
-    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31);
-}
-
+/**
+ * Whether a URL is safe to hand to the network.
+ *
+ * The rule lives in the egress guard so there is exactly one blocklist. The
+ * earlier local copy missed link-local addresses, which is where cloud
+ * instance metadata answers, and it is not repeated here.
+ *
+ * This is the literal-form check only. Anything actually fetched from a
+ * stranger-supplied URL must go through `safeFetch`, which also resolves the
+ * name and pins the connection.
+ */
 export function isPublicHttpUrl(value) {
-  const url = safeUrl(value);
-  if (!url) return false;
-  const host = url.hostname.toLowerCase();
-  if (host === "localhost" || host === "::1" || host.endsWith(".local") || isPrivateIpv4(host)) return false;
-  return true;
+  return assertPublicUrl(value).ok;
 }
 
 export async function requestJson(url, { method = "GET", body, headers = {}, timeoutMs = 12_000, fetchImpl = globalThis.fetch } = {}) {

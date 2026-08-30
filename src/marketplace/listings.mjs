@@ -1,5 +1,6 @@
 import { contentHashes, nowIso, safeUrl } from "../core.mjs";
 import { CATEGORIES, CATEGORY_LABELS } from "../domain.mjs";
+import { isPrivateHostname } from "../net/egress-guard.mjs";
 
 /**
  * Developer-supplied listing data.
@@ -72,17 +73,7 @@ export function sanitizeUrl(value) {
  * Blocking these is what stops "List your agent" becoming an SSRF tool.
  */
 export function isPrivateHost(hostname) {
-  const host = String(hostname || "").toLowerCase().replace(/^\[|\]$/g, "");
-  if (!host) return true;
-  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return true;
-  if (host === "::1" || host === "0.0.0.0" || host === "[::1]") return true;
-  if (/^127\./.test(host) || /^10\./.test(host) || /^192\.168\./.test(host)) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return true;
-  if (/^169\.254\./.test(host)) return true;              // link local, includes cloud metadata
-  if (/^(fc|fd)[0-9a-f]{2}:/.test(host)) return true;     // unique local IPv6
-  if (/^fe80:/.test(host)) return true;                   // link local IPv6
-  if (!host.includes(".") && !host.includes(":")) return true; // bare hostname, not public
-  return false;
+  return isPrivateHostname(hostname);
 }
 
 export function validateListingSubmission(input = {}) {

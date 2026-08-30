@@ -21,11 +21,15 @@ test("local services are represented but never treated as live", async () => {
 
 test("HTTP failure and timeout remain explicit discovery failures", async () => {
   const { Eight004ScanAdapter } = await import("../src/discovery/8004scan.mjs");
-  const failed = await new Eight004ScanAdapter({ fetchImpl: async () => new Response("upstream unavailable", { status: 503 }) }).probeService({ type: "A2A", endpoint: "https://agent.example/card" });
+  // The probe now resolves the host before connecting, so a fake endpoint
+  // needs fake DNS. The resolver answers with a public address; what is under
+  // test is still what happens after the connection is allowed.
+  const resolver = async () => [{ address: "93.184.216.34", family: 4 }];
+  const failed = await new Eight004ScanAdapter({ resolver, fetchImpl: async () => new Response("upstream unavailable", { status: 503 }) }).probeService({ type: "A2A", endpoint: "https://agent.example/card" });
   assert.equal(failed.status, "unreachable");
   assert.equal(failed.httpStatus, 503);
 
-  const timedOut = await new Eight004ScanAdapter({ timeoutMs: 5, fetchImpl: (_url, { signal }) => new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")))) }).probeService({ type: "A2A", endpoint: "https://agent.example/card" });
+  const timedOut = await new Eight004ScanAdapter({ resolver, timeoutMs: 5, fetchImpl: (_url, { signal }) => new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")))) }).probeService({ type: "A2A", endpoint: "https://agent.example/card" });
   assert.equal(timedOut.status, "unreachable");
   assert.equal(timedOut.reason, "timeout");
 });
