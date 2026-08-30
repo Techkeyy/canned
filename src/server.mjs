@@ -80,6 +80,43 @@ async function yieldIdentityRecord() {
   return store.loadJson("state/reference-yield-identity.json", null);
 }
 
+/** The graded outcome of the most recent YieldBench run, or null before one exists. */
+async function latestYieldResult() {
+  const runs = await store.loadRuns();
+  const latest = runs
+    .filter((item) => item?.benchmark?.id === YIELD_BENCHMARK_ID && item?.grading)
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))[0] || null;
+  if (!latest) return null;
+  const grading = await store.loadJson(`state/yieldbench-grading-${latest.runId}.json`, null);
+  const runRecord = await store.loadJson(`state/yieldbench-run-${latest.runId}.json`, null);
+  if (!grading) return null;
+  return {
+    runId: latest.runId,
+    jobId: grading.jobId,
+    identity: grading.identity,
+    evaluatorVersion: grading.evaluatorVersion,
+    policyVersion: grading.policyVersion,
+    recommendation: grading.agent.rawOutput?.decision?.action ?? null,
+    moveRecommended: grading.agent.rawOutput?.decision?.moveRecommended ?? null,
+    recommendedAsset: grading.agent.rawOutput?.decision?.recommendedAsset ?? null,
+    highestAdvertisedYield: grading.agent.rawOutput?.decision?.highestAdvertisedYield ?? null,
+    rejectedCandidates: grading.agent.rawOutput?.decision?.rejectedCandidates ?? [],
+    breakEvenDays: grading.agent.rawOutput?.decision?.breakEvenDays ?? null,
+    expectedNetBenefit: grading.agent.rawOutput?.decision?.expectedNetBenefit ?? null,
+    humanQualityScore: grading.human.score.qualityScore,
+    agentQualityScore: grading.agent.score.qualityScore,
+    humanElapsedMs: grading.human.elapsedMs,
+    agentElapsedMs: grading.agent.elapsedMs,
+    agentAdvantage: grading.pair.comparison.agentAdvantage,
+    serviceFeeRaw: runRecord?.economics?.serviceFeeRaw ?? null,
+    buyerGasWei: runRecord?.economics?.buyerGasWei ?? null,
+    deliverableCid: grading.agent.deliverableCid,
+    termix: grading.termix,
+    verifiedRun: grading.verifiedRun,
+    gradedAt: grading.gradedAt,
+  };
+}
+
 async function yieldDecisions() {
   return (await store.loadJson("state/yield-decisions.json", { decisions: [] })).decisions || [];
 }
@@ -208,7 +245,7 @@ const server = createServer(async (request, response) => {
         agent: "Canned Yield Scout",
         venue: "Venus",
         benchmark: definition ? { id: definition.benchmarkId, version: definition.version, positionAsset: definition.position.assetSymbol, positionAmount: definition.position.amount, horizonDays: definition.horizonDays, marketsCompared: definition.frozenEvidence.snapshot.markets.length, referenceBlock: definition.referenceBlock, marketDataChain: definition.executionBoundary.marketDataChain, marketDataAccess: definition.executionBoundary.marketDataAccess } : null,
-        latestResult: null,
+        latestResult: await latestYieldResult(),
         ...summarizeYieldTrackRecord({ decisions: await yieldDecisions() }),
       });
       return;

@@ -28,6 +28,7 @@
       <section id="marketplace"><div class="section-head"><div><div class="eyebrow">Browse the shelves</div><h2>What do you need done?</h2><p class="section-note">Four categories. One evidence model.</p></div></div><div class="categories" id="categories" role="tablist"></div><div class="toolbar"><span class="filter-note" id="filter-note">Loading the latest indexed inventory...</span><span class="filter-note">Compare up to 3 agents in one category.</span></div><div class="cards" id="cards"><div class="loading">Loading marketplace evidence...</div></div><p class="bottom-note">Trust is an evidence ladder, not a magic score. A live quote can still have zero observed deliveries.</p></section>
       <section class="compare-section" id="compare"><div class="section-head"><div><div class="eyebrow">Evidence side by side</div><h2>Compare</h2><p class="section-note">Missing evidence is shown as “Not enough data”.</p></div></div><div id="compare-content" class="empty">Select two or three agents from the same category to compare them.</div></section>
       <section class="venue-section" id="pancakeswap"><div class="section-head"><div><div class="eyebrow">PancakeSwap &middot; Rebalancing shelf</div><h2>Range Keeper</h2><p class="section-note">What a PancakeSwap liquidity provider would actually be hiring, and what Canned has observed so far.</p></div></div><div id="pancakeswap-content" class="empty">Loading Range Keeper…</div></section>
+      <section class="venue-section" id="venus"><div class="section-head"><div><div class="eyebrow">Venus &middot; Yield Optimisation shelf</div><h2>Yield Scout</h2><p class="section-note">Where a stablecoin position earns most, after the cost of moving it.</p></div></div><div id="venus-content" class="empty">Loading Yield Scout&hellip;</div></section>
       <section class="advantage-section" id="advantage"><div class="section-head"><div><div class="eyebrow">With an agent vs without</div><h2>Agent Advantage</h2><p class="section-note">Real paired tasks. Time, cost, and quality are shown on both sides, including where the human wins.</p></div></div><div id="advantage-content" class="empty">Loading paired evidence...</div></section>
       <section class="operator-section" id="operator"><div class="section-head"><div><div class="eyebrow">Internal view</div><h2>Operator readout</h2><p class="section-note">Conservative testnet scheduling. No continuous paid execution is enabled.</p></div></div><div id="operator-content" class="empty">Operator data loads on demand.</div></section>
     </main></div>
@@ -109,7 +110,41 @@
         +(agent&&agent.activation.selection.status!=='ready'?'<p class="venue-note">Not hireable yet: '+esc(agent.activation.selection.reason)+'</p>':'')
         +'</article>';
     }catch(error){root.className='error';root.textContent='Range Keeper data could not be loaded.';}}
-    document.querySelectorAll('[data-scroll]').forEach((button)=>button.addEventListener('click',()=>{document.getElementById(button.dataset.scroll).scrollIntoView({behavior:'smooth'});if(button.dataset.scroll==='operator')loadOperator();if(button.dataset.scroll==='advantage')loadAdvantage();}));$('#drawer-backdrop').addEventListener('click',(event)=>{if(event.target.id==='drawer-backdrop')closeDrawer();});load();loadAdvantage();loadPancakeSwap();
+    async function loadYieldScout(){var root=$('#venus-content');try{
+      var responses=await Promise.all([fetch('/api/reference/yield/track-record'),fetch('/api/marketplace')]);
+      var record=await responses[0].json();var market=await responses[1].json();
+      var agent=(market.agents||[]).filter(function(a){return (a.name||'').indexOf('Yield Scout')>=0;})[0]||null;
+      var bench=record.benchmark;var r=record.latestResult;var trust=agent?agent.trust:null;
+      root.className='';
+      root.innerHTML='<article class="venue-card"><div class="venue-head"><h3>'+esc(record.agent)+'</h3><span class="status '+(agent?statusClass(agent):'')+'"><span class="dot"></span>'+esc(agent?clean(agent.status.label):'NOT LISTED')+'</span></div>'
+        +'<p class="section-note">Answers one question for a holder: this stablecoin is earning interest somewhere &mdash; is there a better venue, and is moving it worth the cost over a stated horizon? It reads every market at one block and never moves capital.</p>'
+        +'<div class="venue-grid">'
+        +cell('Position',bench?(bench.positionAmount+' '+bench.positionAsset):'Not enough data',bench?(bench.marketsCompared+' Venus markets over '+bench.horizonDays+' days'):'')
+        +cell('Benchmark',bench?bench.id:'Not enough data',bench?('reference block '+bench.referenceBlock.number):'')
+        +cell('Execution','Recommendation only','never supplies, withdraws, swaps, borrows, or approves')
+        +cell('Recommendation',r?(r.recommendation+(r.recommendedAsset?' to '+r.recommendedAsset:'')):'Not enough data',r?('break-even '+r.breakEvenDays+' days'):'')
+        +cell('Observed deliveries',trust?String(trust.deliveryCount):'0','paid jobs with a submitted deliverable')
+        +cell('Track record',record.hasEnoughObservations?(Math.round(record.advantagePersistenceRate*100)+'% advantage persisted'):'Not enough observations',record.settledDecisions+' of '+record.minimumObservations+' settled recommendations')
+        +'</div>'
+        +(r?'<div class="venue-grid" style="margin-top:12px;">'
+            +cell('Without agent',r.humanQualityScore+' / 100',ms(r.humanElapsedMs)+', no fee')
+            +cell('With Yield Scout',r.agentQualityScore+' / 100',ms(r.agentElapsedMs)+', '+uAmount(r.serviceFeeRaw)+' + gas')
+            +cell('Agent advantage',r.agentAdvantage?'yes':'no',r.agentAdvantage?'faster and higher quality':'did not win on both time and quality')
+            +'</div>'
+            +(r.highestAdvertisedYield&&!r.highestAdvertisedYield.isTheRecommendation?'<p class="venue-note">The highest advertised yield was '+esc(r.highestAdvertisedYield.assetSymbol)+' at '+esc(String(r.highestAdvertisedYield.supplyAprPct))+'%, which was not the recommendation.</p>':'')
+            +(r.rejectedCandidates&&r.rejectedCandidates.length?'<p class="venue-note">Rejected: '+r.rejectedCandidates.map(function(c){return esc(c.assetSymbol)+' ('+esc((c.disqualifiers||[]).join(', '))+')';}).join('; ')+'</p>':'')
+            +'<p class="venue-note">ERC-8183 job '+esc(String(r.jobId))+' &middot; '+esc(r.identity)+' &middot; evaluator '+esc(r.evaluatorVersion)+' &middot; policy '+esc(r.policyVersion)+'</p>'
+            +'<div class="pair-links">'
+            +(r.deliverableCid?'<a href="https://gateway.pinata.cloud/ipfs/'+esc(r.deliverableCid)+'" target="_blank" rel="noreferrer">IPFS deliverable</a>':'')
+            +'<a href="https://testnet.8004scan.io/agents/97/'+esc(r.identity.split(':').pop())+'" target="_blank" rel="noreferrer">ERC-8004 identity</a>'
+            +'<a href="#advantage">side by side</a></div>'
+            :'')
+        +'<p class="venue-note">'+esc(record.statement)+'</p>'
+        +'<p class="venue-note">'+esc(record.limitations[0])+'</p>'
+        +(agent&&agent.activation.selection.status!=='ready'?'<p class="venue-note">Not hireable: '+esc(agent.activation.selection.reason)+'</p>':'')
+        +'</article>';
+    }catch(error){root.className='error';root.textContent='Yield Scout data could not be loaded.';}}
+    document.querySelectorAll('[data-scroll]').forEach((button)=>button.addEventListener('click',()=>{document.getElementById(button.dataset.scroll).scrollIntoView({behavior:'smooth'});if(button.dataset.scroll==='operator')loadOperator();if(button.dataset.scroll==='advantage')loadAdvantage();}));$('#drawer-backdrop').addEventListener('click',(event)=>{if(event.target.id==='drawer-backdrop')closeDrawer();});load();loadAdvantage();loadPancakeSwap();loadYieldScout();
   </script>
 </body>
 </html>
