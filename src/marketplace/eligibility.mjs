@@ -20,9 +20,9 @@ export const KNOWN_BNB_REGISTRIES = Object.freeze([
 ]);
 
 /**
- * Whether BSC Testnet identities satisfy the final hackathon wording is not
- * settled by the published material. Canned records the distinction rather
- * than assuming either answer, and every testnet agent carries this flag.
+ * Historical marker retained so old evidence can be interpreted. ADR-065
+ * resolved the final-judging ambiguity from BNB Chain Support, so new
+ * eligibility assessments do not emit this marker.
  */
 export const TESTNET_CONFIRMATION_FLAG = "FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED";
 
@@ -63,9 +63,10 @@ export function assessBnbEligibility(candidate = {}) {
     network,
     registry,
     reasons,
-    // Testnet identities are eligible for the shelf, and flagged, because the
-    // published rules do not clearly settle testnet against mainnet.
-    confirmationRequired: chainId === BNB_CHAIN_IDS.testnet ? TESTNET_CONFIRMATION_FLAG : null,
+    // Testnet is eligible for the shelf. The former final-judging ambiguity
+    // is resolved by ADR-065; keep the field for schema compatibility, but do
+    // not carry the historical confirmation flag into new evidence.
+    confirmationRequired: null,
     eligibleForPublicShelf: status === ELIGIBILITY.ELIGIBLE,
   };
 }

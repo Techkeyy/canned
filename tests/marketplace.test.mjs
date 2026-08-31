@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { deriveAgentRecord, deriveTrustStates, compareAgents } from "../src/marketplace/model.mjs";
 import { protocolCapabilities, selectHiringAdapter } from "../src/marketplace/adapters.mjs";
 import { deriveMarketplaceMetrics } from "../src/marketplace/metrics.mjs";
+import { assessBnbEligibility, TESTNET_CONFIRMATION_FLAG } from "../src/marketplace/eligibility.mjs";
 
 const identity = "97:0xabc:2001";
 const candidate = {
@@ -18,6 +19,14 @@ const candidate = {
   selectionGate: { readiness: { quoteVerified: true, protocolCompatibility: true, ready: true } },
   hiring: { price: "10000000000000000", currency: "U", mechanism: "A2A negotiation + ERC-8183 buyer job" },
 };
+
+test("resolved BSC Testnet eligibility no longer emits the historical confirmation flag", () => {
+  const assessment = assessBnbEligibility({ identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2001" });
+  assert.equal(assessment.status, "BNB_ELIGIBLE");
+  assert.equal(assessment.eligibleForPublicShelf, true);
+  assert.equal(assessment.confirmationRequired, null);
+  assert.equal(TESTNET_CONFIRMATION_FLAG, "FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED");
+});
 
 test("trust ladder distinguishes a verified quote from an observed delivery", () => {
   const trust = deriveTrustStates(candidate, []);

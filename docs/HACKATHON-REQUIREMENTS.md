@@ -224,6 +224,30 @@ Eight of nine. One unmet requirement is enough, so the track is not claimed.
 
 Nine of nine.
 
+> **HISTORICAL STATE — SUPERSEDED by Directive #22.** The eligibility gap below is retained as the state before the organizer clarification.
+
 ### Remaining gap
 
 BSC Testnet versus Mainnet main-track eligibility is still unresolved by published material. `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045). Altana's testnet acceptance says nothing about the main track, and no mainnet write has been performed.
+
+## Status re-stated 2026-08-31 (Directive #22)
+
+| Track | Status |
+| --- | --- |
+| Build the Era main track | **Four of four categories first-class**, unchanged. BSC Testnet chain 97 is confirmed eligible for basic final judging by BNB Chain Support; BSC Mainnet is optional for stronger submission context, not a basic requirement. |
+| TermiX | Met and untouched: 3/3 pairs, wins 2, losses 1. |
+| PancakeSwap | Grid Keeper's bounded, revocable BSC Testnet V2 swap proof remains separate from marketplace benchmark metrics. |
+| Altana | Technical requirement set met: one bounded session-key execution, on-chain registration, revocation, and revoked-key verification. |
+| x402 | **Not implemented or claimed.** The installed SDK has buyer-side x402 signing primitives, but the official seller/facilitator runtime required by current Studio documentation is not installed. |
+
+### Eligibility resolution
+
+`FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` is **RESOLVED** by the BNB Chain Support clarification recorded in ADR-065. The ticket is not treated as a public-rules amendment, and no private support-account information is published.
+
+### x402 compatibility gate
+
+The current official BNB Agent Studio docs describe `/x402` as a seller face backed by `@bnbagent/studio-runtime`, with bounded payment handling and B402 settlement. The installed repository has `@bnbagent/sdk@0.5.4` only: its x402 surface is buyer-side `X402Signer`/`SessionBudgetTracker` plus quote/payment types, with no seller verification or settlement API. `@bnbagent/studio-runtime` is absent and the installed `bag` CLI is broken because its nested `viem` dependency is missing, so Directive #22's early-stop condition is met. No x402 endpoint, payment proof, or x402-derived marketplace claim was fabricated.
+
+### Remaining dependency
+
+Install and pin the current official seller/runtime surface, then repeat the x402 preflight and authorize at most one BSC Testnet payment only if every stated gate passes. Until then, ERC-8183 remains the only Canned-verified commerce rail.

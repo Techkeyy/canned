@@ -256,7 +256,9 @@ Reason: a marketplace whose selling point is that it publishes observed work can
 
 ## ADR-045: BNB eligibility is read from the chain, never inferred from the name
 
-Decision: `assessBnbEligibility` resolves the chain id and registry an identity actually points at. Chain 56 or 97 against the known ERC-8004 registry is eligible; any other chain is ineligible and never reaches a public shelf; an identity Canned could not resolve is `BNB_ELIGIBILITY_UNVERIFIED`, held in a separate bucket rather than being called ineligible. Testnet identities are eligible and carry `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED`.
+Status: **SUPERSEDED by ADR-065.** The chain-derived eligibility rule remains; the final-judging clarification is recorded separately.
+
+Decision: `assessBnbEligibility` resolves the chain id and registry an identity actually points at. Chain 56 or 97 against the known ERC-8004 registry is eligible; any other chain is ineligible and never reaches a public shelf; an identity Canned could not resolve is `BNB_ELIGIBILITY_UNVERIFIED`, held in a separate bucket rather than being called ineligible. Testnet identities were eligible but carried `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` until ADR-065 resolved the final-judging ambiguity.
 
 Reason: an agent named "BNB Yield Optimiser" proves nothing about the chain it lives on, and a marketplace that filtered on names would be trivially gamed. Unresolved is a statement about Canned's own looking, not a verdict on the agent, so it stays distinct from a chain Canned checked and rejected. Whether the published hackathon rules settle testnet against mainnet is not established by the material available, so Canned records the distinction rather than picking an answer.
 
@@ -379,3 +381,23 @@ Reason: paying the fee in USDT would have avoided a native permission entirely a
 Decision: revocation evidence is `account.getKeys()` showing the session key absent, alongside the refused execution attempt.
 
 Reason: the refusal surfaced as an RPC parameter error, which is weak evidence: an error can mean many things, and a guarantee that rests on one is not a guarantee. Reading the account directly shows one remaining key, the admin authority, and no session key. That is a positive statement about on-chain state rather than an inference from a failure message.
+
+## ADR-065: BSC Testnet eligibility is resolved by an organizer clarification
+
+Status: **ACCEPTED 2026-08-31.**
+
+Source: BNB Chain Support. Ticket `9ec7c680-3acb-49ac-a70f-c28456206430`.
+
+Decision: support confirmed that BSC Testnet, chain 97, satisfies basic final-judging eligibility for the Build the Era BNB Agent Studio Marketplace main challenge. BSC Mainnet, chain 56, may strengthen a submission but is not required for basic eligibility.
+
+This is an organizer/support clarification of ambiguous wording, not a change to the official public rules. Canned therefore resolves `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` without claiming that the public rules were amended. The existing safety boundary remains: all Canned writes stay on BSC Testnet and no mainnet write is implied.
+
+## ADR-066: Do not fake an x402 seller when the installed stack cannot settle it
+
+Status: **BLOCKED / DEFERRED 2026-08-31.**
+
+Decision: do not implement or advertise x402 marketplace payment support from the installed SDK alone. The local `@bnbagent/sdk@0.5.4` exposes `X402Signer`, `SessionBudgetTracker`, and buyer-side quote/payment data types, but it exposes no seller-side resource-server handler, facilitator, payment verification, or settlement API. The local dependency tree also has no `@bnbagent/studio-runtime`, and the optional `bag` CLI is present but broken on this machine because its nested `viem` dependency is missing.
+
+The current official BNB Agent Studio architecture places the bounded seller x402 payment handler in `@bnbagent/studio-runtime` and describes the `/x402` face as part of that runtime. Installed executable behavior is authoritative for this repository, so no proprietary challenge format, fake facilitator, synthetic payment result, or payment transaction is introduced. The existing ERC-8183 job rail remains intact and x402 remains an unverified optional capability until the official seller/runtime surface is installed and independently preflighted.
+
+Security consequence: no buyer signature was requested, no token was sourced, no approval was granted, and no x402 payment was attempted. Reopen this decision only with a pinned official seller/runtime path that can prove challenge parsing, BSC Testnet asset/recipient/amount binding, replay protection, payment verification, and settlement before any real payment is authorized.

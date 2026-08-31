@@ -71,7 +71,8 @@ test("BNB eligibility is read from the chain the identity resolves to, never fro
   const bnbTestnet = assessBnbEligibility(candidateAt("2001"));
   assert.equal(bnbTestnet.status, ELIGIBILITY.ELIGIBLE);
   assert.equal(bnbTestnet.network, "bsc-testnet");
-  assert.equal(bnbTestnet.confirmationRequired, TESTNET_CONFIRMATION_FLAG);
+  assert.equal(bnbTestnet.confirmationRequired, null);
+  assert.equal(TESTNET_CONFIRMATION_FLAG, "FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED");
 
   const bnbMainnet = assessBnbEligibility({ identity: `56:${REGISTRY}:7` });
   assert.equal(bnbMainnet.status, ELIGIBILITY.ELIGIBLE);

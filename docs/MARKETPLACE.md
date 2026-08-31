@@ -44,7 +44,7 @@ Canned is a BNB Chain marketplace, so the primary shelves are gated mechanically
 | `BNB_ELIGIBILITY_UNVERIFIED` | Chain or registry not resolved | No, held separately |
 | `NOT_BNB_ELIGIBLE` | Resolved to some other chain | No, anywhere |
 
-Testnet identities are eligible and carry `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED`, because the published hackathon material does not clearly settle testnet against mainnet and Canned records that rather than assuming an answer. See ADR-045.
+Testnet identities are eligible. The former `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` marker is resolved by the BNB Chain Support clarification recorded in ADR-065; this is not presented as a change to the public rules.
 
 ## Reference agents versus third-party agents
 

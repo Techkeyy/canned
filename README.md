@@ -218,6 +218,8 @@ The paid test used only BSC testnet. Its final run record, protocol events, time
 
 `@bnbagent/sdk@0.5.4` is the verified local protocol dependency. The BNB Agent Studio `bag` install is currently broken on this machine and AgentCore is not installed; both are reported by `npm run doctor`. They are not silently treated as available. The current Canned buyer seam and the protocol control use the SDK directly, so no managed provider-agent deployment is implied.
 
+Directive #22 rechecked the current official Studio x402 surface against that installed stack. The SDK provides buyer-side `X402Signer` and `SessionBudgetTracker`, but the seller-side `/x402` handler, payment verification, and B402 settlement live in the uninstalled `@bnbagent/studio-runtime`. Canned therefore does not advertise or execute x402, and claims no x402 payment proof; the ERC-8183 rail remains the verified commerce path. See ADR-066.
+
 `npm run wallet:create` writes the ignored `.env.local` and encrypted SDK keystore needed for this test only. Never commit private keys, wallet keystores, API credentials, or generated deployment secrets.
 
 ## Trust boundary
