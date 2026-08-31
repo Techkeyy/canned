@@ -135,53 +135,70 @@ Writing the scenarios surfaced two of my own errors before anything was frozen: 
 
 Current state: zero sessions, zero on-chain fills. The published summary is *"This agent has not executed a grid trade on chain. There is no track record to report."*
 
-## Current state (Directive #20)
+## Current state (Directive #21)
 
 | Item | State |
 | --- | --- |
 | ERC-8004 identity | Agent **2045**, chain 97 |
-| Paid job 835 | **Preserved failure.** Settled COMPLETED with an empty deliverable; validation rejected it |
-| Paid job 837 | **Corrective run. Valid deliverable**, CID `QmUqmH2mZ4…`, settled COMPLETED |
-| GridBench (paid) | **16/16, score 100**, graded from the paid deliverable against the unchanged precommit |
+| Paid jobs | **835 preserved failure**, **837 valid delivery**, GridBench 16/16 |
 | Trust state | **BENCHMARKED** |
-| Grid Trading category | **First-class.** All four categories now are |
-| Executable route | **PancakeSwap V2** router `0xD99D1c33…`, selector `0x38ed1739` |
-| Altana session | Created, verified, **revoked**. Session-key execution **refused** |
-| Action wallet | 1.3 USDT, 0.01 tBNB, no residual allowance |
-
-### Job 835, and why there was a second job
-
-The runtime submits `result.output`. Both deliverable builders returned the deliverable directly, so `canonicalOutput` was null and the provider uploaded an empty deliverable. 0.001 U bought nothing.
-
-Directive #20 required proving the fix **before** paying again. That preflight ran the exact production handler through the same JSON boundary IPFS uses and the same buyer-side validator: 120,320 canonical bytes, zero validation errors, gradable 16/16. It also caught that the fix had never been deployed to the provider host, which would have wasted a second payment.
-
-An RPC transport failure then blocked one attempt **before funding** (buyer balances unchanged to the last digit, no job id). That consumed no authorisation, because nothing was paid.
-
-Job 835 remains in the record with its rejection intact. `gridbench-run-*` holds both runs and a test fails if either is deleted.
-
-### The route changed because the planned one does not work
-
-Directive #17 planned SmartRouter V3 `exactInputSingle`. Its QuoterV2 **reverts at every input size** on chain 97, so the route cannot be quoted or simulated. The V2 router quotes and simulates against a live WBNB/USDT pair, so that is what the permission names.
-
-`GRID_TESTNET_VENUE.notExecutable` keeps the V3 addresses with the reason, so the rejected route stays visible without ever entering an allowlist. A test asserts it never does.
-
-### The Altana session: real, bounded, revoked, and refused
-
-| Step | Result |
-| --- | --- |
-| Grant | `0x295800e1…` — one contract, one method, one token, 6h expiry |
-| Verification | 12 of 12 checks passed, `broaderThanIntended: []` |
-| **Execution** | **Refused: `NoSpendPermissions`. Nothing moved** |
-| Revocation | `0x58ef1ea7…` |
-| Revoked key | Refused, `REJECTED_BECAUSE_REVOKED` |
+| Categories | **4 of 4 first-class** |
+| Executable route | PancakeSwap **V2** `0xD99D1c33…`, selector `0x38ed1739` |
+| Altana session | Granted, verified, used, **revoked** |
+| **Session-key trade** | **Executed. `0x65a3a85e…`, block 128,319,349** |
+| Session key on chain | **Removed from the account** after revocation |
 | Residual allowance | 0 |
 
-**Root cause of the refusal.** The Altana relay charges its fee in the native token (`feeToken = opts.feeToken ?? NATIVE_TOKEN`). The session permitted spending USDT only, so the session key had no spend permission covering the fee, and Porto's `GuardedExecutor` refused. The fix is either a second spend permission for the native token or `feeToken: USDT` on execute. Not retried: Directive #20 authorised one execution.
+## The Altana proof
 
-**A mistake worth recording.** The first session was granted letting the SDK generate its own session signer, which is not retrievable afterwards. That session was real and correctly bounded but unusable from a second process. It was revoked (`0x28f104c7…`) rather than left dangling, and the replacement used a signer generated and held by the caller, which is what the SDK documents. Two sessions were created; one was live at a time; both are revoked.
+### Why the earlier attempt was refused
 
-### What this does and does not prove
+Directive #20's execution failed with `NoSpendPermissions`. The cause, traced in the installed SDK: `execute.js` sets `const feeToken = opts.feeToken ?? NATIVE_TOKEN` where `NATIVE_TOKEN` is `0x0000…0000`. The session permitted spending USDT only, so the session key had no permission covering the relay's fee and Porto's `GuardedExecutor` refused before anything moved.
 
-Proves: a real on-chain bounded session, an exact contract-and-method allowlist, a spend cap, an expiry, user revocation, and that a revoked key is refused.
+### Paying the fee in USDT was preferred, and is not possible
 
-Does not prove: a successful session-key trade, a profitable strategy, a realistic testnet price, or any grid performance. `ALTANA_REAL_SESSION_EVIDENCE` stays **false**.
+The safer design is to avoid a native permission entirely. The relay refuses it:
+
+- `wallet_getCapabilities` for chain `0x61` advertises exactly **one** fee token: the native asset (`0x0000…0000`, 18 decimals).
+- Asking for USDT directly returns **`fee token not supported: 0x337610d2…`**.
+
+So the fallback applies, and the session carries a second spend permission for the native asset.
+
+### The fee permission is measured, not guessed
+
+The relay states the fee it will charge on the signed intent at `context.quote.quotes[0].intent.paymentMaxAmount`. Measured: **41,046,590,000,000 wei = 0.000041047 tBNB**, `paymentToken` the native address, `paymentRecipient` the funder.
+
+The permission is that figure times three: **0.00012314 tBNB**. That is roughly 1/50th of the wallet's native balance and about 1/8000th of the trade, so it cannot be mistaken for trading capital. The script refuses to grant a native permission above a hard 0.003 tBNB ceiling under any measurement, and refuses to grant at all if it cannot read a real fee — which it did once, stopping before the session existed rather than sizing a permission on a guess.
+
+**The Leash shows the two separately.** `tradeCapital` and `networkFeeAllowance` are distinct fields, and the user-facing line reads "Use a separate, much smaller amount of tBNB to pay the network fee, and nothing else". Presenting relay gas as money the agent may trade with would overstate what was granted.
+
+### What happened
+
+| Step | Evidence |
+| --- | --- |
+| Precommit | `sha256:af9eec84…`, written before the session existed |
+| Grant | `0xe914d286…` — one contract, one method, USDT cap 1.01, native cap 0.000123, 1 hour |
+| Verification | 13 of 13 checks, `broaderThanIntended: []` |
+| **Execution** | **`0x65a3a85e…`** — 1.000000 USDT out, 0.077756 WBNB in, 0.0000379 tBNB fee |
+| Revocation | `0x56f6378d…` |
+| Revoked key | Refused, and **absent from `account.getKeys()`** |
+
+### Independent verification
+
+The receipt was checked without trusting the SDK's return value:
+
+- status `success`, block 128,319,349, 243,489 gas
+- entry contract `0xcb5cef3c…`, the **Altana orchestrator** from `wallet_getCapabilities`
+- submitted by the relay `0xf27f1312…`, **not** the owner EOA, so this was the session path
+- a PancakeSwap V2 `Swap` event on pair `0x5f52ad4b…`
+- ERC-20 transfers: 1.0 USDT from the wallet to the pair, 0.077756 WBNB back
+
+Revocation was verified the same way: `account.getKeys()` returns one key, the admin authority, and the session key is gone.
+
+### What this proves, and what it does not
+
+Proves: a real on-chain bounded session, an exact contract and method allowlist, spend caps that held, a real session-key transaction, user revocation, and a revoked key that is refused and removed on chain.
+
+Does not prove: a profitable strategy, a realistic testnet price, grid performance over time, or investment returns. BSC testnet pricing is incoherent and this was one 1 USDT trade.
+
+`ALTANA_REAL_SESSION_EVIDENCE = true`. The technical requirement set is met. That is not the same as winning the track.

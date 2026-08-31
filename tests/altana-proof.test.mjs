@@ -180,9 +180,13 @@ test("the session was scoped to one contract, one method and one token", () => {
   assert.equal(session.permissions.calls.length, 1);
   assert.equal(session.permissions.calls[0].to.toLowerCase(), V2_ROUTER);
   assert.equal(session.permissions.calls[0].selector, V2_SELECTOR);
-  assert.equal(session.permissions.spend.length, 1);
-  assert.equal(session.permissions.spend[0].token.toLowerCase(), USDT);
-  assert.ok(BigInt(session.permissions.spend[0].limit) <= 1_500_000_000_000_000_000n);
+  // Directive #21 added a second spend rule for the relay fee, because the
+  // relay refuses USDT as a fee token. Trading capital is still USDT only.
+  const trade = session.permissions.spend.find((entry) => String(entry.token).toLowerCase() === USDT);
+  const fee = session.permissions.spend.find((entry) => String(entry.token).toLowerCase() === "0x0000000000000000000000000000000000000000");
+  assert.ok(trade, "a USDT trade permission must exist");
+  assert.ok(BigInt(trade.limit) <= 1_500_000_000_000_000_000n);
+  if (fee) assert.ok(BigInt(fee.limit) * 1000n < BigInt(trade.limit), "the fee allowance must stay negligible beside the trade cap");
   assert.ok(BigInt(session.strategyCaps.perTransactionRaw) <= 1_000_000_000_000_000_000n);
   assert.equal(session.strategyCaps.maxFills, 1);
   assert.ok(session.expiry * 1000 - Date.parse(session.expiresAt) === 0);

@@ -192,3 +192,32 @@ Eight of nine. One unmet requirement is enough, so the track is not claimed.
 
 1. **One Altana session-key execution**, with a spend permission covering the relay's native fee token (or `feeToken: USDT`). This is the only unmet Altana requirement.
 2. BSC Testnet versus Mainnet main-track eligibility is still unresolved by published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045).
+
+## Status re-stated 2026-08-31 (Directive #21)
+
+| Track | Status |
+| --- | --- |
+| Build the Era main track | **Four of four categories first-class**, unchanged by this directive. |
+| TermiX | Met and untouched: 3 of 3 pairs, wins 2, losses 1. |
+| PancakeSwap | Grid Keeper executed a real V2 swap through a bounded, revocable session key. |
+| Altana | **Technical requirement set met.** `ALTANA_REAL_SESSION_EVIDENCE = true`. This is not a claim to have won the track. |
+
+### Altana requirement matrix
+
+| Requirement | Met | Evidence |
+| --- | --- | --- |
+| Bounded session | **Yes** | 13 of 13 checks, `broaderThanIntended: []` |
+| Call allowlist | **Yes** | One contract, one method: V2 router, `0x38ed1739` |
+| Spend cap | **Yes** | USDT 1.01 trade cap; native 0.000123 fee-only cap |
+| Expiry | **Yes** | One hour |
+| On-chain registration | **Yes** | Grant `0xe914d286…`, KeyStore `0x6b8361C2…` |
+| **Real session-key transaction** | **Yes** | **`0x65a3a85e…`**, block 128,319,349, via orchestrator `0xcb5cef3c…` |
+| Visible permissions | **Yes** | `/leash` derives every fact from the stored session |
+| Revocation | **Yes** | `0x56f6378d…` |
+| Revoked state verified | **Yes** | `account.getKeys()` no longer lists the session key |
+
+Nine of nine.
+
+### Remaining gap
+
+BSC Testnet versus Mainnet main-track eligibility is still unresolved by published material. `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045). Altana's testnet acceptance says nothing about the main track, and no mainnet write has been performed.

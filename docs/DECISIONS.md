@@ -361,3 +361,15 @@ Reason: the first failure cost 0.001 U for nothing. The preflight caught somethi
 Decision: the Altana session-key swap failed with `NoSpendPermissions` and is recorded as a failure. `ALTANA_REAL_SESSION_EVIDENCE` remains false, and the partner track is not claimed.
 
 Reason: the relay charges its fee in the native token, and the session permitted only USDT, so the executor refused before anything moved. Every other part of the proof is real and on chain: a bounded grant, a verified scope, a revocation, and a revoked key that is refused. Reporting that as a satisfied requirement because most of it worked would be exactly the overclaim this project exists to avoid. One execution was authorised, it was refused, and the cause is documented rather than retried.
+
+## ADR-063: The relay fee needs its own permission, sized from a measurement
+
+Decision: the session carries two spend permissions. USDT is trading capital; a separate native permission, capped at three times the measured relay fee, pays the relay and nothing else. The Leash presents them as different things.
+
+Reason: paying the fee in USDT would have avoided a native permission entirely and was tried first. The relay advertises exactly one fee token for chain 97, the native asset, and answers `fee token not supported` for USDT. Since the permission is unavoidable, the protection is its size: it is derived from `intent.paymentMaxAmount` in the relay's own quote, roughly 1/8000th of the trade, and the script refuses to grant one above a hard ceiling or to grant at all when it cannot read a real fee. It stopped on exactly that condition once, before any session existed, which is the behaviour that matters.
+
+## ADR-064: Revocation is proven by reading the account, not by catching an error
+
+Decision: revocation evidence is `account.getKeys()` showing the session key absent, alongside the refused execution attempt.
+
+Reason: the refusal surfaced as an RPC parameter error, which is weak evidence: an error can mean many things, and a guarantee that rests on one is not a guarantee. Reading the account directly shows one remaining key, the admin authority, and no session key. That is a positive statement about on-chain state rather than an inference from a failure message.

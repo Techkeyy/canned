@@ -250,9 +250,15 @@ test("the recorded Altana session is real, bounded and revoked", () => {
   assert.equal(session.permissions.calls.length, 1);
   assert.equal(session.permissions.calls[0].to.toLowerCase(), "0xd99d1c33f9fc3444f8101754abc46c52416550d1");
   assert.equal(session.permissions.calls[0].selector, "0x38ed1739");
-  assert.equal(session.permissions.spend.length, 1);
-  assert.equal(session.permissions.spend[0].token.toLowerCase(), "0x337610d27c682e347c9cd60bd4b3b107c9d34ddd");
-  assert.ok(BigInt(session.permissions.spend[0].limit) <= 1_500_000_000_000_000_000n);
+  // Two spend rules with different jobs since Directive #21: trading capital
+  // in USDT, and a much smaller native allowance that pays the relay fee and
+  // nothing else. The relay refuses USDT as a fee token, so the second rule
+  // is unavoidable; keeping it tiny is what makes it safe.
+  const trade = session.permissions.spend.find((entry) => String(entry.token).toLowerCase() === "0x337610d27c682e347c9cd60bd4b3b107c9d34ddd");
+  const fee = session.permissions.spend.find((entry) => String(entry.token).toLowerCase() === "0x0000000000000000000000000000000000000000");
+  assert.ok(trade, "a USDT trade permission must exist");
+  assert.ok(BigInt(trade.limit) <= 1_500_000_000_000_000_000n);
+  if (fee) assert.ok(BigInt(fee.limit) * 1000n < BigInt(trade.limit), "the fee allowance must not resemble trading capital");
   assert.equal(String(session.owner).toLowerCase(), ACTION_WALLET);
 });
 
