@@ -156,6 +156,7 @@ export function describeCallPermission(permission) {
  * exists, and the view says so.
  */
 export function buildLeash({ strategy = null, session = null, network = null, revoked = false, now = Date.now() } = {}) {
+  const nativeSymbol = network?.chain?.nativeCurrency?.symbol ?? "tBNB";
   if (!strategy || !session) {
     return {
       version: LEASH_VERSION,
@@ -179,11 +180,29 @@ export function buildLeash({ strategy = null, session = null, network = null, re
 
   const calls = (session.permissions?.calls ?? []).map(describeCallPermission);
   const durationMs = Math.max(1, expiryMs - Date.parse(strategy.createdAt ?? new Date(now).toISOString()));
-  const spendPermissions = (session.permissions?.spend ?? []).map((permission) => ({
-    token: permission.token ? String(permission.token).toLowerCase() : null,
-    tokenSymbol: permission.token && String(permission.token).toLowerCase() === strategy.pair.quoteToken ? strategy.pair.quoteSymbol : null,
-    ...spendSummary(permission, durationMs),
-  }));
+  /**
+   * Trading capital and the network fee are different things and must never be
+   * shown as one number. A permission with no token is the chain's native
+   * asset, which the relay takes as its fee; it buys nothing and calls
+   * nothing, and presenting it as money the agent may trade with would
+   * overstate what the user granted.
+   */
+  const spendPermissions = (session.permissions?.spend ?? []).map((permission) => {
+    const token = permission.token ? String(permission.token).toLowerCase() : null;
+    // Altana omits `token` for the native asset; a stored record may have
+    // written the zero address instead. Both mean the same thing.
+    const isNative = token === null || token === "0x0000000000000000000000000000000000000000";
+    const isTradeCapital = !isNative && token === strategy.pair.quoteToken;
+    return {
+      token,
+      tokenSymbol: isTradeCapital ? strategy.pair.quoteSymbol : isNative ? nativeSymbol : null,
+      purpose: isTradeCapital ? "trade_capital" : isNative ? "network_fee_only" : "other_token",
+      isTradeCapital,
+      ...spendSummary(permission, durationMs),
+    };
+  });
+  const tradeSpend = spendPermissions.filter((entry) => entry.isTradeCapital);
+  const feeSpend = spendPermissions.filter((entry) => entry.purpose === "network_fee_only");
 
   // An unrestricted call rule makes every other statement here meaningless, so
   // it is surfaced rather than buried in a list.
@@ -202,7 +221,10 @@ export function buildLeash({ strategy = null, session = null, network = null, re
     can: [
       `Trade ${pairLabel(strategy)} inside the range you set`,
       `Call only ${calls.length} approved contract and method combination${calls.length === 1 ? "" : "s"}`,
-      `Spend at most the cap below, from this wallet only`,
+      `Spend at most the trading cap below, from this wallet only`,
+      ...(feeSpend.length
+        ? [`Use a separate, much smaller amount of ${feeSpend[0].tokenSymbol} to pay the network fee, and nothing else`]
+        : []),
     ],
     cannot: [
       "Withdraw your assets to any address",
@@ -215,6 +237,9 @@ export function buildLeash({ strategy = null, session = null, network = null, re
     contracts: calls,
     unrestrictedRules: unrestricted,
     spend: spendPermissions,
+    // Split out so a page cannot accidentally add them together.
+    tradeCapital: tradeSpend,
+    networkFeeAllowance: feeSpend,
     expiresAt: new Date(expiryMs).toISOString(),
     expiresInSeconds: Math.max(0, Math.floor((expiryMs - now) / 1000)),
     revocable: state === LEASH_STATES.ACTIVE,
