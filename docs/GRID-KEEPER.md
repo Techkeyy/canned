@@ -135,59 +135,53 @@ Writing the scenarios surfaced two of my own errors before anything was frozen: 
 
 Current state: zero sessions, zero on-chain fills. The published summary is *"This agent has not executed a grid trade on chain. There is no track record to report."*
 
-## Current state (Directive #19)
+## Current state (Directive #20)
 
 | Item | State |
 | --- | --- |
-| ERC-8004 identity | Agent **2045**, chain 97, verified by direct `ownerOf`/`tokenURI` |
-| Public service | Live, valid TLS, worker and watcher alive, RPC serves the `verifyJob` log span |
-| Paid ERC-8183 job | **835. Funded, submitted, settled COMPLETED on chain.** 0.001 U paid, allowance back to 0 |
-| Deliverable | **Empty. Validation failed.** The run is preserved as a failure |
-| GridBench (paid run) | **Not gradable: no answers were delivered** |
-| GridBench (local engine) | 16/16, score 100. This is a capability result, not a paid one |
-| Trust state | **HIRE ATTEMPTED - DELIVERY NOT OBSERVED** |
-| Grid Trading category | **Not first-class** |
-| Altana session | **None.** The Leash reads `NOT_CONFIGURED` |
-| Action wallet | `0xBB62A403…`, funded with **0.01 tBNB gas only**, 0 USDT |
+| ERC-8004 identity | Agent **2045**, chain 97 |
+| Paid job 835 | **Preserved failure.** Settled COMPLETED with an empty deliverable; validation rejected it |
+| Paid job 837 | **Corrective run. Valid deliverable**, CID `QmUqmH2mZ4…`, settled COMPLETED |
+| GridBench (paid) | **16/16, score 100**, graded from the paid deliverable against the unchanged precommit |
+| Trust state | **BENCHMARKED** |
+| Grid Trading category | **First-class.** All four categories now are |
+| Executable route | **PancakeSwap V2** router `0xD99D1c33…`, selector `0x38ed1739` |
+| Altana session | Created, verified, **revoked**. Session-key execution **refused** |
+| Action wallet | 1.3 USDT, 0.01 tBNB, no residual allowance |
 
-### What went wrong with paid job 835
+### Job 835, and why there was a second job
 
-The reference runtime submits `result.output`. Both Grid Keeper deliverable builders returned the deliverable object directly, so `result.output` was `undefined`, `canonicalOutput` was `null`, and the provider uploaded a deliverable whose `response.content` was `null`. The job still completed the full ERC-8183 lifecycle and settled, so 0.001 U was spent for nothing.
+The runtime submits `result.output`. Both deliverable builders returned the deliverable directly, so `canonicalOutput` was null and the provider uploaded an empty deliverable. 0.001 U bought nothing.
 
-The buyer-side validation caught it immediately and refused to call it a delivery, which is the part of the system that worked. `gridTaskResult()` now makes the runtime boundary explicit and is covered by a test that asserts the canonical output actually carries the answers.
+Directive #20 required proving the fix **before** paying again. That preflight ran the exact production handler through the same JSON boundary IPFS uses and the same buyer-side validator: 120,320 canonical bytes, zero validation errors, gradable 16/16. It also caught that the fix had never been deployed to the provider host, which would have wasted a second payment.
 
-**No second paid job was run.** One paid attempt was authorized, it failed, and the failure stands as the evidence.
+An RPC transport failure then blocked one attempt **before funding** (buyer balances unchanged to the last digit, no job id). That consumed no authorisation, because nothing was paid.
 
-### A rule that was quietly too generous
+Job 835 remains in the record with its rejection intact. `gridbench-run-*` holds both runs and a test fails if either is deleted.
 
-Investigating the failure exposed a second problem. `delivered()` accepted a run if the chain had seen a `SUBMITTED`/`COMPLETED` state, *even when validation had already rejected the deliverable*. Job 835 therefore briefly showed as **DELIVERY OBSERVED** with an empty deliverable.
+### The route changed because the planned one does not work
 
-A validated verdict now wins whenever one exists; the chain-state fallback applies only to runs carrying no verdict at all. The three historical runs are unaffected because their deliverables validated. The rule also existed in two copies, in `model.mjs` and `metrics.mjs`, and the copies had drifted; there is now one definition and a test that fails if a second appears.
+Directive #17 planned SmartRouter V3 `exactInputSingle`. Its QuoterV2 **reverts at every input size** on chain 97, so the route cannot be quoted or simulated. The V2 router quotes and simulates against a live WBNB/USDT pair, so that is what the permission names.
 
-### Why Grid Keeper is still not BENCHMARKED
+`GRID_TESTNET_VENUE.notExecutable` keeps the V3 addresses with the reason, so the rejected route stays visible without ever entering an allowlist. A test asserts it never does.
 
-`qualifiesForAgentTrackRecord` requires `hasActualDeliverable`. The deliverable was empty, so the run does not qualify. The rule was not relaxed. Grid Trading is reported as not first-class, and the marketplace totals are unchanged: 3 paid and graded, 2 wins, 1 loss, 3 of 3 TermiX pairs.
+### The Altana session: real, bounded, revoked, and refused
 
-## The testnet USDT dependency
-
-The Altana execution proof needs the exact token the swap path is bound to.
-
-**`EXPECTED_TESTNET_USDT = 0x337610d27c682E347C9cD60BD4b3b107C9d34dDd`** — verified on chain: 3,969 bytes of code, symbol `USDT`, name `USDT Token`, 18 decimals, total supply 100,000,000, owner `0x082a2027…`. Identified by address, never by symbol; a test asserts that.
-
-### What was checked, and what it showed
-
-| Route | Result |
+| Step | Result |
 | --- | --- |
-| Any Canned wallet already holding it | **No.** All eight hold 0 |
-| Token's own distribution (`mint`, `faucet`, `claim`, `drip`) | **All revert.** Minting is owner-gated |
-| U → USDT direct (V2) | **No pair exists** |
-| U → USDT (V3) | **No pool** |
-| U → WBNB → USDT (V2) | Works, but the U/WBNB pair holds only 0.060 WBNB against 164 U. The buyer's entire 19.996 U yields **under 0.09 USDT**. Not viable |
-| WBNB → USDT (V3) | Quoter **reverts at every fee tier**, unchanged from Directive #17 |
-| **WBNB → USDT (V2)** | **Works.** Pair `0x5f52ad4b…`, reserves 226.8 USDT / 17.5 WBNB, price impact 0.57% between 0.0001 and 0.1 WBNB |
+| Grant | `0x295800e1…` — one contract, one method, one token, 6h expiry |
+| Verification | 12 of 12 checks passed, `broaderThanIntended: []` |
+| **Execution** | **Refused: `NoSpendPermissions`. Nothing moved** |
+| Revocation | `0x58ef1ea7…` |
+| Revoked key | Refused, `REJECTED_BECAUSE_REVOKED` |
+| Residual allowance | 0 |
 
-**Proven path: wrap tBNB to WBNB, then swap WBNB to USDT on PancakeSwap V2.** Measured cost: 0.0778 tBNB per 1 USDT, 0.1170 per 1.5, 0.2355 per 3. The buyer holds 0.2549 tBNB, so 1 to 1.5 USDT is comfortably affordable.
+**Root cause of the refusal.** The Altana relay charges its fee in the native token (`feeToken = opts.feeToken ?? NATIVE_TOKEN`). The session permitted spending USDT only, so the session key had no spend permission covering the fee, and Porto's `GuardedExecutor` refused. The fix is either a second spend permission for the native token or `feeToken: USDT` on execute. Not retried: Directive #20 authorised one execution.
 
-The pool's price remains incoherent (12.2 USDT per WBNB against 11,636 BUSD per WBNB), so nothing about this rate may be presented as market data. It does not need to be: the swap only has to put the exact token in the action wallet so a session key can spend it, and GridBench's decision logic uses frozen mainnet data (ADR-049).
+**A mistake worth recording.** The first session was granted letting the SDK generate its own session signer, which is not retrievable afterwards. That session was real and correctly bounded but unusable from a second process. It was revoked (`0x28f104c7…`) rather than left dangling, and the replacement used a signer generated and held by the caller, which is what the SDK documents. Two sessions were created; one was live at a time; both are revoked.
 
-**No swap was executed.** Directive #19 authorised research only.
+### What this does and does not prove
+
+Proves: a real on-chain bounded session, an exact contract-and-method allowlist, a spend cap, an expiry, user revocation, and that a revoked key is refused.
+
+Does not prove: a successful session-key trade, a profitable strategy, a realistic testnet price, or any grid performance. `ALTANA_REAL_SESSION_EVIDENCE` stays **false**.

@@ -23,11 +23,17 @@ import { RUN_TYPES } from "../src/domain.mjs";
 const NOW = Date.parse("2026-08-31T12:00:00.000Z");
 const U = (n) => BigInt(Math.round(n * 1e6)) * 10n ** 12n;
 
-/** The exact ceiling Directive #18 authorized, kept here so a widening shows up. */
+/**
+ * The exact ceiling, kept here so a widening shows up as a failure.
+ *
+ * The router and selector changed in Directive #20: SmartRouter V3 was planned
+ * but its quoter reverts on this network, so it is not executable and was
+ * never placed in a live allowlist. The V2 router quotes and simulates.
+ */
 const AUTHORIZED = Object.freeze({
   chainId: 97,
-  router: "0x9a489505a00ce272eaa5e07dba6491314cae3796",
-  selector: "0x414bf389",
+  router: "0xd99d1c33f9fc3444f8101754abc46c52416550d1",
+  selector: "0x38ed1739",
   sessionCapUsdt: 10,
   perTxCapUsdt: 3,
   maxFills: 3,

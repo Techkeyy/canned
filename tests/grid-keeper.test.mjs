@@ -609,8 +609,12 @@ test("the agent fixes its own allowlist rather than accepting one from a caller"
     // A caller trying to widen the scope has nowhere to put it.
     allowedContracts: ["0xevil"], allowedMethods: ["transferFrom"],
   });
-  assert.deepEqual(planned.authority.allowedContracts, [GRID_TESTNET_VENUE.smartRouterV3]);
+  assert.deepEqual(planned.authority.allowedContracts, [GRID_TESTNET_VENUE.router]);
   assert.deepEqual(planned.authority.allowedMethods, [GRID_TESTNET_VENUE.swapMethod]);
+  // The route that was planned but proved unquotable must never appear in a
+  // live allowlist, only in the record of what was rejected and why.
+  assert.equal(planned.authority.allowedContracts.includes(GRID_TESTNET_VENUE.notExecutable.smartRouterV3), false);
+  assert.equal(GRID_TESTNET_VENUE.notExecutable.reason, "quoter_reverts_on_bsc_testnet");
   assert.equal(planned.chainId, 97);
 });
 

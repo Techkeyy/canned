@@ -153,3 +153,42 @@ Counting agents rather than evidence would report four. Canned reports three.
 1. **One more paid Grid Keeper job** (0.001 U) after the deliverable-shape fix, to reach BENCHMARKED. Not authorised; the first attempt was spent.
 2. **Testnet USDT for the action wallet.** Proven route: 0.0778 tBNB per 1 USDT via PancakeSwap V2 pair `0x5f52ad4b…`. Requires swap authorisation.
 3. BSC Testnet versus Mainnet main-track eligibility remains unresolved by published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045).
+
+## Status re-stated 2026-08-31 (Directive #20)
+
+| Track | Status |
+| --- | --- |
+| Build the Era main track | **Four of four categories first-class.** Grid Keeper took a corrective paid ERC-8183 job (837, settled COMPLETED, valid deliverable, 0.001 U), scored 16/16 on GridBench graded from that deliverable, and is now BENCHMARKED. The earlier failed job 835 remains in the record. |
+| TermiX | Met and untouched: 3 of 3 pairs, wins 2, losses 1. GridBench added no pair and no win. |
+| PancakeSwap | Range Keeper graded; Grid Keeper benchmarked, hireable, and permitted only to call the V2 router's swap method inside a revocable session. |
+| Altana | **NOT satisfied.** `ALTANA_REAL_SESSION_EVIDENCE = false`. |
+
+### Altana requirement matrix
+
+| Requirement | Met | Evidence |
+| --- | --- | --- |
+| Real on-chain session | **Yes** | Grant `0x295800e1…` |
+| Bounded permission | **Yes** | 12 of 12 verification checks, `broaderThanIntended: []` |
+| Exact contract and method allowlist | **Yes** | V2 router `0xD99D1c33…`, selector `0x38ed1739` |
+| Spend cap | **Yes** | 1.5 USDT on the exact token |
+| Expiry | **Yes** | 6 hours |
+| **Real session-key transaction** | **No** | Refused with `NoSpendPermissions`; nothing moved |
+| User-visible permission | **Yes** | `/leash` derives state from the stored session |
+| Revocation | **Yes** | `0x58ef1ea7…` |
+| Revoked-state verified | **Yes** | `REJECTED_BECAUSE_REVOKED`, residual allowance 0 |
+
+Eight of nine. One unmet requirement is enough, so the track is not claimed.
+
+### Four-category status, derived
+
+| Category | First-class? | Evidence |
+| --- | --- | --- |
+| Health Factor Monitoring | Yes | Verified Run #1, BENCHMARKED |
+| Rebalancing | Yes | Verified Run #2, BENCHMARKED |
+| Yield Optimisation | Yes | Verified Run #3, BENCHMARKED |
+| Grid Trading | **Yes** | Paid job 837, GridBench 16/16, BENCHMARKED |
+
+### Remaining dependencies
+
+1. **One Altana session-key execution**, with a spend permission covering the relay's native fee token (or `feeToken: USDT`). This is the only unmet Altana requirement.
+2. BSC Testnet versus Mainnet main-track eligibility is still unresolved by published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045).

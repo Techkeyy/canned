@@ -238,10 +238,35 @@ test("The Leash is still NOT_CONFIGURED and invents no permission", () => {
   assert.equal(leash.onchain, null);
 });
 
-test("no Altana session evidence exists anywhere in state", () => {
-  // If this ever passes falsely, the marketplace would be claiming an
-  // authority nobody granted.
-  for (const name of ["grid-session.json", "altana-session.json"]) {
-    assert.equal(existsSync(stateFile(name)), false, `${name} must not exist before a session is granted`);
-  }
+test("the recorded Altana session is real, bounded and revoked", () => {
+  // Directive #20 granted a real session. What must never happen is a session
+  // record that claims authority nobody granted, or one left live.
+  const record = readState("grid-session.json");
+  assert.equal(record.revoked, true, "the session must be recorded as revoked");
+  const session = record.session;
+  assert.equal(session.chainId, 97);
+  assert.match(session.grantTransactionHash, /^0x[0-9a-f]{64}$/i);
+  assert.match(session.revocationTransactionHash, /^0x[0-9a-f]{64}$/i);
+  assert.equal(session.permissions.calls.length, 1);
+  assert.equal(session.permissions.calls[0].to.toLowerCase(), "0xd99d1c33f9fc3444f8101754abc46c52416550d1");
+  assert.equal(session.permissions.calls[0].selector, "0x38ed1739");
+  assert.equal(session.permissions.spend.length, 1);
+  assert.equal(session.permissions.spend[0].token.toLowerCase(), "0x337610d27c682e347c9cd60bd4b3b107c9d34ddd");
+  assert.ok(BigInt(session.permissions.spend[0].limit) <= 1_500_000_000_000_000_000n);
+  assert.equal(String(session.owner).toLowerCase(), ACTION_WALLET);
+});
+
+test("the Altana proof records the execution failure rather than a success", () => {
+  // The session-key swap was refused by the validator. Recording it as
+  // anything else would be the single most misleading thing in this project.
+  const proof = readState("altana-proof.json");
+  assert.equal(proof.steps.execution.attempted, true);
+  assert.equal(proof.steps.execution.succeeded, false);
+  assert.match(proof.steps.execution.error, /NoSpendPermissions/);
+  assert.equal(proof.steps.execution.balances.usdtSpentRaw, "0", "no capital moved");
+  assert.equal(proof.steps.execution.fillsUsed, 0);
+  assert.equal(proof.steps.revokedKeyRefused.refused, true);
+  assert.equal(proof.steps.allowanceCleared.residualAllowanceRaw, "0");
+  // The claim boundary is part of the evidence, not a footnote.
+  assert.ok(proof.claimBoundary.doesNotProve.some((line) => /profitable/i.test(line)));
 });

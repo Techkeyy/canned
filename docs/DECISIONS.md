@@ -343,3 +343,21 @@ Reason: the authorisation was for one paid attempt. Re-running after fixing the 
 Decision: the acquisition path for `0x337610d2…` is wrap tBNB to WBNB, then swap WBNB to USDT on PancakeSwap V2 pair `0x5f52ad4b…`. No faucet is assumed and no substitute token is deployed.
 
 Reason: every alternative was checked and failed. No Canned wallet holds the token; its mint and every faucet-shaped entry point reverts; there is no U/USDT pair at all; and the U to WBNB pair is so thin that the buyer's entire U balance converts to under 0.09 USDT. The WBNB pair, by contrast, holds 226 USDT against 17.5 WBNB with 0.57% impact at the sizes needed. Its price is incoherent against BUSD, which rules it out as market data but not as a way to obtain a token: the execution proof needs the asset to exist in the wallet, and the grid's decisions come from frozen mainnet state.
+
+## ADR-060: A route must be proven executable before it can be permitted
+
+Decision: Grid Keeper's live allowlist names the PancakeSwap V2 router and `swapExactTokensForTokens`, not the SmartRouter V3 `exactInputSingle` planned in Directive #17. The V3 addresses are retained under `notExecutable` with the reason.
+
+Reason: the V3 QuoterV2 reverts at every input size on chain 97, so the route cannot be quoted or simulated. Granting a session key permission to call a contract nobody has shown works would be a permission that only looks bounded. The frozen GridBench definition still names V3 and was deliberately not edited: it tests decision logic against a frozen snapshot and is not an execution path.
+
+## ADR-061: Prove the fix before spending again
+
+Decision: after the empty-deliverable failure of job 835, a preflight ran the exact production handler through the real JSON boundary and the real buyer-side validator, with no funding, and the corrective job was only authorised once it passed.
+
+Reason: the first failure cost 0.001 U for nothing. The preflight caught something a code review would not have: the fix existed locally but had never been deployed to the provider host, so a second paid job would have failed identically. A separate transport failure then blocked an attempt before funding, which consumed no authorisation because nothing was paid.
+
+## ADR-062: A refused execution is reported as a refusal
+
+Decision: the Altana session-key swap failed with `NoSpendPermissions` and is recorded as a failure. `ALTANA_REAL_SESSION_EVIDENCE` remains false, and the partner track is not claimed.
+
+Reason: the relay charges its fee in the native token, and the session permitted only USDT, so the executor refused before anything moved. Every other part of the proof is real and on chain: a bounded grant, a verified scope, a revocation, and a revoked key that is refused. Reporting that as a satisfied requirement because most of it worked would be exactly the overclaim this project exists to avoid. One execution was authorised, it was refused, and the cause is documented rather than retried.
