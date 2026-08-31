@@ -64,4 +64,46 @@ const record = {
   gradedAt: nowIso(),
 };
 await writeFile(path.join(stateDir, `gridbench-grading-${run.runId}.json`), JSON.stringify({ ...record, hashes: contentHashes(record) }, null, 2) + "\n", "utf8");
+
+/**
+ * Write the grading back onto the run, the way every other benchmark does.
+ *
+ * Until this happens the run carries evaluation.status "insufficient_data" and
+ * is not counted as graded, even though a complete deterministic score exists.
+ * agentAdvantage is null rather than true or false: GridBench has no human or
+ * control pair, so there is no comparison to win or lose, and wins and losses
+ * filter on an explicit true/false and therefore cannot move.
+ */
+if (!deliveryFailed) {
+  const runsPath = path.join(stateDir, "benchmark-runs.json");
+  const stored = JSON.parse(await readFile(runsPath, "utf8"));
+  const list = Array.isArray(stored) ? stored : stored.runs;
+  const target = list.find((entry) => entry.runId === run.runId);
+  if (target) {
+    target.evaluation = {
+      ...(target.evaluation || {}),
+      status: "completed",
+      evaluatorVersion: groundTruth.evaluatorVersion,
+      metrics: {
+        qualityScore: grading.qualityScore,
+        scenariosPassed: grading.passedCount,
+        scenarioCount: grading.scenarioCount,
+        agentAdvantage: null,
+        pairedComparison: false,
+      },
+      gradedAt: record.gradedAt,
+      gradingRef: "gridbench-grading-" + run.runId + ".json",
+    };
+    target.qualification = {
+      ...target.qualification,
+      performanceDataSufficient: true,
+      qualifiesForPublicMetrics: target.qualification.hasRealPayment === true
+        && target.qualification.hasActualDeliverable === true
+        && target.qualification.protocolCompleted === true
+        && target.qualification.hasRealControl === true,
+    };
+    await writeFile(runsPath, JSON.stringify(stored, null, 2) + "\n", "utf8");
+  }
+}
+
 console.log(JSON.stringify(record, null, 2));
