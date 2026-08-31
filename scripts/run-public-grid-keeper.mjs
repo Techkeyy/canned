@@ -4,7 +4,7 @@ import path from "node:path";
 import { EVMWalletProvider } from "@bnbagent/sdk";
 import { ReferenceAgentRuntime } from "../src/reference/foundation.mjs";
 import { createReferenceSeller, negotiateReferenceQuote, startReferenceWatcher } from "../src/reference/erc8183-seller.mjs";
-import { buildGridKeeperDeliverable, GRID_EXECUTION_MODEL } from "../src/reference/grid-keeper.mjs";
+import { buildGridKeeperDeliverable, buildGridBenchDeliverable, gridTaskResult, GRID_EXECUTION_MODEL } from "../src/reference/grid-keeper.mjs";
 import { buildGridBenchmarkDefinition, publicGridBenchPacket, GRID_BENCHMARK_ID } from "../src/reference/grid-benchmark.mjs";
 import { referenceSpec, REFERENCE_NAMESPACES, REFERENCE_WALLET_PATHS, REFERENCE_NETWORK, REFERENCE_CHAIN_ID, REFERENCE_PAYMENT_TOKEN } from "../src/reference/constants.mjs";
 import { publicReferenceMetadata, publicReadinessSummary, validatePublicReferenceConfig } from "../src/reference/public-service.mjs";
@@ -40,7 +40,16 @@ if (!providerAddress) throw new Error("CANNED_GRID_PROVIDER_ADDRESS is required.
 const wallet = new EVMWalletProvider({ password, address: providerAddress, walletsDir, persist: true });
 
 const spec = referenceSpec(REFERENCE_KEY);
-const runtime = new ReferenceAgentRuntime({ spec, taskHandler: ({ jobId, task, strategy, observation, fills, authority }) => buildGridKeeperDeliverable({ jobId, task, strategy, observation, fills, authority }) });
+// A GridBench job is answered from the frozen definition; anything else is a
+// live strategy evaluation. Without this split a paid benchmark job returns
+// insufficient_data, because no live strategy is attached to one.
+const runtime = new ReferenceAgentRuntime({
+  spec,
+  taskHandler: ({ jobId, task, strategy, observation, fills, authority }) =>
+    gridTaskResult(task?.benchmarkId === GRID_BENCHMARK_ID
+      ? buildGridBenchDeliverable({ jobId, task, definition: buildGridBenchmarkDefinition() })
+      : buildGridKeeperDeliverable({ jobId, task, strategy, observation, fills, authority })),
+});
 if (fulfillmentEnabled) runtime.heartbeat({ state: "idle" });
 const storageDir = path.join(dataDir, "state", NAMESPACE.deliverables);
 const seller = await createReferenceSeller({ providerWallet: wallet, runtime, storageDir, agentUrl, publicMode: true, servicePriceRaw: spec.priceRaw });

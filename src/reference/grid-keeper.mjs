@@ -14,10 +14,10 @@
  * those words. Inventing an order id would be the easiest lie in this project
  * and the most damaging.
  */
-import { contentHashes, nowIso } from "../core.mjs";
+import { canonicalJson, contentHashes, nowIso } from "../core.mjs";
 import { REFERENCE_CHAIN_ID } from "./constants.mjs";
 import {
-  createStrategy, evaluateStrategy, deriveLedger, minimumOut,
+  createStrategy, evaluateStrategy, evaluateLevel, deriveLedger, minimumOut,
   STRATEGY_STATES, GRID_ENGINE_VERSION,
 } from "./grid-engine.mjs";
 
@@ -177,5 +177,136 @@ export function buildLevelSwapCall({ strategy, decision, quotedOutMinor, recipie
     minOutMinor: String(minOut),
     value: "0",
     note: "A normal PancakeSwap swap. It is not a resting order and produces no order id.",
+  };
+}
+
+/**
+ * Answer the frozen GridBench, as the agent, for a paid job.
+ *
+ * The agent runs its own engine over each scenario and reports what it would
+ * do and why. It never sees the answer key: the public packet carries no
+ * `expect` field, and grading happens elsewhere against ground truth
+ * recomputed from the specification.
+ *
+ * Nothing here executes anything. A GridBench job buys the agent's judgement
+ * about a frozen situation, which is why it can be paid for and settled with
+ * no capital moving.
+ */
+export function buildGridBenchAnswers({ definition, nowMs = Date.parse("2026-08-30T12:00:00.000Z") }) {
+  const strategyFor = (scenario) => {
+    const merged = { ...definition.strategy, ...(scenario.strategyOverride ?? {}) };
+    return createStrategy({
+      ...merged,
+      lowerPriceMinor: BigInt(merged.lowerPriceMinor),
+      upperPriceMinor: BigInt(merged.upperPriceMinor),
+      totalCapitalMinor: BigInt(merged.totalCapitalMinor),
+      maxPerLevelMinor: BigInt(merged.maxPerLevelMinor),
+      referencePriceMinor: BigInt(merged.referencePriceMinor),
+    });
+  };
+
+  const answers = {};
+  for (const scenario of definition.scenarios) {
+    if (scenario.asks === "grid_construction") {
+      const built = strategyFor(scenario);
+      answers[scenario.id] = {
+        asks: scenario.asks,
+        levels: built.levels.map((level) => ({ levelId: level.levelId, priceMinor: level.priceMinor, side: level.side })),
+      };
+    } else if (scenario.asks === "ledger") {
+      const ledger = deriveLedger(strategyFor(scenario), scenario.fills ?? []);
+      answers[scenario.id] = {
+        asks: scenario.asks,
+        fillCount: ledger.fillCount,
+        netQuoteSpentMinor: String(ledger.netQuoteSpentMinor),
+        baseInventoryMinor: String(ledger.baseInventoryMinor),
+      };
+    } else {
+      const built = { ...strategyFor(scenario), state: STRATEGY_STATES.ACTIVE };
+      const decision = evaluateLevel({
+        strategy: built,
+        level: { levelId: scenario.levelId },
+        observation: scenario.observation,
+        fills: scenario.fills ?? [],
+        now: nowMs,
+        authority: scenario.authority ?? null,
+        intendedCall: scenario.intendedCall ?? null,
+      });
+      answers[scenario.id] = { asks: scenario.asks, allowed: decision.allowed, reason: decision.reason, side: decision.side ?? null };
+    }
+  }
+  return answers;
+}
+
+/**
+ * The deliverable for a paid GridBench job.
+ *
+ * Carries the answers, the grid it derived, and the execution model, so a
+ * reader can check what was claimed without trusting the grading. It states
+ * plainly that no trade occurred, because a grid agent's deliverable is the
+ * easiest place in this project to imply one did.
+ */
+export function buildGridBenchDeliverable({ jobId, task, definition, nowMs }) {
+  const answers = buildGridBenchAnswers({ definition, nowMs });
+  const strategy = createStrategy({
+    ...definition.strategy,
+    lowerPriceMinor: BigInt(definition.strategy.lowerPriceMinor),
+    upperPriceMinor: BigInt(definition.strategy.upperPriceMinor),
+    totalCapitalMinor: BigInt(definition.strategy.totalCapitalMinor),
+    maxPerLevelMinor: BigInt(definition.strategy.maxPerLevelMinor),
+    referencePriceMinor: BigInt(definition.strategy.referencePriceMinor),
+  });
+
+  const deliverable = {
+    entity: "GridBenchDeliverable",
+    serviceVersion: GRID_KEEPER_SERVICE_VERSION,
+    engineVersion: GRID_ENGINE_VERSION,
+    jobId: jobId ?? null,
+    task: task ?? null,
+    status: "completed",
+    benchmarkId: definition.benchmarkId,
+    benchmarkVersion: definition.version,
+    benchmarkPrecommit: definition.precommit,
+    executionModel: GRID_EXECUTION_MODEL,
+    strategy: {
+      strategyId: strategy.strategyId,
+      chainId: strategy.chainId,
+      pair: strategy.pair,
+      range: strategy.range,
+      capital: strategy.capital,
+      guards: strategy.guards,
+      authority: strategy.authority,
+      hash: strategy.hashes?.sha256 ?? null,
+    },
+    levels: strategy.levels.map((level) => ({ levelId: level.levelId, priceMinor: level.priceMinor, side: level.side, allocationMinor: level.allocationMinor })),
+    answers,
+    // Said explicitly: this deliverable is judgement about a frozen scenario,
+    // not a record of trading.
+    execution: {
+      onchainSwapsPerformed: 0,
+      capitalMoved: false,
+      altanaSessionUsed: false,
+      note: "No trade occurred. A GridBench job buys the agent's decisions about a frozen situation; execution is a separate, separately authorised act.",
+    },
+    producedAt: nowIso(),
+  };
+  return { ...deliverable, hashes: contentHashes(deliverable) };
+}
+
+/**
+ * Adapt a deliverable into the shape the reference runtime submits.
+ *
+ * The runtime reads `result.output` and content-addresses that; a builder that
+ * returns the deliverable directly therefore submits an EMPTY deliverable,
+ * which is exactly what happened to paid job 835. The boundary is made
+ * explicit here rather than left to each caller to remember.
+ */
+export function gridTaskResult(deliverable) {
+  const ok = deliverable?.status === "completed";
+  return {
+    ok,
+    status: ok ? "delivered" : deliverable?.status || "error",
+    output: deliverable,
+    canonicalOutput: canonicalJson(deliverable),
   };
 }
