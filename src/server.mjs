@@ -449,12 +449,19 @@ const server = createServer(async (request, response) => {
     if (url.pathname === "/api/grid/leash") {
       const [strategyRecord, sessionRecord] = await Promise.all([gridStrategyRecord(), gridSessionRecord()]);
       const { BNB_TESTNET } = await import("@altananetwork/sdk");
-      json(response, 200, buildLeash({
-        strategy: strategyRecord?.strategy ?? null,
-        session: sessionRecord?.session ?? null,
-        network: BNB_TESTNET,
-        revoked: sessionRecord?.revoked === true,
-      }));
+      // The stored record names the key `sessionPublicKey`; The Leash reads
+      // `publicKey`. Mapping it here keeps the on-chain identifier visible so a
+      // reader can check the session against the KeyStore themselves.
+      const session = sessionRecord?.session
+        ? { ...sessionRecord.session, publicKey: sessionRecord.session.sessionPublicKey ?? sessionRecord.session.publicKey ?? null }
+        : null;
+      json(response, 200, {
+        ...buildLeash({ strategy: strategyRecord?.strategy ?? null, session, network: BNB_TESTNET, revoked: sessionRecord?.revoked === true }),
+        // Transactions a reader can verify without trusting this page.
+        grantTransactionHash: sessionRecord?.session?.grantTransactionHash ?? null,
+        revocationTransactionHash: sessionRecord?.session?.revocationTransactionHash ?? null,
+        executions: sessionRecord?.session?.executions ?? [],
+      });
       return;
     }
     /** Preview the exact permission a user would be asked to grant. */
