@@ -19,9 +19,9 @@ const U = (n) => BigInt(Math.round(n * 1e6)) * 10n ** 12n;
 // The exact ceiling from Directive #18 section 6.
 const AUTHORIZED = Object.freeze({
   chainId: 97,
-  router: GRID_TESTNET_VENUE.smartRouterV3,
+  router: GRID_TESTNET_VENUE.router,
   method: GRID_TESTNET_VENUE.swapMethod,
-  selector: "0x414bf389",
+  selector: GRID_TESTNET_VENUE.swapSelector,
   sessionCapUsdt: 10,
   perTxCapUsdt: 3,
   maxFills: 3,

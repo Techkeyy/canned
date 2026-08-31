@@ -33,22 +33,34 @@ export const GRID_EXECUTION_MODEL = Object.freeze({
   label: "Agent-managed price-triggered execution",
   isNativeLimitOrder: false,
   venue: "PancakeSwap",
-  summary: "Canned works out the grid levels and watches the price. When the price reaches a level, the agent submits a normal swap. There is no resting order sitting on an exchange, and no order id, because PancakeSwap has no limit-order contract available on this network.",
+  routerVersion: "PancakeSwap V2",
+  summary: "Canned works out the grid levels and watches the price. When the price reaches a level, the agent submits a normal PancakeSwap V2 swap. There is no resting order sitting on an exchange, and no order id, because PancakeSwap has no limit-order contract available on this network.",
   evidence: [
     "PancakeSwap's Gelato-powered limit orders are deprecated and unmaintained.",
     "PancakeSwap Infinity's CLLimitOrder hook exists in source with tests, but is absent from PancakeSwap's own BSC testnet deployment manifest and is not deployed on chain 97.",
-    "PancakeSwap SmartRouter V3 is deployed on BSC testnet and is a real trading primitive, so that is what the agent uses.",
+    "SmartRouter V3 is deployed on BSC testnet, but its QuoterV2 reverts at every input size tested, so the V3 route cannot be quoted or simulated and is not executable here.",
+    "The PancakeSwap V2 router quotes and simulates against a live WBNB/USDT pair, so that is the route the agent is permitted to call. A permission must name a route that works, not the one that was planned.",
   ],
 });
 
 /** BSC testnet contracts Grid Keeper is allowed to name in a strategy. */
 export const GRID_TESTNET_VENUE = Object.freeze({
   chainId: REFERENCE_CHAIN_ID,
-  smartRouterV3: "0x9a489505a00ce272eaa5e07dba6491314cae3796",
-  quoterV2: "0xb048bbc1ee6b733fffcfb9e9cef7375518e25997",
+  // The executable route, verified by quote and simulation on chain 97.
+  router: "0xd99d1c33f9fc3444f8101754abc46c52416550d1",
+  routerVersion: "PancakeSwap V2",
+  swapMethod: "swapExactTokensForTokens(uint256,uint256,address[],address,uint256)",
+  swapSelector: "0x38ed1739",
   wbnb: "0xae13d989dac2f0debff460ac112a837c89baa7cd",
   usdt: "0x337610d27c682e347c9cd60bd4b3b107c9d34ddd",
-  swapMethod: "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))",
+  // Kept for the record: planned in Directive #17, then found unusable because
+  // its quoter reverts on this network. Never placed in an allowlist.
+  notExecutable: Object.freeze({
+    smartRouterV3: "0x9a489505a00ce272eaa5e07dba6491314cae3796",
+    quoterV2: "0xb048bbc1ee6b733fffcfb9e9cef7375518e25997",
+    swapMethod: "exactInputSingle((address,address,uint24,address,uint256,uint256,uint256,uint160))",
+    reason: "quoter_reverts_on_bsc_testnet",
+  }),
 });
 
 /**
@@ -71,7 +83,7 @@ export function planGridStrategy({
     lowerPriceMinor, upperPriceMinor, levelCount, spacing, referencePriceMinor,
     totalCapitalMinor, maxPerLevelMinor,
     expiresAt, maxFills, cooldownMs, maxSlippageBps, maxPriceAgeMs,
-    allowedContracts: [GRID_TESTNET_VENUE.smartRouterV3],
+    allowedContracts: [GRID_TESTNET_VENUE.router],
     allowedMethods: [GRID_TESTNET_VENUE.swapMethod],
     createdAt,
   });
@@ -159,7 +171,7 @@ export function buildLevelSwapCall({ strategy, decision, quotedOutMinor, recipie
   const minOut = minimumOut(quotedOutMinor, strategy.guards.maxSlippageBps);
   const buying = decision.side === "BUY";
   return {
-    to: GRID_TESTNET_VENUE.smartRouterV3,
+    to: GRID_TESTNET_VENUE.router,
     method: GRID_TESTNET_VENUE.swapMethod,
     chainId: strategy.chainId,
     side: decision.side,
