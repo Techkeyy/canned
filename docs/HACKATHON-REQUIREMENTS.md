@@ -84,3 +84,22 @@ The 2026-08-27 table above is kept as written, because a requirements matrix tha
 - Grid Trading has no first-party agent and no benchmark. It is listed as incomplete rather than presented as covered.
 - Whether BSC Testnet identities satisfy the final eligibility wording is not settled by the published material. Every testnet agent carries `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` (ADR-045).
 - Partner tracks publish their own scoring, so the PancakeSwap track page should be re-read before submission rather than assuming the main-track rubric applies.
+
+## Status re-stated 2026-08-31 (Directive #17)
+
+| Track | Requirement | Canned status |
+| --- | --- | --- |
+| Build the Era main track | All four categories first-class | **All four now have a first-party agent.** Three are benchmarked against a sealed human baseline. Grid Keeper is built and has a frozen deterministic benchmark, but is not registered and has not executed, so it is shown as listed and untested. |
+| TermiX | Three with/without pairs, one in trading | Met on the published minimum, unchanged. GridBench is deliberately **not** a fourth pair. |
+| PancakeSwap | Real benefit to traders or LPs, funds never at risk | Range Keeper (graded, Verified Run #2) plus Grid Keeper, which trades only inside a revocable, contract-and-method-scoped permission. |
+| Altana | Bounded session-key execution | Architecture complete against SDK 0.7.1 on the real BSC testnet stack. **The bounty is not satisfied**: no session-key transaction has been executed. The exact proposed first transaction is specified and awaiting authorisation. |
+
+### Grid Trading, stated precisely
+
+The category expects placing and managing automated grid orders. Canned manages grid levels and executes them as real swaps, because no PancakeSwap limit-order contract is available on BSC testnet (see ADR-048). This is disclosed on every surface rather than described as native orders.
+
+### Open items
+
+- Grid Keeper ERC-8004 registration is blocked at the funding boundary.
+- No Altana session key has been granted, so the Altana track is not yet satisfiable.
+- BSC Testnet versus Mainnet eligibility for the main track remains unresolved by the published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` still applies (ADR-045). Altana's own testnet stack does not resolve it, and was not treated as if it did.

@@ -126,6 +126,26 @@ The evaluator was written, tested against nine different answer styles, and froz
 - [Environment and readiness](docs/ENVIRONMENT.md)
 - [The public marketplace](docs/MARKETPLACE.md)
 - [Security](docs/SECURITY.md)
+- [Grid Keeper and The Leash](docs/GRID-KEEPER.md)
+
+## Canned Grid Keeper and The Leash
+
+The fourth category. Grid Keeper runs a bounded grid on a PancakeSwap pair and is the only Canned agent that can move capital, which is why it ships with a permission system rather than a promise.
+
+**It does not place native limit orders.** PancakeSwap's Gelato-powered limit orders are deprecated, and the Infinity `CLLimitOrder` hook is source-only with no deployment on BSC testnet. Grid Keeper runs software-managed levels executed as real PancakeSwap swaps, and every surface says exactly that. It never invents an order id, and a test enforces it.
+
+The Leash is what a user approves before it can act:
+
+| It may | It may not |
+| --- | --- |
+| Trade the one pair, inside the range you set | Withdraw your assets anywhere |
+| Call one contract and one method, enforced on chain | Call any other contract |
+| Spend up to the cap, from your wallet only | Raise its own cap or extend its own expiry |
+| | Act at all after you revoke |
+
+The permission is an Altana session key naming an exact contract **and** an exact method selector, with a spend cap and an expiry. Revocation is one transaction. With no session granted, The Leash reads `NOT_CONFIGURED` rather than describing an authority that does not exist. Try it at `/leash`.
+
+Current state: engine, GridBench v1 and The Leash are built and tested. **No session has been granted and no grid trade has executed.** Grid Keeper appears on the marketplace as listed and untested, which is what it is.
 
 ## The public product
 

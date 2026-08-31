@@ -65,7 +65,36 @@ Listing metadata is the only user-supplied data that could point Canned at a net
 | `fc00::/7`, `fe80::/10` | IPv6 unique-local and link-local |
 | Bare hostnames with no dot | Intranet names, not public |
 
-`javascript:`, `data:`, and `file:` schemes are rejected by the protocol check before the host check runs. The same boundary applies to the endpoint prober: Canned does not probe an address a stranger supplied that resolves inside a private range.
+`javascript:`, `data:`, and `file:` schemes are rejected by the protocol check before the host check runs.
+
+### DNS rebinding
+
+A hostname check alone is not enough for anything Canned actually fetches, because the name a host resolves to can differ from the address a socket connects to. Discovery **does** fetch stranger-supplied endpoints: agent cards written into the ERC-8004 registry. `src/net/egress-guard.mjs` closes that gap in three steps:
+
+1. reject the URL on its literal form (scheme, obvious private host)
+2. resolve the name and reject if **any** A/AAAA answer is private — a name returning one public and one private address is exactly the rebinding case
+3. connect to a resolved address that was checked, using Node's own `lookup` hook, so nothing resolves the name a second time
+
+TLS still validates against the real hostname via `servername`, so pinning does not weaken certificate checking. Redirects are followed manually and revalidated per hop, because an automatic redirect is a second request to an address nobody validated. The address rules also cover carrier-grade NAT, multicast, and IPv4-mapped IPv6 (`::ffff:169.254.169.254` reaches the metadata service just as well as the bare form).
+
+There is now exactly one blocklist. `core.mjs` and `listings.mjs` delegate to the guard rather than keeping their own copies; two copies drift, and the weaker one becomes the vulnerability.
+
+## Rate limiting
+
+The claim flow is the only place a stranger can make Canned do work and hold state, so it is the only place limited. Both boundaries are counted and the stricter verdict wins:
+
+| Bucket | Limit / 10 min |
+| --- | --- |
+| `challengePerIp` | 20 |
+| `challengePerAddress` | 10 |
+| `challengePerIdentity` | 30 |
+| `verifyPerIp` | 15 |
+| `verifyPerIdentity` | 10 |
+| `submitPerIp` | 20 |
+
+Limiting only by IP lets one host grind every agent from a proxy pool; limiting only by target lets one IP grind every agent in turn. Verification is capped harder than issuance because a challenge is single use, so honest users need a handful of attempts and anyone needing hundreds is guessing.
+
+There is deliberately **no global counter**: a global cap is itself the denial of service, since one attacker tripping it locks out everybody. The table is bounded and refuses when saturated rather than growing without limit. A refusal returns `429` with `retryAfterSeconds`. `X-Forwarded-For` is believed only when `CANNED_TRUST_PROXY=true`, because otherwise anyone can set it and every per-IP limit becomes decorative.
 
 ## Stored XSS
 
@@ -92,8 +121,21 @@ Output escaping is a second, independent layer. Each page defines one `esc()` th
 - Eligibility is decided by the chain an identity resolves to, never by its name (ADR-045).
 - Reference agents are read-only by default and publish an execution policy; the marketplace surfaces `canMoveFunds` per agent, and reports it as unknown rather than `false` when an agent has not published one.
 
+## Execution authority
+
+Grid Keeper is the only agent that can move capital, and only inside a session the user granted and can revoke. See [GRID-KEEPER.md](GRID-KEEPER.md).
+
+- The session names one exact contract AND one exact method, enforced on-chain by the account validator. A permission that omits either means *any*, and Canned never emits one; a rule that cannot be proved narrow is reported as unrestricted rather than shown as a restriction.
+- The spend cap is per rolling period, so the published figure is the worst-case lifetime total, not the per-period one.
+- Revocation is a single transaction and takes effect at validator level.
+- The strategy fixes the allowlist. A caller cannot supply one, so an agent cannot widen its own authority.
+- Canned never requests a private key, seed phrase, or wallet password for execution either. Owner wallet keys are never placed on the VPS.
+
 ## Known limitations
 
-- Challenges and sessions are in-process, so this server does not scale horizontally without moving them to shared storage.
-- There is no rate limiting on `/api/claim/challenge`. The endpoint requires a discovered identity and issues only in-memory state, so the exposure is memory growth between prunes rather than any authorisation weakness. A public deployment should add a limiter.
-- `isPrivateHost` filters by hostname. It does not re-check the address after DNS resolution, so a hostname that resolves to a private address (DNS rebinding) is not caught by this layer. Listing URLs are rendered as links rather than fetched server-side, which limits the impact.
+- Challenges, sessions, and rate-limit counters are in-process, so this server does not scale horizontally without moving them to shared storage. A second instance would enforce limits independently.
+- The egress guard resolves and pins, but a host with a very short TTL could in principle return a different address to a *later* independent request. Each request revalidates, so the window is per-request rather than open-ended.
+- Listing URLs are still only rendered as links, never fetched server-side. That distinction is preserved deliberately: it means listing metadata is not an egress surface at all.
+- `maxDrawdownBps` in the grid track record is unpublished rather than estimated, because Canned does not yet record the priced time series an honest figure would need.
+
+**Fixed in Directive #17:** the previous entries here were no rate limiting on the claim flow, and hostname-only SSRF filtering with no DNS re-check. Both are now closed and covered by tests.

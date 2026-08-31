@@ -271,3 +271,39 @@ Reason: rejecting the submission rather than stripping the field means a develop
 Decision: ownership is proved by a wallet signature over a challenge that names the product, the agent, the wallet, a nonce, and a five minute expiry. The recovered signer must equal both the challenged address and the owner the registry reports. Challenges are single use, so a captured signature cannot be replayed. All listing text is stripped of control characters and angle brackets and length-capped before storage. All listing URLs must be absolute http(s) on a public host: loopback, RFC1918, link-local including the cloud metadata address, unique-local and link-local IPv6, `.local`/`.internal`, and bare hostnames are refused.
 
 Reason: this is the only place in Canned where a stranger writes data that Canned later renders and may fetch. A signature that is valid but from the wrong wallet is not ownership, which is why the registry read is a separate check rather than an alternative to it. Sanitising on the way in rather than on the way out means the stored record is safe for every consumer, not just the one page that happens to escape correctly. Canned never asks for a private key, a seed phrase, or a wallet password, and a test asserts those words appear on a public page only inside a sentence refusing them.
+
+## ADR-048: Grid Keeper executes swaps, and says so in those words
+
+Decision: Grid Keeper runs software-managed grid levels executed as PancakeSwap swaps through SmartRouter V3 on BSC testnet. It is described everywhere as "agent-managed price-triggered execution", never as native limit orders, and it never produces an order id. One constant, `GRID_EXECUTION_MODEL`, is the only place this is described, and a test fails if an order id appears in any deliverable.
+
+Reason: three mechanisms were checked. PancakeSwap's Gelato-powered limit orders are deprecated and unmaintained. The Infinity `CLLimitOrder` hook exists in source with tests but has no deploy script and is absent from PancakeSwap's own `bsc-testnet.json` manifest, which deploys only the VeCakeExclusive and DynamicFee samples; it is not on chain 97. SmartRouter V3 is deployed there and verified by `eth_getCode`. Deploying the hook ourselves was rejected because it would be our contract, not PancakeSwap's native mechanism, and calling it native would be false. Software-managed levels are what nearly every production grid bot actually does, so naming it accurately costs nothing real and protects the one thing this project sells.
+
+## ADR-049: Grid market data is mainnet, grid execution is testnet
+
+Decision: GridBench and grid price observations use read-only BSC mainnet data, frozen at a named block. Every write, payment and session stays on BSC testnet chain 97.
+
+Reason: BSC testnet PancakeSwap has no coherent price. Its V3 QuoterV2 reverts at every input size tested, and its V2 pairs imply BNB is worth 12.80 USDT against USDT and 15,060 against BUSD, on the same DEX. A benchmark or a track record built on that measures nothing. This follows the precedent already set for RebalanceBench and YieldBench rather than inventing a new rule, and it keeps the prohibition on mainnet writes intact.
+
+## ADR-050: A rolling spend cap is published as its lifetime worst case
+
+Decision: The Leash shows `worstCaseTotalMinor`, the most a permission can spend over the whole session, and chooses a spend period that covers the session so one cap equals one total.
+
+Reason: Altana's spend permission is a cap per rolling period, not a lifetime limit. A cap of 10 per day across a three day session permits 30. Showing the per-period figure as though it were the total would understate the risk by exactly the factor a user most needs to see, and it is the number they are agreeing to when they sign.
+
+## ADR-051: A permission that cannot be proved narrow is reported as unrestricted
+
+Decision: `describeCallPermission` marks a rule `unrestricted` when it omits the contract, omits the method, or names a method signature that cannot be resolved to a selector. It fails closed rather than throwing.
+
+Reason: in Altana's schema an omitted field means ANY, so absence is the dangerous case rather than an empty one. An unparseable signature is the same situation: the chain will enforce something, but The Leash cannot prove it is narrow, and a permission view that quietly implied a tighter scope than reality would be worse than one that admits it does not know. Throwing was the original behaviour and was wrong, because a crashed permission view tells the user nothing at all.
+
+## ADR-052: GridBench ground truth is recomputed, not borrowed from the engine
+
+Decision: the GridBench evaluator computes every answer from the frozen specification with its own arithmetic, and never calls the grid engine it is grading.
+
+Reason: an evaluator that asked the implementation under test what the correct answer was would agree with it by construction, including everywhere both are wrong, and would report that agreement as a passing score. Two independent implementations that agree is evidence; one implementation checked against itself is a tautology. The two currently agree on all fourteen decision scenarios. Writing the scenarios this way also caught two errors in the frozen definition before anything was published: a price of 601 never triggers a 600 buy level, and at the strategy's own cap four buy levels consume it exactly and never exceed it, so the capital guard could not bind.
+
+## ADR-053: One price observation produces at most one action
+
+Decision: `evaluateStrategy` returns a single `nextAction` even when several levels are simultaneously eligible, and publishes the rest as refusals with reasons.
+
+Reason: when price gaps through a range, every level below it becomes eligible at once. Executing them all turns a single market move into a cascade of trades at progressively worse prices, which is the classic way an automated grid destroys a position. Acting once per observation keeps the behaviour bounded and legible, and the unexecuted levels remain armed for the next one.
