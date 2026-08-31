@@ -90,17 +90,33 @@ export const REFERENCE_AGENT_SPECS = Object.freeze([
   },
   {
     key: "grid",
-    identity: "CANNED_REFERENCE_GRID_V1",
+    identity: "CANNED_REFERENCE_GRID_TRADING_V1",
     name: "Canned Grid Keeper",
     category: CATEGORIES.GRID_TRADING,
-    description: "Planned reference module for a fixed, bounded grid strategy with explicit inventory and execution limits.",
-    problem: "Operate this declared grid within its inventory and price-impact limits, then show every fill and cost.",
+    description: "Runs a bounded grid on a PancakeSwap pair. It derives the levels, watches price, and executes only levels that are armed, in range, inside the capital cap and inside a permission the user granted and can revoke.",
+    problem: "I want to trade this pair inside a price range automatically, without giving an agent unlimited control of my wallet.",
     endpointPath: "/api/reference/grid",
-    implemented: false,
-    protocols: ["ERC-8183"],
+    implemented: true,
+    serviceVersion: "grid-keeper-service-v1",
+    venue: "PancakeSwap",
+    protocols: ["ERC-8183", "Altana session key"],
     priceRaw: "1000000000000000",
-    capabilities: ["fixed_grid", "inventory_limits", "bounded_execution"],
-    executionPolicy: { readOnlyByDefault: false, capitalMovement: true, automaticIntervention: false },
+    capabilities: [
+      "deterministic_grid_construction",
+      "price_triggered_level_execution",
+      "duplicate_fill_prevention",
+      "capital_cap_enforcement",
+      "bounded_session_authority",
+      "user_revocable_permission",
+    ],
+    /**
+     * The only reference agent that can move capital, and only inside a
+     * granted session. `capitalMovement: true` is what makes The Leash a
+     * requirement rather than a decoration: it is stated here so the
+     * marketplace shows the warning without anyone remembering to add it.
+     */
+    executionPolicy: { readOnlyByDefault: false, capitalMovement: true, automaticIntervention: true, requiresBoundedAuthority: true },
+    executionModel: "agent_managed_price_triggered_execution",
   },
 ]);
 
@@ -178,6 +194,7 @@ export const REFERENCE_IDENTITY_FILES = Object.freeze({
   "health-factor": "state/reference-health-identity.json",
   rebalancing: "state/reference-range-identity.json",
   yield: "state/reference-yield-identity.json",
+  grid: "state/reference-grid-identity.json",
 });
 
 /** Each reference agent signs with its own keystore; none of them are shared. */
@@ -185,6 +202,7 @@ export const REFERENCE_WALLET_PATHS = Object.freeze({
   "health-factor": { walletsDir: "reference-provider-wallets", passwordFile: "reference-provider-wallet-password.txt", passwordEnv: "CANNED_REFERENCE_PROVIDER_PASSWORD" },
   rebalancing: { walletsDir: "range-provider-wallets", passwordFile: "range-provider-wallet-password.txt", passwordEnv: "CANNED_RANGE_PROVIDER_PASSWORD" },
   yield: { walletsDir: "yield-provider-wallets", passwordFile: "yield-provider-wallet-password.txt", passwordEnv: "CANNED_YIELD_PROVIDER_PASSWORD" },
+  grid: { walletsDir: "grid-provider-wallets", passwordFile: "grid-provider-wallet-password.txt", passwordEnv: "CANNED_GRID_PROVIDER_PASSWORD" },
 });
 
 /**
@@ -195,6 +213,7 @@ export const REFERENCE_NAMESPACES = Object.freeze({
   "health-factor": { deliverables: "reference-deliverables", benchmarkFile: "state/healthbench-v1.json", benchmarkId: "HealthBench_v1", port: 8790 },
   rebalancing: { deliverables: "range-deliverables", benchmarkFile: "state/rebalancebench-v1.json", benchmarkId: "RebalanceBench_v1", port: 8791 },
   yield: { deliverables: "yield-deliverables", benchmarkFile: "state/yieldbench-v1.json", benchmarkId: "YieldBench_v1", port: 8792 },
+  grid: { deliverables: "grid-deliverables", benchmarkFile: "state/gridbench-v1.json", benchmarkId: "GridBench_v1", port: 8793 },
 });
 
 /**
