@@ -19,13 +19,15 @@ const router = "0x0000000000000000000000000000000000000022";
 const snapshot = { protocol: "Venus", poolType: "core", source: "onchain", chainId: 97, account, asOfBlock: "123", errorCode: "0", liquidityRaw: "1000", shortfallRaw: "0", healthFactor: 1.42, authoritative: true, readPlan: { contract: commerce, method: "getAccountLiquidity(address)" } };
 const frozenSnapshot = { ...snapshot, blockHash: `0x${"ab".repeat(32)}`, blockTimestamp: 1_800_000_000 };
 
-test("reference fleet names all four categories but only publishes implemented modules", () => {
+test("reference fleet names all four categories and now publishes all four", () => {
   assert.equal(REFERENCE_AGENT_SPECS.length, 4);
-  // Health Guard, Yield Scout, and Range Keeper are built; Grid Keeper is not.
+  // Grid Keeper joined the other three in Directive #17. Publishing it does not
+  // claim it is benchmarked or hireable: it appears at whatever evidence state
+  // it has actually reached, which is what the marketplace derives.
   const catalog = referenceFleetCatalog();
-  assert.deepEqual(catalog.map((item) => item.implementationStatus), ["implemented", "implemented", "implemented", "planned"]);
-  assert.deepEqual(catalog.filter((item) => item.implementationStatus === "implemented").map((item) => item.key), ["health-factor", "yield", "rebalancing"]);
-  assert.deepEqual(catalog.filter((item) => item.implementationStatus === "planned").map((item) => item.key), ["grid"]);
+  assert.deepEqual(catalog.map((item) => item.implementationStatus), ["implemented", "implemented", "implemented", "implemented"]);
+  assert.deepEqual(catalog.map((item) => item.key), ["health-factor", "yield", "rebalancing", "grid"]);
+  assert.equal(catalog.filter((item) => item.implementationStatus === "planned").length, 0);
   const candidate = referenceAgentCandidate(REFERENCE_AGENT_SPECS[0]);
   assert.equal(candidate.origin, REFERENCE_ORIGIN);
   assert.equal(candidate.erc8004.status, "not_registered");

@@ -379,9 +379,11 @@ test("Yield Scout is not hireable before registration and adds nothing to public
   assert.equal(metrics.jobsPaidForAndGraded, 0);
   assert.equal(metrics.categories.yield_optimisation.delivered, 0);
   assert.equal(metrics.categories.yield_optimisation.benchmarked, 0);
-  // Three implemented agents, one still planned; the fleet does not overclaim.
+  // All four are implemented since Directive #17. Being implemented is not a
+  // claim of evidence: Yield Scout above is implemented and still not hireable,
+  // which is exactly the distinction the fleet has to keep.
   const catalog = referenceFleetCatalog();
-  assert.equal(catalog.filter((item) => item.implementationStatus === "implemented").length, 3);
-  assert.equal(catalog.filter((item) => item.implementationStatus === "planned").length, 1);
-  assert.equal(implementedReferenceAgentCandidates({ allowLocalProbe: false }).length, 3);
+  assert.equal(catalog.filter((item) => item.implementationStatus === "implemented").length, 4);
+  assert.equal(catalog.filter((item) => item.implementationStatus === "planned").length, 0);
+  assert.equal(implementedReferenceAgentCandidates({ allowLocalProbe: false }).length, 4);
 });
