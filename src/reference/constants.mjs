@@ -117,6 +117,9 @@ export const REFERENCE_AGENT_SPECS = Object.freeze([
      */
     executionPolicy: { readOnlyByDefault: false, capitalMovement: true, automaticIntervention: true, requiresBoundedAuthority: true },
     executionModel: "agent_managed_price_triggered_execution",
+    // GridBench is a deterministic capability benchmark with no human
+    // baseline, so there is nothing a hire could contaminate.
+    requiresHumanBaseline: false,
   },
 ]);
 
@@ -130,8 +133,20 @@ export function referenceSpec(key) {
  * identity, a configured provider, verified public readiness, a verified fresh
  * quote, and a sealed human baseline so the agent can never answer first.
  */
-function hireReadiness({ registered, configured, publicReadinessVerified, quoteVerified, baselineSealed }) {
-  const conditions = { identityRegistered: Boolean(registered), providerConfigured: Boolean(configured), publicReadinessVerified: Boolean(publicReadinessVerified), quoteVerified: Boolean(quoteVerified), humanBaselineSealed: Boolean(baselineSealed) };
+/**
+ * `humanBaselineSealed` is a contamination guard, not a quality bar: hiring an
+ * agent before the human has answered the same frozen task would leak the
+ * agent's output into the baseline. It therefore applies only to benchmarks
+ * that actually have a human baseline. GridBench has none by design, because
+ * TermiX is already satisfied by the other three pairs, so requiring one here
+ * would block hiring to protect a baseline that will never exist.
+ *
+ * This does not affect BENCHMARKED. That still requires a funded ERC-8183 job
+ * through deriveQualificationFlags, and nothing here changes it.
+ */
+function hireReadiness({ registered, configured, publicReadinessVerified, quoteVerified, baselineSealed, requiresHumanBaseline = true }) {
+  const conditions = { identityRegistered: Boolean(registered), providerConfigured: Boolean(configured), publicReadinessVerified: Boolean(publicReadinessVerified), quoteVerified: Boolean(quoteVerified) };
+  if (requiresHumanBaseline) conditions.humanBaselineSealed = Boolean(baselineSealed);
   const unmet = Object.entries(conditions).filter(([, value]) => !value).map(([key]) => key);
   return {
     ready: unmet.length === 0,
@@ -140,7 +155,9 @@ function hireReadiness({ registered, configured, publicReadinessVerified, quoteV
     providerConfigured: conditions.providerConfigured,
     conditions,
     reason: unmet.length === 0
-      ? "Identity, provider, public readiness, and a verified fresh quote are all observed, and the human baseline is sealed."
+      ? (requiresHumanBaseline
+        ? "Identity, provider, public readiness, and a verified fresh quote are all observed, and the human baseline is sealed."
+        : "Identity, provider, public readiness, and a verified fresh quote are all observed. This benchmark has no human baseline to contaminate.")
       : `Hire is blocked until these are observed: ${unmet.join(", ")}.`,
   };
 }
@@ -169,7 +186,7 @@ export function referenceAgentCandidate(spec, { providerAddress = null, endpoint
     services: [baseService(endpoint, spec.problem, { implemented: endpointVerified })],
     probes: endpointVerified ? [{ type: "HTTP task API", endpoint, reachable: true, callable: true, observedAt: new Date().toISOString(), origin: REFERENCE_ORIGIN, scope: publicReadinessVerified ? "public" : "local_development" }] : [],
     supports: { a2a: false, erc8183: true, x402: false, b402: false, mcp: false, httpTaskApi: endpointVerified },
-    selectionGate: { readiness: hireReadiness({ registered, configured, publicReadinessVerified, quoteVerified: Boolean(identityRecord?.quoteVerified), baselineSealed }) },
+    selectionGate: { readiness: hireReadiness({ registered, configured, publicReadinessVerified, quoteVerified: Boolean(identityRecord?.quoteVerified), baselineSealed, requiresHumanBaseline: spec.requiresHumanBaseline !== false }) },
     hiring: { price: spec.priceRaw, currency: REFERENCE_PAYMENT_TOKEN, mechanism: "ERC-8183 funded seller job", quoteVerified: Boolean(identityRecord?.quoteVerified), negotiationProbe: identityRecord?.negotiationProbe || null },
     referenceFleet: { origin: REFERENCE_ORIGIN, fleetVersion: "1.0.0", implementationStatus: spec.implemented ? "implemented" : "planned", executionPolicy: spec.executionPolicy },
   };
