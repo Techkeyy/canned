@@ -1,13 +1,10 @@
 import { CATEGORIES, RUN_TYPES } from "../domain.mjs";
 import { deriveAgentRecord, filterAgents } from "./model.mjs";
 import { selectHiringAdapter } from "./adapters.mjs";
+import { delivered } from "./model.mjs";
 
 function realRuns(runs) {
   return runs.filter((run) => run?.runType !== RUN_TYPES.FIXTURE && run?.runType !== RUN_TYPES.INFRASTRUCTURE_SMOKE_TEST && run?.runType !== RUN_TYPES.INFRASTRUCTURE_PROTOCOL_CONTROL);
-}
-
-function delivered(run) {
-  return run?.qualification?.hasActualDeliverable === true || run?.agentExecution?.deliverableValidation?.hasActualDeliverable === true || run?.protocolJob?.events?.some((event) => event.event === "deliverable_observed" || ["SUBMITTED", "COMPLETED"].includes(event.snapshot?.status)) === true;
 }
 
 export function deriveMarketplaceMetrics({ candidates = [], runs = [] } = {}) {

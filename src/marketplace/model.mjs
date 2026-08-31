@@ -25,8 +25,20 @@ function paid(run) {
   return run?.protocolJob?.funded === true && run?.protocolJob?.jobId !== undefined && run?.protocolJob?.jobId !== null;
 }
 
-function delivered(run) {
-  return run?.qualification?.hasActualDeliverable === true || run?.agentExecution?.deliverableValidation?.hasActualDeliverable === true || run?.protocolJob?.events?.some((event) => event.event === "deliverable_observed" || ["SUBMITTED", "COMPLETED"].includes(event.snapshot?.status)) === true;
+/**
+ * Whether the agent actually delivered work.
+ *
+ * A validated deliverable is the answer whenever one exists. The chain-state
+ * fallback below is only for runs that carry no validation verdict at all: if
+ * validation ran and rejected the deliverable, the chain having seen a
+ * submission does not make it a delivery. Grid Keeper's paid job 835 settled
+ * as COMPLETED while submitting an empty deliverable, and reading that as
+ * DELIVERY OBSERVED would have flattered the record.
+ */
+export function delivered(run) {
+  const validated = run?.qualification?.hasActualDeliverable ?? run?.agentExecution?.deliverableValidation?.hasActualDeliverable ?? null;
+  if (validated !== null && validated !== undefined) return validated === true;
+  return run?.protocolJob?.events?.some((event) => event.event === "deliverable_observed" || ["SUBMITTED", "COMPLETED"].includes(event.snapshot?.status)) === true;
 }
 
 function benchmarked(run) {
