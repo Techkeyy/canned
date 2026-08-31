@@ -274,6 +274,8 @@ Reason: this is the only place in Canned where a stranger writes data that Canne
 
 ## ADR-048: Grid Keeper executes swaps, and says so in those words
 
+Status: **SUPERSEDED by ADR-060.** This is a preserved historical design record: it named the initially planned SmartRouter V3 route before the live testnet route was proven executable.
+
 Decision: Grid Keeper runs software-managed grid levels executed as PancakeSwap swaps through SmartRouter V3 on BSC testnet. It is described everywhere as "agent-managed price-triggered execution", never as native limit orders, and it never produces an order id. One constant, `GRID_EXECUTION_MODEL`, is the only place this is described, and a test fails if an order id appears in any deliverable.
 
 Reason: three mechanisms were checked. PancakeSwap's Gelato-powered limit orders are deprecated and unmaintained. The Infinity `CLLimitOrder` hook exists in source with tests but has no deploy script and is absent from PancakeSwap's own `bsc-testnet.json` manifest, which deploys only the VeCakeExclusive and DynamicFee samples; it is not on chain 97. SmartRouter V3 is deployed there and verified by `eth_getCode`. Deploying the hook ourselves was rejected because it would be our contract, not PancakeSwap's native mechanism, and calling it native would be false. Software-managed levels are what nearly every production grid bot actually does, so naming it accurately costs nothing real and protects the one thing this project sells.
@@ -316,6 +318,8 @@ Reason: the seal is a contamination guard, not a quality bar. Hiring an agent be
 
 ## ADR-055: GridBench does not make Grid Keeper BENCHMARKED
 
+Status: **SUPERSEDED by the later paid job 837 evidence and the current Grid Keeper state.** This is a preserved historical state: at the time of this decision, Grid Keeper had no qualifying paid delivery.
+
 Decision: Grid Keeper scored 16/16 on GridBench v1 and remains at LIVE + QUOTE VERIFIED. Reaching BENCHMARKED requires one paid ERC-8183 job, and that authorisation was not given.
 
 Reason: `qualifiesForAgentTrackRecord` requires `hasRealPayment`. Canned's whole argument is that a trust level means an observed, paid, delivered piece of work, so exempting the fourth category to make the shelf look complete would forfeit the only thing the marketplace sells. The category is reported as not first-class, which is the true answer.
@@ -357,6 +361,8 @@ Decision: after the empty-deliverable failure of job 835, a preflight ran the ex
 Reason: the first failure cost 0.001 U for nothing. The preflight caught something a code review would not have: the fix existed locally but had never been deployed to the provider host, so a second paid job would have failed identically. A separate transport failure then blocked an attempt before funding, which consumed no authorisation because nothing was paid.
 
 ## ADR-062: A refused execution is reported as a refusal
+
+Status: **SUPERSEDED by ADR-063, ADR-064, and the final Altana evidence.** The refused `NoSpendPermissions` execution remains historical evidence; the later bounded native-fee permission enabled the separate successful transaction.
 
 Decision: the Altana session-key swap failed with `NoSpendPermissions` and is recorded as a failure. `ALTANA_REAL_SESSION_EVIDENCE` remains false, and the partner track is not claimed.
 

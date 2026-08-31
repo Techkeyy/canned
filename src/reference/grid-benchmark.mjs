@@ -16,6 +16,10 @@
  * Ground truth is computed in the evaluator from this specification, not by
  * running the engine under test. If the two ever disagree, that disagreement
  * is a finding rather than a rounding error.
+ *
+ * The V3 market and allowlist below are frozen analysis-fixture data only.
+ * They are not Grid Keeper's live execution authority; live bounded execution
+ * uses the PancakeSwap V2 route declared in grid-keeper.mjs.
  */
 import { contentHashes } from "../core.mjs";
 

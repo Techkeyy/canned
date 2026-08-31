@@ -145,7 +145,9 @@ The Leash is what a user approves before it can act:
 
 The permission is an Altana session key naming an exact contract **and** an exact method selector, with a spend cap and an expiry. Revocation is one transaction. With no session granted, The Leash reads `NOT_CONFIGURED` rather than describing an authority that does not exist. Try it at `/leash`.
 
-Current state: Grid Keeper is ERC-8004 agent **2045**, deployed, hireable, and **BENCHMARKED**; the earlier failed job 835 stays in the record beside the corrective job 837. **All four categories are first-class.** A bounded Altana session was granted, used for **one real session-key PancakeSwap trade** (`0x65a3a85e…`, 1 USDT in, 0.0778 WBNB out), then revoked, with the session key verified gone from the account on chain. `ALTANA_REAL_SESSION_EVIDENCE = true`.
+Current state: Grid Keeper is ERC-8004 agent **2045**, deployed, hireable, and **BENCHMARKED**; the earlier failed job 835 stays in the record beside the corrective job 837. **All four categories are first-class.** A bounded Altana session was granted, used for **one real session-key PancakeSwap V2 trade** (`0x65a3a85e…`, 1 USDT in, 0.0778 WBNB out), then revoked, with the session key verified gone from the account on chain. `ALTANA_REAL_SESSION_EVIDENCE = true`.
+
+The final Altana proof ran on BSC Testnet (chain 97) from action wallet `0xBB62A403F8b582b49bcB05E1a7a678Da4Ebde48f` against the exact testnet USDT contract. The permission named only `swapExactTokensForTokens` on the PancakeSwap V2 router (selector `0x38ed1739`), with a 1.01 USDT trading allowance and a separate native allowance of approximately 0.00012314 tBNB for the Altana relay fee only. The actual native spend was approximately 0.0000378505 tBNB; the session allowed one fill, was revoked after execution, and the revoked key was rejected. This proves bounded execution capability, not profitability, market alpha, or that Canned won an Altana track.
 
 ## The public product
 

@@ -124,9 +124,12 @@ if (process.env.CANNED_ALLOW_TESTNET_WRITES !== "true") stop("CANNED_ALLOW_TESTN
 
 const category = selected.category;
 const benchmarkBase = BENCHMARKS[category];
+// The Grid V3 wording below is intentionally a frozen, analysis-only
+// benchmark fixture. It is not Grid Keeper's executable route; live bounded
+// execution uses the PancakeSwap V2 route in GRID_TESTNET_VENUE.
 const taskDescription = {
   [CATEGORIES.REBALANCING]: "For the declared BSC testnet PancakeSwap V3 range position, return a JSON-only rebalancing recommendation and the benchmark metrics requested in expectedOutputFields. Do not send transactions or move capital. State data limitations explicitly.",
-  [CATEGORIES.GRID_TRADING]: "For the declared BSC testnet PancakeSwap V3 grid, return a JSON-only grid decision with filled rungs, total rungs, spread capture, execution cost, and data limitations. Do not send transactions or move capital.",
+  [CATEGORIES.GRID_TRADING]: "For the declared BSC testnet PancakeSwap V3 grid benchmark fixture, return a JSON-only grid decision with filled rungs, total rungs, spread capture, execution cost, and data limitations. This is analysis-only benchmark state, not Grid Keeper's live PancakeSwap V2 execution route. Do not send transactions or move capital.",
   [CATEGORIES.YIELD_OPTIMISATION]: "For the declared stablecoin yield route, return a JSON-only route decision with realized yield, execution cost, and data limitations. Do not move capital.",
   [CATEGORIES.HEALTH_FACTOR_MONITORING]: "For the declared lending health-factor scenario, return a JSON-only monitoring decision with alert timing, false alerts, missed thresholds, execution cost, and data limitations. Do not send transactions or move capital.",
 }[category];

@@ -18,7 +18,8 @@ This is the most important sentence in this document, because "grid trading" inv
 | --- | --- | --- |
 | PancakeSwap limit orders via Gelato | **Deprecated and unmaintained.** PancakeSwap's own interface says so. | Not usable. |
 | PancakeSwap Infinity `CLLimitOrder` hook | **Source and tests only.** Present in `pancakeswap/infinity-hooks` as `order/CLLimitOrder.sol`, but there is no deploy script for it and it is absent from PancakeSwap's own `script/config/bsc-testnet.json`. The manifest deploys only the VeCakeExclusive and DynamicFee sample hooks. | Not deployed on chain 97. |
-| PancakeSwap SmartRouter V3 | **Deployed on BSC testnet** at `0x9a489505a00ce272eaa5e07dba6491314cae3796` (24,316 bytes of code, verified by `eth_getCode`). | This is what Grid Keeper uses. |
+| PancakeSwap SmartRouter V3 | **Deployed on BSC testnet** at `0x9a489505a00ce272eaa5e07dba6491314cae3796` (24,316 bytes of code, verified by `eth_getCode`). | Researched, then rejected for Grid Keeper execution: its QuoterV2 reverts on the relevant testnet path. Historical design only; see [ADR-060](DECISIONS.md#adr-060-a-route-must-be-proven-executable-before-it-can-be-permitted). |
+| PancakeSwap V2 router | **Executable on BSC testnet** at `0xD99D1c33F9fC3444f8101754aBC46c52416550D1`. | This is what Grid Keeper uses: `swapExactTokensForTokens`, selector `0x38ed1739`. |
 
 So the execution model is:
 
@@ -92,7 +93,7 @@ States: `NOT_CONFIGURED -> PROPOSED -> ACTIVE -> { EXPIRED | REVOKED }`.
 
 The SDK's `SessionPermissions` is `{ calls: CallPermission[], spend: SpendPermission[] }` with an `expiry`. A `CallPermission` is `{ to, signature }` with AND semantics; the signature is resolved to a 4-byte selector and enforced by the account contract's validator.
 
-Grid Keeper emits exactly one call permission: the SmartRouter address AND `exactInputSingle(...)`, selector `0x414bf389`. Nothing wider is representable, because the permission is generated from the strategy and the strategy fixes both.
+Grid Keeper emits exactly one call permission: the PancakeSwap V2 router address AND `swapExactTokensForTokens(...)`, selector `0x38ed1739`. Nothing wider is representable, because the permission is generated from the strategy and the strategy fixes both. The previously researched SmartRouter V3 `exactInputSingle(...)` route is retained only as non-executable historical evidence; it is not in the live allowlist.
 
 Two places where the honest answer needed care:
 
@@ -170,9 +171,11 @@ The relay states the fee it will charge on the signed intent at `context.quote.q
 
 The permission is that figure times three: **0.00012314 tBNB**. That is roughly 1/50th of the wallet's native balance and about 1/8000th of the trade, so it cannot be mistaken for trading capital. The script refuses to grant a native permission above a hard 0.003 tBNB ceiling under any measurement, and refuses to grant at all if it cannot read a real fee — which it did once, stopping before the session existed rather than sizing a permission on a guess.
 
-**The Leash shows the two separately.** `tradeCapital` and `networkFeeAllowance` are distinct fields, and the user-facing line reads "Use a separate, much smaller amount of tBNB to pay the network fee, and nothing else". Presenting relay gas as money the agent may trade with would overstate what was granted.
+**The Leash shows the two separately.** `tradeCapital` and `networkFeeAllowance` are distinct fields, and the user-facing line reads "Use a separate, much smaller amount of tBNB to pay the network fee, and nothing else". The native-token permission existed only for the Altana relay fee; it was not trading capital. Presenting relay gas as money the agent may trade with would overstate what was granted.
 
 ### What happened
+
+The final proof used BSC Testnet (chain 97), action wallet `0xBB62A403F8b582b49bcB05E1a7a678Da4Ebde48f`, and the exact BSC Testnet USDT contract. It granted a bounded session with a 1.01 USDT trading allowance and an approximately 0.00012314 tBNB native relay-fee allowance, then performed one 1 USDT V2 swap for 0.077755707711365866 WBNB. The actual native spend was approximately 0.0000378505 tBNB. The session allowed at most one fill and was revoked immediately afterward; the revoked key was rejected and absent from the account.
 
 | Step | Evidence |
 | --- | --- |

@@ -106,6 +106,8 @@ The category expects placing and managing automated grid orders. Canned manages 
 
 ## Status re-stated 2026-08-31 (Directive #18)
 
+> **HISTORICAL STATE — SUPERSEDED by the Directive #21 status below.** The failed and not-yet-authorised state is preserved as recorded evidence.
+
 | Track | Status |
 | --- | --- |
 | Build the Era main track | **Three of four categories are first-class.** Health Factor Monitoring, Rebalancing and Yield Optimisation each have a benchmarked first-party agent with a paid graded run. Grid Trading has a registered, deployed, hireable first-party agent (ERC-8004 **2045**) that scored 16/16 on a frozen deterministic benchmark, but has no paid job, so it is **not** BENCHMARKED and the category is not first-class. |
@@ -132,6 +134,8 @@ Counting agents rather than evidence would report four. Canned reports three.
 
 ## Status re-stated 2026-08-31 (Directive #19)
 
+> **HISTORICAL STATE — SUPERSEDED by the Directive #21 status below.** The failed paid job and unavailable-session state are preserved as recorded evidence.
+
 | Track | Status |
 | --- | --- |
 | Build the Era main track | **Three of four categories first-class**, unchanged. Grid Keeper took a real paid ERC-8183 job (835, settled COMPLETED, 0.001 U) but submitted an empty deliverable, so it does not qualify. It sits at HIRE ATTEMPTED - DELIVERY NOT OBSERVED. |
@@ -155,6 +159,8 @@ Counting agents rather than evidence would report four. Canned reports three.
 3. BSC Testnet versus Mainnet main-track eligibility remains unresolved by published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045).
 
 ## Status re-stated 2026-08-31 (Directive #20)
+
+> **HISTORICAL STATE — SUPERSEDED by the Directive #21 status below.** The `NoSpendPermissions` incident, failed execution, and revocation are preserved as recorded evidence.
 
 | Track | Status |
 | --- | --- |

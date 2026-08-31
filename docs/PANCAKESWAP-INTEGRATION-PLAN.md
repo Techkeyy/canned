@@ -2,6 +2,8 @@
 
 Status: architecture review only. No PancakeSwap write is being made in Directive #6.
 
+Scope: this document covers the read-only Range Keeper/Rebalancing plan. It does not describe Grid Keeper's live execution route; that route is PancakeSwap V2 as selected in [ADR-060](DECISIONS.md#adr-060-a-route-must-be-proven-executable-before-it-can-be-permitted).
+
 ## Recommended first track
 
 Rebalancing is the strongest first PancakeSwap partner track because the benefit can be measured against a fixed LP range. The first implementation should read pool state, ticks, position bounds, fee growth, and the declared observation window, then return a range recommendation with price impact and gas estimates. The fixed-range control uses the same starting position and window.
