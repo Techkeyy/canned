@@ -14,11 +14,12 @@ import { sdkRpcEnvironment } from "../src/deploy/rpc-capability.mjs";
  */
 const MAX_FUNDING_WEI = 3_000_000_000_000_000n; // 0.003 tBNB
 const EXPECTED_BUYER = "0x14342bE6726f1f5AaFa30b673c787D696e3F09eB";
-const AGENT_URL_ENV = Object.freeze({ "health-factor": "CANNED_REFERENCE_AGENT_URL", rebalancing: "CANNED_RANGE_AGENT_URL", yield: "CANNED_YIELD_AGENT_URL" });
+const AGENT_URL_ENV = Object.freeze({ "health-factor": "CANNED_REFERENCE_AGENT_URL", rebalancing: "CANNED_RANGE_AGENT_URL", yield: "CANNED_YIELD_AGENT_URL", grid: "CANNED_GRID_AGENT_URL" });
 const DEFAULT_AGENT_URL = Object.freeze({
   "health-factor": "https://health-guard.103-195-188-198.sslip.io/erc8183",
   rebalancing: "https://range-keeper.103-195-188-198.sslip.io/erc8183",
   yield: "https://yield-scout.103-195-188-198.sslip.io/erc8183",
+  grid: "https://grid-keeper.103-195-188-198.sslip.io/erc8183",
 });
 
 const env = process.env;
