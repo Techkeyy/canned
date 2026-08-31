@@ -325,3 +325,21 @@ Reason: `qualifiesForAgentTrackRecord` requires `hasRealPayment`. Canned's whole
 Decision: `describeCallPermission` accepts either the raw Altana shape or one it already produced, so describing twice yields the same result.
 
 Reason: found while verifying the authority boundary. Describing an already-described permission read its absent `to`/`signature` as ANY/ANY and reported a correctly scoped rule as unrestricted. That direction is the safe one, and the fail-closed design worked, but a page that maps over permissions twice must not change what the user is told about their own authority.
+
+## ADR-057: A rejected deliverable is not an observed delivery
+
+Decision: `delivered()` trusts a validation verdict whenever one exists, and falls back to chain state only for runs that carry no verdict at all. The rule has one definition, in `model.mjs`, which `metrics.mjs` imports.
+
+Reason: paid job 835 settled COMPLETED on chain while submitting an empty deliverable, and the old rule read the chain state as proof of delivery. Grid Keeper briefly displayed DELIVERY OBSERVED for a deliverable containing nothing. The rule also existed in two copies that had drifted, exactly as the SSRF blocklist had before ADR-047, and the more generous copy was the one that counted. A marketplace whose entire argument is observed work cannot let a settled transaction stand in for delivered work.
+
+## ADR-058: One paid attempt means one, including when it fails
+
+Decision: paid job 835 failed on an empty deliverable. The defect was fixed in code, no second job was created, and Grid Keeper remains not BENCHMARKED.
+
+Reason: the authorisation was for one paid attempt. Re-running after fixing the bug would have produced a passing record that no authorisation covered, and would have quietly converted a real failure into a success nobody could see. The failure is preserved with its cause, and the fix waits for its own authorisation. Spending 0.001 U for nothing is the honest cost of that.
+
+## ADR-059: The testnet USDT dependency is solved by a swap, not a faucet
+
+Decision: the acquisition path for `0x337610d2…` is wrap tBNB to WBNB, then swap WBNB to USDT on PancakeSwap V2 pair `0x5f52ad4b…`. No faucet is assumed and no substitute token is deployed.
+
+Reason: every alternative was checked and failed. No Canned wallet holds the token; its mint and every faucet-shaped entry point reverts; there is no U/USDT pair at all; and the U to WBNB pair is so thin that the buyer's entire U balance converts to under 0.09 USDT. The WBNB pair, by contrast, holds 226 USDT against 17.5 WBNB with 0.57% impact at the sizes needed. Its price is incoherent against BUSD, which rules it out as market data but not as a way to obtain a token: the execution proof needs the asset to exist in the wallet, and the grid's decisions come from frozen mainnet state.

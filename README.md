@@ -145,7 +145,7 @@ The Leash is what a user approves before it can act:
 
 The permission is an Altana session key naming an exact contract **and** an exact method selector, with a spend cap and an expiry. Revocation is one transaction. With no session granted, The Leash reads `NOT_CONFIGURED` rather than describing an authority that does not exist. Try it at `/leash`.
 
-Current state: Grid Keeper is registered on chain as ERC-8004 agent **2045**, deployed at `grid-keeper.103-195-188-198.sslip.io`, hireable over ERC-8183, and scored **16/16 on GridBench v1**. It is **not BENCHMARKED**: that needs a paid job, and the rule was not relaxed to fill the fourth category. **No Altana session has been granted and no grid trade has executed**, so The Leash reads `NOT_CONFIGURED`.
+Current state: Grid Keeper is registered on chain as ERC-8004 agent **2045**, deployed, and genuinely hireable. It took a real paid ERC-8183 job (835, settled COMPLETED, 0.001 U) and **submitted an empty deliverable**, so the run is preserved as a failure and the agent sits at **HIRE ATTEMPTED - DELIVERY NOT OBSERVED**. It is **not BENCHMARKED**, and the rule was not relaxed to fill the fourth category. **No Altana session has been granted and no grid trade has executed**, so The Leash reads `NOT_CONFIGURED`.
 
 ## The public product
 

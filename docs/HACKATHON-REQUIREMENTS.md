@@ -129,3 +129,27 @@ Counting agents rather than evidence would report four. Canned reports three.
 - One paid ERC-8183 Grid Keeper job (0.001 U) would make Grid Trading first-class. Not authorised.
 - Testnet USDT for the action wallet is required before any Altana session. Not available and not self-mintable.
 - BSC Testnet versus Mainnet eligibility for the main track is still unresolved by published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045). Altana's own testnet stack was not treated as resolving it.
+
+## Status re-stated 2026-08-31 (Directive #19)
+
+| Track | Status |
+| --- | --- |
+| Build the Era main track | **Three of four categories first-class**, unchanged. Grid Keeper took a real paid ERC-8183 job (835, settled COMPLETED, 0.001 U) but submitted an empty deliverable, so it does not qualify. It sits at HIRE ATTEMPTED - DELIVERY NOT OBSERVED. |
+| TermiX | Met and untouched: 3 of 3 pairs, 3 paid and graded, 2 wins, 1 loss. GridBench added no pair, by design. |
+| PancakeSwap | Unchanged. Range Keeper graded; Grid Keeper registered, hireable and now genuinely hired, though the delivery failed. |
+| Altana | **NOT satisfied.** `ALTANA_REAL_SESSION_EVIDENCE = false`. No session, no session-key transaction, no revocation. The action wallet now holds 0.01 tBNB gas and 0 USDT. |
+
+### Four-category status, derived
+
+| Category | First-class? | Evidence |
+| --- | --- | --- |
+| Health Factor Monitoring | Yes | Verified Run #1, paid, graded, BENCHMARKED |
+| Rebalancing | Yes | Verified Run #2, paid, graded, BENCHMARKED |
+| Yield Optimisation | Yes | Verified Run #3, paid, graded, BENCHMARKED |
+| Grid Trading | **No** | Paid job 835 delivered nothing; 0 qualifying benchmarks |
+
+### Remaining dependencies
+
+1. **One more paid Grid Keeper job** (0.001 U) after the deliverable-shape fix, to reach BENCHMARKED. Not authorised; the first attempt was spent.
+2. **Testnet USDT for the action wallet.** Proven route: 0.0778 tBNB per 1 USDT via PancakeSwap V2 pair `0x5f52ad4b…`. Requires swap authorisation.
+3. BSC Testnet versus Mainnet main-track eligibility remains unresolved by published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045).

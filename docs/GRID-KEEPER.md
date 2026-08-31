@@ -135,32 +135,59 @@ Writing the scenarios surfaced two of my own errors before anything was frozen: 
 
 Current state: zero sessions, zero on-chain fills. The published summary is *"This agent has not executed a grid trade on chain. There is no track record to report."*
 
-## Current state (Directive #18)
+## Current state (Directive #19)
 
 | Item | State |
 | --- | --- |
-| ERC-8004 identity | **Registered: agent 2045** on chain 97, registry `0x8004A818…`, tx `0x4aab807f…`, block 128,277,949 |
-| Public service | **Live** at `https://grid-keeper.103-195-188-198.sslip.io/erc8183`, valid TLS, port 8793 |
-| Provider wallet | `0xA928DEBa…`, funded with 0.003 tBNB, 0.00171 tBNB remaining after registration |
-| Signed quote | Verified, 0.001 U, signer matches provider |
-| Worker / watcher | Alive, watching chain 97 |
-| GridBench v1 | **Graded 16/16, score 100**, precommit `sha256:e750115579b1f791…` unchanged |
-| Trust state | **LIVE + QUOTE VERIFIED** — not BENCHMARKED |
-| Hireable | Yes, ERC-8183 ready |
-| Altana session | **None granted.** The Leash reads `NOT_CONFIGURED` |
-| Grid execution | **None.** No value-bearing transaction has occurred |
-| Track record | Zero on-chain fills; no rate published |
+| ERC-8004 identity | Agent **2045**, chain 97, verified by direct `ownerOf`/`tokenURI` |
+| Public service | Live, valid TLS, worker and watcher alive, RPC serves the `verifyJob` log span |
+| Paid ERC-8183 job | **835. Funded, submitted, settled COMPLETED on chain.** 0.001 U paid, allowance back to 0 |
+| Deliverable | **Empty. Validation failed.** The run is preserved as a failure |
+| GridBench (paid run) | **Not gradable: no answers were delivered** |
+| GridBench (local engine) | 16/16, score 100. This is a capability result, not a paid one |
+| Trust state | **HIRE ATTEMPTED - DELIVERY NOT OBSERVED** |
+| Grid Trading category | **Not first-class** |
+| Altana session | **None.** The Leash reads `NOT_CONFIGURED` |
+| Action wallet | `0xBB62A403…`, funded with **0.01 tBNB gas only**, 0 USDT |
 
-### Why Grid Keeper is not BENCHMARKED
+### What went wrong with paid job 835
 
-Canned's `qualifiesForAgentTrackRecord` requires `hasRealPayment` — a funded ERC-8183 job. GridBench is a deterministic capability benchmark with no payment, so passing it 16/16 does not reach BENCHMARKED, and the rule was not relaxed to fill the fourth category. Reaching it needs one paid job at the quoted 0.001 U, which is a separate authorisation.
+The reference runtime submits `result.output`. Both Grid Keeper deliverable builders returned the deliverable object directly, so `result.output` was `undefined`, `canonicalOutput` was `null`, and the provider uploaded a deliverable whose `response.content` was `null`. The job still completed the full ERC-8183 lifecycle and settled, so 0.001 U was spent for nothing.
 
-### The hire gate and the human baseline
+The buyer-side validation caught it immediately and refused to call it a delivery, which is the part of the system that worked. `gridTaskResult()` now makes the runtime boundary explicit and is covered by a test that asserts the canonical output actually carries the answers.
 
-Hire readiness previously required a sealed human baseline for every reference agent. That check is a *contamination guard*: hiring before the human answers the same frozen task would leak the agent's output into the baseline. GridBench has no human baseline by design, because TermiX is already satisfied by the other three pairs, so the requirement would have blocked hiring forever to protect a baseline that will never exist. The gate now applies only to benchmarks that actually have one (`requiresHumanBaseline`), and the three TermiX agents still require theirs. This changes nothing about BENCHMARKED.
+**No second paid job was run.** One paid attempt was authorized, it failed, and the failure stands as the evidence.
 
-### The session that was specified but not granted
+### A rule that was quietly too generous
 
-The action wallet role did not exist and was created: `0xBB62A403F8b582b49bcB05E1a7a678Da4Ebde48f`. It holds **0 tBNB and 0 USDT**, and BSC testnet USDT has an owner-gated `mint` that reverts, so it cannot be self-sourced. The first bounded session therefore stopped at the funding boundary.
+Investigating the failure exposed a second problem. `delivered()` accepted a run if the chain had seen a `SUBMITTED`/`COMPLETED` state, *even when validation had already rejected the deliverable*. Job 835 therefore briefly showed as **DELIVERY OBSERVED** with an empty deliverable.
 
-The permission boundary was verified statically instead, with no funds spent: 10 of 10 cases behave correctly, including wrong contract, wrong method, wrong token, wrong chain, expired, revoked, aggregate cap, and slippage. Evidence is in `data/state/leash-boundary-verification.json`.
+A validated verdict now wins whenever one exists; the chain-state fallback applies only to runs carrying no verdict at all. The three historical runs are unaffected because their deliverables validated. The rule also existed in two copies, in `model.mjs` and `metrics.mjs`, and the copies had drifted; there is now one definition and a test that fails if a second appears.
+
+### Why Grid Keeper is still not BENCHMARKED
+
+`qualifiesForAgentTrackRecord` requires `hasActualDeliverable`. The deliverable was empty, so the run does not qualify. The rule was not relaxed. Grid Trading is reported as not first-class, and the marketplace totals are unchanged: 3 paid and graded, 2 wins, 1 loss, 3 of 3 TermiX pairs.
+
+## The testnet USDT dependency
+
+The Altana execution proof needs the exact token the swap path is bound to.
+
+**`EXPECTED_TESTNET_USDT = 0x337610d27c682E347C9cD60BD4b3b107C9d34dDd`** — verified on chain: 3,969 bytes of code, symbol `USDT`, name `USDT Token`, 18 decimals, total supply 100,000,000, owner `0x082a2027…`. Identified by address, never by symbol; a test asserts that.
+
+### What was checked, and what it showed
+
+| Route | Result |
+| --- | --- |
+| Any Canned wallet already holding it | **No.** All eight hold 0 |
+| Token's own distribution (`mint`, `faucet`, `claim`, `drip`) | **All revert.** Minting is owner-gated |
+| U → USDT direct (V2) | **No pair exists** |
+| U → USDT (V3) | **No pool** |
+| U → WBNB → USDT (V2) | Works, but the U/WBNB pair holds only 0.060 WBNB against 164 U. The buyer's entire 19.996 U yields **under 0.09 USDT**. Not viable |
+| WBNB → USDT (V3) | Quoter **reverts at every fee tier**, unchanged from Directive #17 |
+| **WBNB → USDT (V2)** | **Works.** Pair `0x5f52ad4b…`, reserves 226.8 USDT / 17.5 WBNB, price impact 0.57% between 0.0001 and 0.1 WBNB |
+
+**Proven path: wrap tBNB to WBNB, then swap WBNB to USDT on PancakeSwap V2.** Measured cost: 0.0778 tBNB per 1 USDT, 0.1170 per 1.5, 0.2355 per 3. The buyer holds 0.2549 tBNB, so 1 to 1.5 USDT is comfortably affordable.
+
+The pool's price remains incoherent (12.2 USDT per WBNB against 11,636 BUSD per WBNB), so nothing about this rate may be presented as market data. It does not need to be: the swap only has to put the exact token in the action wallet so a session key can spend it, and GridBench's decision logic uses frozen mainnet data (ADR-049).
+
+**No swap was executed.** Directive #19 authorised research only.
