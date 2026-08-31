@@ -135,17 +135,32 @@ Writing the scenarios surfaced two of my own errors before anything was frozen: 
 
 Current state: zero sessions, zero on-chain fills. The published summary is *"This agent has not executed a grid trade on chain. There is no track record to report."*
 
-## Current state
+## Current state (Directive #18)
 
 | Item | State |
 | --- | --- |
-| Grid engine, state machine, risk guards | Built and tested |
-| GridBench v1 | Frozen, precommitted |
-| The Leash (schema, API, UI at `/leash`) | Built against the real Altana schema |
-| Grid Keeper on the marketplace | Listed as `LISTED - NOT YET TESTED`, 0 benchmarks, hire blocked |
-| Provider wallet | Created, **unfunded** |
-| ERC-8004 identity | **Not registered** — blocked at the funding boundary |
+| ERC-8004 identity | **Registered: agent 2045** on chain 97, registry `0x8004A818…`, tx `0x4aab807f…`, block 128,277,949 |
+| Public service | **Live** at `https://grid-keeper.103-195-188-198.sslip.io/erc8183`, valid TLS, port 8793 |
+| Provider wallet | `0xA928DEBa…`, funded with 0.003 tBNB, 0.00171 tBNB remaining after registration |
+| Signed quote | Verified, 0.001 U, signer matches provider |
+| Worker / watcher | Alive, watching chain 97 |
+| GridBench v1 | **Graded 16/16, score 100**, precommit `sha256:e750115579b1f791…` unchanged |
+| Trust state | **LIVE + QUOTE VERIFIED** — not BENCHMARKED |
+| Hireable | Yes, ERC-8183 ready |
 | Altana session | **None granted.** The Leash reads `NOT_CONFIGURED` |
-| On-chain grid execution | **None.** No value-bearing transaction has occurred |
+| Grid execution | **None.** No value-bearing transaction has occurred |
+| Track record | Zero on-chain fills; no rate published |
 
-Grid Keeper appears on the shelf at its true evidence level. Being implemented is not a claim of evidence.
+### Why Grid Keeper is not BENCHMARKED
+
+Canned's `qualifiesForAgentTrackRecord` requires `hasRealPayment` — a funded ERC-8183 job. GridBench is a deterministic capability benchmark with no payment, so passing it 16/16 does not reach BENCHMARKED, and the rule was not relaxed to fill the fourth category. Reaching it needs one paid job at the quoted 0.001 U, which is a separate authorisation.
+
+### The hire gate and the human baseline
+
+Hire readiness previously required a sealed human baseline for every reference agent. That check is a *contamination guard*: hiring before the human answers the same frozen task would leak the agent's output into the baseline. GridBench has no human baseline by design, because TermiX is already satisfied by the other three pairs, so the requirement would have blocked hiring forever to protect a baseline that will never exist. The gate now applies only to benchmarks that actually have one (`requiresHumanBaseline`), and the three TermiX agents still require theirs. This changes nothing about BENCHMARKED.
+
+### The session that was specified but not granted
+
+The action wallet role did not exist and was created: `0xBB62A403F8b582b49bcB05E1a7a678Da4Ebde48f`. It holds **0 tBNB and 0 USDT**, and BSC testnet USDT has an owner-gated `mint` that reverts, so it cannot be self-sourced. The first bounded session therefore stopped at the funding boundary.
+
+The permission boundary was verified statically instead, with no funds spent: 10 of 10 cases behave correctly, including wrong contract, wrong method, wrong token, wrong chain, expired, revoked, aggregate cap, and slippage. Evidence is in `data/state/leash-boundary-verification.json`.

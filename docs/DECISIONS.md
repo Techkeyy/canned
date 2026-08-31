@@ -307,3 +307,21 @@ Reason: an evaluator that asked the implementation under test what the correct a
 Decision: `evaluateStrategy` returns a single `nextAction` even when several levels are simultaneously eligible, and publishes the rest as refusals with reasons.
 
 Reason: when price gaps through a range, every level below it becomes eligible at once. Executing them all turns a single market move into a cascade of trades at progressively worse prices, which is the classic way an automated grid destroys a position. Acting once per observation keeps the behaviour bounded and legible, and the unexecuted levels remain armed for the next one.
+
+## ADR-054: The sealed-baseline hire gate applies only where a baseline exists
+
+Decision: `hireReadiness` requires `humanBaselineSealed` only for reference agents whose benchmark actually has a human baseline. Grid Keeper declares `requiresHumanBaseline: false`; Health Guard, Range Keeper and Yield Scout continue to require theirs.
+
+Reason: the seal is a contamination guard, not a quality bar. Hiring an agent before the human has answered the same frozen task would leak the agent's output into the baseline, which is why the gate exists. GridBench has no human baseline by design, because TermiX is already satisfied by three pairs, so the condition would have blocked hiring forever to protect something that will never be created. This is deliberately separate from BENCHMARKED, which still requires a funded ERC-8183 job and was not touched.
+
+## ADR-055: GridBench does not make Grid Keeper BENCHMARKED
+
+Decision: Grid Keeper scored 16/16 on GridBench v1 and remains at LIVE + QUOTE VERIFIED. Reaching BENCHMARKED requires one paid ERC-8183 job, and that authorisation was not given.
+
+Reason: `qualifiesForAgentTrackRecord` requires `hasRealPayment`. Canned's whole argument is that a trust level means an observed, paid, delivered piece of work, so exempting the fourth category to make the shelf look complete would forfeit the only thing the marketplace sells. The category is reported as not first-class, which is the true answer.
+
+## ADR-056: A permission description is idempotent, and errs toward unrestricted
+
+Decision: `describeCallPermission` accepts either the raw Altana shape or one it already produced, so describing twice yields the same result.
+
+Reason: found while verifying the authority boundary. Describing an already-described permission read its absent `to`/`signature` as ANY/ANY and reported a correctly scoped rule as unrestricted. That direction is the safe one, and the fail-closed design worked, but a page that maps over permissions twice must not change what the user is told about their own authority.

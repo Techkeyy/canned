@@ -103,3 +103,29 @@ The category expects placing and managing automated grid orders. Canned manages 
 - Grid Keeper ERC-8004 registration is blocked at the funding boundary.
 - No Altana session key has been granted, so the Altana track is not yet satisfiable.
 - BSC Testnet versus Mainnet eligibility for the main track remains unresolved by the published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` still applies (ADR-045). Altana's own testnet stack does not resolve it, and was not treated as if it did.
+
+## Status re-stated 2026-08-31 (Directive #18)
+
+| Track | Status |
+| --- | --- |
+| Build the Era main track | **Three of four categories are first-class.** Health Factor Monitoring, Rebalancing and Yield Optimisation each have a benchmarked first-party agent with a paid graded run. Grid Trading has a registered, deployed, hireable first-party agent (ERC-8004 **2045**) that scored 16/16 on a frozen deterministic benchmark, but has no paid job, so it is **not** BENCHMARKED and the category is not first-class. |
+| TermiX | Met, unchanged. 3/3 pairs, `jobsPaidForAndGraded = 3`, 2 wins, 1 loss. GridBench is not a fourth pair. |
+| PancakeSwap | Range Keeper (graded, Verified Run #2) plus Grid Keeper, now registered and hireable, trading only inside a revocable contract-and-method-scoped permission. |
+| Altana | **NOT satisfied.** Architecture is complete against SDK 0.7.1 on the real chain-97 stack and the exact bounded session is specified, but **no session was granted and no session-key transaction was executed**, because the action wallet has no testnet USDT. `ALTANA_REAL_SESSION_EVIDENCE = false`. |
+
+### Four-category status, derived from evidence
+
+| Category | First-class? | Why |
+| --- | --- | --- |
+| Health Factor Monitoring | **Yes** | Verified Run #1, paid, graded, BENCHMARKED |
+| Rebalancing | **Yes** | Verified Run #2, paid, graded, BENCHMARKED |
+| Yield Optimisation | **Yes** | Verified Run #3, paid, graded, BENCHMARKED |
+| Grid Trading | **No** | Registered, deployed, hireable, GridBench 16/16, but no paid job, so LIVE + QUOTE VERIFIED |
+
+Counting agents rather than evidence would report four. Canned reports three.
+
+### Open items
+
+- One paid ERC-8183 Grid Keeper job (0.001 U) would make Grid Trading first-class. Not authorised.
+- Testnet USDT for the action wallet is required before any Altana session. Not available and not self-mintable.
+- BSC Testnet versus Mainnet eligibility for the main track is still unresolved by published material; `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` stands (ADR-045). Altana's own testnet stack was not treated as resolving it.
