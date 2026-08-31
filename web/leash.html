@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canned | The Leash</title>
+  <link rel="stylesheet" href="/canned.css">
+  <style>
+    .head { padding-block: var(--step-5) var(--step-4); }
+    .head h1 { font-size: clamp(32px, 4.6vw, 46px); }
+    .wrap { display: grid; grid-template-columns: 1fr 340px; gap: var(--step-5); padding-bottom: var(--step-6); align-items: start; }
+    .step { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); padding: var(--step-3); margin-bottom: var(--step-2); }
+    .step h2 { font-size: 17px; }
+    .step .inner { margin-top: var(--step-2); display: grid; gap: var(--step-2); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--step-2); }
+    .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--step-2); }
+
+    /* The permission card. Deliberately the loudest thing on the page. */
+    .leash { border: 2px solid var(--ink); border-radius: var(--radius-lg); background: var(--panel); padding: var(--step-3); position: sticky; top: 84px; }
+    .leash h3 { font-size: 16px; margin-bottom: 4px; }
+    .leash .state { display: inline-flex; align-items: center; gap: 7px; border-radius: var(--radius-pill); padding: 5px 11px; font-size: 12px; font-weight: 700; border: 1px solid var(--line); background: var(--subtle); }
+    .leash .state.on { background: var(--good-soft); border-color: var(--good-line); color: var(--good); }
+    .leash .state.off { background: var(--subtle); color: var(--muted); }
+    .leash .state.bad { background: var(--bad-soft); border-color: var(--bad-line); color: var(--bad); }
+    .grant { margin-top: var(--step-3); display: grid; gap: 4px; }
+    .grant dt { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+    .grant dd { margin: 0 0 10px; font-size: 14px; }
+    .canlist { margin: var(--step-2) 0 0; padding: 0; list-style: none; }
+    .canlist li { font-size: 13.5px; line-height: 1.5; padding-left: 22px; position: relative; margin-bottom: 7px; }
+    .canlist li::before { position: absolute; left: 0; font-weight: 800; }
+    .canlist.can li::before { content: "Yes"; font-size: 10px; color: var(--good); }
+    .canlist.cannot li::before { content: "No"; font-size: 10px; color: var(--bad); }
+    .revoke { margin-top: var(--step-3); }
+    .revoke .btn { width: 100%; background: var(--bad); border-color: var(--bad); }
+    .revoke .btn:hover { background: #8d302b; border-color: #8d302b; }
+
+    .lvl { width: 100%; border-collapse: collapse; }
+    .lvl th, .lvl td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+    .lvl th { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .lvl .buy { color: var(--good); font-weight: 700; }
+    .lvl .sell { color: var(--accent-ink); font-weight: 700; }
+    .mono2 { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+    @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } .leash { position: static; } .two, .three { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">Canned <span>BNB agent marketplace</span></a>
+      <nav class="topnav" aria-label="Main">
+        <a href="/marketplace">Explore agents</a>
+        <a href="/#how">How it works</a>
+        <a href="/list">List your agent</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="head">
+      <p class="eyebrow">Permissions</p>
+      <h1>The Leash.</h1>
+      <p class="lede">Grid Keeper is the one agent on Canned that can move money. Before it can do anything, you decide exactly what it is allowed to touch, how much it may spend, and when that permission dies. You can take it back at any time.</p>
+    </div>
+
+    <div class="wrap">
+      <div>
+        <section class="step">
+          <h2>1. Describe the grid</h2>
+          <div class="inner">
+            <p class="body">Pick a pair and a price range. Canned works out the levels, and shows you the permission before anything is signed.</p>
+            <div class="two">
+              <div class="field">
+                <label for="pair">Pair</label>
+                <select id="pair"><option value="WBNB/USDT">WBNB / USDT</option></select>
+                <p class="hint">The only pair Grid Keeper is configured for on BNB testnet.</p>
+              </div>
+              <div class="field">
+                <label for="levels">Number of levels</label>
+                <input id="levels" type="number" value="8" min="2" max="50">
+                <p class="hint">More levels means smaller, more frequent trades.</p>
+              </div>
+            </div>
+            <div class="two">
+              <div class="field">
+                <label for="lower">Buy down to (USDT)</label>
+                <input id="lower" type="number" value="600" min="1">
+              </div>
+              <div class="field">
+                <label for="upper">Sell up to (USDT)</label>
+                <input id="upper" type="number" value="800" min="1">
+              </div>
+            </div>
+            <div class="three">
+              <div class="field">
+                <label for="capital">Total it may spend (USDT)</label>
+                <input id="capital" type="number" value="400" min="1">
+              </div>
+              <div class="field">
+                <label for="perlevel">Most per trade (USDT)</label>
+                <input id="perlevel" type="number" value="100" min="1">
+              </div>
+              <div class="field">
+                <label for="hours">Permission lasts (hours)</label>
+                <input id="hours" type="number" value="6" min="1" max="168">
+              </div>
+            </div>
+            <div>
+              <button class="btn" id="review">Review permissions</button>
+            </div>
+            <div id="plan-error"></div>
+          </div>
+        </section>
+
+        <section class="step" id="levels-step" hidden>
+          <h2>2. The levels Canned worked out</h2>
+          <div class="inner">
+            <p class="body">These are fixed when you approve. The agent cannot add a level, move one, or trade outside this list.</p>
+            <div class="table-wrap"><table class="lvl"><thead><tr><th>Level</th><th>Price</th><th>Side</th><th>Spends</th></tr></thead><tbody id="levels-body"></tbody></table></div>
+            <p class="small" id="levels-note"></p>
+          </div>
+        </section>
+
+        <section class="step">
+          <h2>3. How Grid Keeper actually trades</h2>
+          <div class="inner" id="model">
+            <div class="state skeleton" style="height:16px;width:60%"></div>
+          </div>
+        </section>
+      </div>
+
+      <aside class="leash" id="leash" aria-live="polite">
+        <div class="state skeleton" style="height:16px;width:50%"></div>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="shell">
+      <nav aria-label="Footer"><a href="/">Home</a><a href="/marketplace">Explore agents</a><a href="/inspection">Evidence</a></nav>
+      <p style="margin-top:12px;">Canned never asks for a private key, a seed phrase, or a wallet password.</p>
+    </div>
+  </footer>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+    const usdt = (minor) => (Number(minor) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+    function renderLeash(leash) {
+      const stateClass = leash.state === "ACTIVE" ? "on" : leash.state === "REVOKED" || leash.state === "EXPIRED" ? "bad" : "off";
+      const rows = [];
+      if (leash.state === "NOT_CONFIGURED") {
+        rows.push('<p class="body" style="margin-top:var(--step-2);">' + esc(leash.summary) + "</p>");
+        rows.push('<p class="small" style="margin-top:var(--step-2);">Describe a grid on the left to see exactly what you would be approving. Nothing is signed until you choose to.</p>');
+      } else {
+        rows.push('<dl class="grant">');
+        rows.push("<dt>Pair</dt><dd>" + esc(leash.pair) + "</dd>");
+        if (leash.spend && leash.spend[0]) {
+          const spend = leash.spend[0];
+          rows.push("<dt>Most it can ever spend</dt><dd><strong>" + esc(usdt(spend.worstCaseTotalMinor)) + " " + esc(spend.tokenSymbol || "tokens") + "</strong></dd>");
+        }
+        rows.push("<dt>Expires</dt><dd>" + esc(new Date(leash.expiresAt).toLocaleString()) + "</dd>");
+        rows.push("<dt>Contracts it may call</dt><dd>" + leash.contracts.map((call) => '<span class="mono2">' + esc(call.contract) + "</span><br><span class=\"small\">method " + esc(call.selector) + "</span>").join("<br>") + "</dd>");
+        rows.push("</dl>");
+        rows.push('<ul class="canlist can">' + leash.can.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>");
+        rows.push('<ul class="canlist cannot">' + leash.cannot.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>");
+        if (leash.revocable) {
+          rows.push('<div class="revoke"><button class="btn" id="revoke">Revoke access now</button><p class="small" style="margin-top:8px;">Takes effect on chain. The agent’s next attempt fails.</p></div>');
+        }
+      }
+      $("#leash").innerHTML = "<h3>What Grid Keeper may do</h3><span class=\"state " + stateClass + "\">"
+        + esc(leash.state.replace(/_/g, " ").toLowerCase()) + "</span>" + rows.join("");
+    }
+
+    function renderProposal(proposal) {
+      const body = proposal.strategy.levels.map((level) =>
+        "<tr><td>" + esc(level.levelId.split(":").pop()) + "</td><td>" + esc(usdt(level.priceMinor)) + " USDT</td>"
+        + '<td class="' + (level.side === "BUY" ? "buy" : "sell") + '">' + esc(level.side === "BUY" ? "Buy" : "Sell") + "</td>"
+        + "<td>" + (level.side === "BUY" ? esc(usdt(level.allocationMinor)) + " USDT" : "sells what it holds") + "</td></tr>").join("");
+      $("#levels-body").innerHTML = body;
+      $("#levels-note").textContent = "Worst case this permission allows: " + usdt(proposal.spend.worstCaseTotalMinor)
+        + " " + proposal.spend.tokenSymbol + " total, expiring " + new Date(proposal.expiresAt).toLocaleString() + ".";
+      $("#levels-step").hidden = false;
+
+      // A proposal is not a grant. The card keeps saying so until one exists.
+      renderLeash({
+        state: "PROPOSED", pair: proposal.pair, expiresAt: proposal.expiresAt,
+        spend: [proposal.spend], contracts: proposal.calls, revocable: false,
+        can: ["Trade " + proposal.pair + " inside the range you set", "Call only the one contract and method listed above", "Spend at most the cap above, from your wallet only"],
+        cannot: ["Withdraw your assets to any address", "Send funds to an address you did not approve", "Call any contract outside the list above", "Raise its own spending cap", "Extend its own expiry", "Act at all after you revoke"],
+        summary: "",
+      });
+    }
+
+    async function loadLeash() {
+      try {
+        const leash = await (await fetch("/api/grid/leash")).json();
+        renderLeash(leash);
+      } catch {
+        $("#leash").innerHTML = '<div class="state error"><strong>Permissions could not be read</strong><p>Canned will not guess what an agent is allowed to do, so nothing is shown. Refresh to try again.</p></div>';
+      }
+    }
+
+    async function loadModel() {
+      try {
+        const model = await (await fetch("/api/grid/execution-model")).json();
+        $("#model").innerHTML = "<p class=\"body\">" + esc(model.summary) + "</p>"
+          + '<details class="adv"><summary>Why it works this way</summary><ul style="margin:10px 0 0;padding-left:18px;">'
+          + model.evidence.map((item) => '<li class="small" style="margin-bottom:6px;">' + esc(item) + "</li>").join("")
+          + "</ul></details>";
+      } catch {
+        $("#model").innerHTML = '<p class="small">The execution model could not be loaded.</p>';
+      }
+    }
+
+    $("#review").addEventListener("click", async () => {
+      const button = $("#review");
+      button.disabled = true; button.textContent = "Working it out";
+      $("#plan-error").innerHTML = "";
+      const hours = Number($("#hours").value);
+      const body = {
+        strategy: {
+          strategyId: "grid-" + Date.now(),
+          pair: { baseToken: "0xae13d989dac2f0debff460ac112a837c89baa7cd", quoteToken: "0x337610d27c682e347c9cd60bd4b3b107c9d34ddd", baseSymbol: "WBNB", quoteSymbol: "USDT", baseDecimals: 18, quoteDecimals: 18 },
+          lowerPriceMinor: String(BigInt(Math.round(Number($("#lower").value) * 100)) * (10n ** 16n)),
+          upperPriceMinor: String(BigInt(Math.round(Number($("#upper").value) * 100)) * (10n ** 16n)),
+          levelCount: Number($("#levels").value),
+          totalCapitalMinor: String(BigInt(Math.round(Number($("#capital").value) * 100)) * (10n ** 16n)),
+          maxPerLevelMinor: String(BigInt(Math.round(Number($("#perlevel").value) * 100)) * (10n ** 16n)),
+          expiresAt: new Date(Date.now() + hours * 3600 * 1000).toISOString(),
+        },
+      };
+      try {
+        const response = await fetch("/api/grid/leash/proposal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.reason || "That grid could not be built.");
+        renderProposal(data);
+      } catch (error) {
+        $("#plan-error").innerHTML = '<div class="state error"><strong>That grid does not work</strong><p>' + esc(error.message) + "</p></div>";
+      } finally {
+        button.disabled = false; button.textContent = "Review permissions";
+      }
+    });
+
+    loadLeash();
+    loadModel();
+  </script>
+</body>
+</html>

@@ -24,6 +24,11 @@ import { assessBnbEligibility } from "./marketplace/eligibility.mjs";
 import { createListing, LISTING_STATES, updateListing, validateListingSubmission } from "./marketplace/listings.mjs";
 import { challengeState, consumeChallenge, createChallenge, isAddress, ownershipRecord, verifyOwnership } from "./marketplace/ownership.mjs";
 import { SlidingWindowLimiter, clientKey } from "./net/rate-limit.mjs";
+import { buildGridKeeperDeliverable, planGridStrategy, GRID_EXECUTION_MODEL, GRID_TESTNET_VENUE } from "./reference/grid-keeper.mjs";
+import { buildGridBenchmarkDefinition, publicGridBenchPacket } from "./reference/grid-benchmark.mjs";
+import { computeGridGroundTruth, gradeGridBenchResponse } from "./reference/grid-evaluator.mjs";
+import { buildGridTrackRecord } from "./reference/grid-track-record.mjs";
+import { buildLeash, buildLeashProposal, LEASH_STATES } from "./marketplace/leash.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
@@ -33,6 +38,7 @@ const homeHtml = await readFile(path.resolve(process.cwd(), "web/home.html"), "u
 const marketplaceHtml = await readFile(path.resolve(process.cwd(), "web/marketplace.html"), "utf8");
 const agentHtml = await readFile(path.resolve(process.cwd(), "web/agent.html"), "utf8");
 const listHtml = await readFile(path.resolve(process.cwd(), "web/list.html"), "utf8");
+const leashHtml = await readFile(path.resolve(process.cwd(), "web/leash.html"), "utf8");
 const cannedCss = await readFile(path.resolve(process.cwd(), "web/canned.css"), "utf8");
 
 // Ownership challenges are short lived and single use, so they live in memory
@@ -84,6 +90,11 @@ const yieldScoutRuntime = new ReferenceAgentRuntime({
   spec: referenceSpec("yield"),
   taskHandler: ({ jobId, task }) => buildYieldScoutDeliverable({ jobId, task }),
 });
+const gridKeeperRuntime = new ReferenceAgentRuntime({
+  spec: referenceSpec("grid"),
+  taskHandler: ({ jobId, task, strategy, observation, fills, authority }) =>
+    buildGridKeeperDeliverable({ jobId, task, strategy, observation, fills, authority }),
+});
 
 async function referenceProviderAddress() {
   if (process.env.CANNED_REFERENCE_HEALTH_PROVIDER_ADDRESS) return process.env.CANNED_REFERENCE_HEALTH_PROVIDER_ADDRESS;
@@ -124,6 +135,19 @@ async function yieldBaseline() {
 
 async function yieldIdentityRecord() {
   return store.loadJson("state/reference-yield-identity.json", null);
+}
+
+async function gridIdentityRecord() {
+  return store.loadJson("state/reference-grid-identity.json", null);
+}
+
+/** The live grid strategy and its granted session, if either exists yet. */
+async function gridStrategyRecord() {
+  return store.loadJson("state/grid-strategy.json", null);
+}
+
+async function gridSessionRecord() {
+  return store.loadJson("state/grid-session.json", null);
 }
 
 /** The graded outcome of the most recent YieldBench run, or null before one exists. */
@@ -185,12 +209,15 @@ async function snapshot() {
     store.loadJson("inventory/verified-candidates.json", { candidates: [], categorySummary: {} }),
     store.loadRuns(),
   ]);
-  const [identityRecord, rangeRecord, yieldRecord, baseline, rangeBaselineRecord, yieldBaselineRecord] = await Promise.all([referenceIdentityRecord(), rangeIdentityRecord(), yieldIdentityRecord(), humanBaseline(), rebalanceBaseline(), yieldBaseline()]);
+  const [identityRecord, rangeRecord, yieldRecord, gridRecord, baseline, rangeBaselineRecord, yieldBaselineRecord] = await Promise.all([referenceIdentityRecord(), rangeIdentityRecord(), yieldIdentityRecord(), gridIdentityRecord(), humanBaseline(), rebalanceBaseline(), yieldBaseline()]);
   const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({
     endpointBase: `http://127.0.0.1:${port}`,
     providerAddress: await referenceProviderAddress(),
     allowLocalProbe: false,
-    identityRecords: { "health-factor": identityRecord, rebalancing: rangeRecord, yield: yieldRecord },
+    identityRecords: { "health-factor": identityRecord, rebalancing: rangeRecord, yield: yieldRecord, grid: gridRecord },
+    // GridBench needs no human baseline: TermiX is already satisfied by the
+    // other three pairs, so this gate stays false and Grid Keeper is simply
+    // shown at the evidence level it has.
     baselineSealedByKey: { "health-factor": baseline?.status === "submitted", rebalancing: rangeBaselineRecord?.status === "submitted", yield: yieldBaselineRecord?.status === "submitted" },
   })];
   const marketplace = buildMarketplaceSnapshot({ report: { ...report, candidates }, runs });
@@ -394,6 +421,54 @@ const server = createServer(async (request, response) => {
       await store.saveJson("state/yield-baseline.json", completed);
       await store.saveEvidence({ kind: "yieldbench_human_baseline", benchmarkId: YIELD_BENCHMARK_ID, attemptId: completed.attemptId, precommit: definition.precommit, startedAt: completed.startedAt, submittedAt: completed.submittedAt, elapsedMs: completed.elapsedMs, rawSubmissionJson: completed.rawSubmissionJson, rawSubmissionSha256: hashes.sha256, rawSubmissionKeccak256: hashes.keccak256, agentOutputBeforeSubmission: false, groundTruthBeforeSubmission: false });
       json(response, 200, { status: "submitted", attemptId: completed.attemptId, benchmarkId: completed.benchmarkId, submittedAt: completed.submittedAt, elapsedMs: completed.elapsedMs, evidenceSha256: hashes.sha256, preserved: true, evaluated: false, agentRun: "not_started" });
+      return;
+    }
+    if (url.pathname === "/leash") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(leashHtml);
+      return;
+    }
+    if (url.pathname === "/api/reference/grid" && request.method === "GET") { json(response, 200, gridKeeperRuntime.health()); return; }
+    if (url.pathname === "/api/reference/grid/readiness") { json(response, 200, gridKeeperRuntime.readiness()); return; }
+    if (url.pathname === "/api/reference/grid/metrics") { json(response, 200, gridKeeperRuntime.metrics()); return; }
+    /** How Grid Keeper executes, stated in one place so no surface can drift. */
+    if (url.pathname === "/api/grid/execution-model") { json(response, 200, { ...GRID_EXECUTION_MODEL, venueContracts: GRID_TESTNET_VENUE }); return; }
+    if (url.pathname === "/api/grid/benchmark") {
+      json(response, 200, publicGridBenchPacket(buildGridBenchmarkDefinition()));
+      return;
+    }
+    if (url.pathname === "/api/grid/track-record") {
+      const stored = await store.loadJson("state/grid-track-record.json", { sessions: [] });
+      json(response, 200, buildGridTrackRecord({ sessions: stored.sessions || [] }));
+      return;
+    }
+    /**
+     * The Leash. Derived from the granted session, or NOT_CONFIGURED when no
+     * session exists. It never describes an authority that was not granted.
+     */
+    if (url.pathname === "/api/grid/leash") {
+      const [strategyRecord, sessionRecord] = await Promise.all([gridStrategyRecord(), gridSessionRecord()]);
+      const { BNB_TESTNET } = await import("@altananetwork/sdk");
+      json(response, 200, buildLeash({
+        strategy: strategyRecord?.strategy ?? null,
+        session: sessionRecord?.session ?? null,
+        network: BNB_TESTNET,
+        revoked: sessionRecord?.revoked === true,
+      }));
+      return;
+    }
+    /** Preview the exact permission a user would be asked to grant. */
+    if (url.pathname === "/api/grid/leash/proposal" && request.method === "POST") {
+      const incoming = await readJsonBody(request);
+      const spec = incoming.body?.strategy;
+      if (!spec) { json(response, 400, { error: "strategy_required", reason: "Describe the grid you want before reviewing permissions." }); return; }
+      const { BNB_TESTNET } = await import("@altananetwork/sdk");
+      try {
+        const strategy = planGridStrategy(spec);
+        const proposal = buildLeashProposal({ strategy, network: BNB_TESTNET });
+        // The permissions object carries BigInt limits, which JSON cannot hold.
+        json(response, 200, { ...proposal, permissions: undefined, strategy: { strategyId: strategy.strategyId, levels: strategy.levels, range: strategy.range, capital: strategy.capital, guards: strategy.guards, pair: strategy.pair, hash: strategy.hashes.sha256 } });
+      } catch (error) { json(response, 400, { error: "strategy_rejected", reason: error.message }); }
       return;
     }
     if (url.pathname === "/api/reference/rebalancing" && request.method === "GET") { json(response, 200, rangeKeeperRuntime.health()); return; }
