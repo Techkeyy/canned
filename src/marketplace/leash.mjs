@@ -109,16 +109,23 @@ function spendSummary(permission, durationMs) {
 
 /** Resolve a call permission into the selector the chain will actually enforce. */
 export function describeCallPermission(permission) {
-  const anyContract = !permission.to;
-  const anyMethod = !permission.signature;
+  // Accept either the raw Altana shape ({to, signature}) or one this function
+  // already described ({contract, method}). Without this, describing twice
+  // silently reports a restricted rule as unrestricted. That direction is at
+  // least the safe one, but it is still wrong, and a page that maps over
+  // permissions twice should not change what the user is told.
+  const to = permission.to ?? permission.contract ?? null;
+  const signature = permission.signature ?? permission.method ?? null;
+  const anyContract = !to;
+  const anyMethod = !signature;
   let selector = null;
   let selectorResolved = true;
   if (!anyMethod) {
-    if (/^0x[0-9a-fA-F]{8}$/.test(permission.signature)) {
-      selector = permission.signature.toLowerCase();
+    if (/^0x[0-9a-fA-F]{8}$/.test(signature)) {
+      selector = signature.toLowerCase();
     } else {
       try {
-        selector = toFunctionSelector(permission.signature);
+        selector = toFunctionSelector(signature);
       } catch {
         // A signature that cannot be resolved to a selector cannot be shown as
         // a restriction. Failing closed here means the view reports an
@@ -129,9 +136,9 @@ export function describeCallPermission(permission) {
     }
   }
   return {
-    contract: anyContract ? null : String(permission.to).toLowerCase(),
+    contract: anyContract ? null : String(to).toLowerCase(),
     anyContract,
-    method: anyMethod ? null : permission.signature,
+    method: anyMethod ? null : signature,
     selector,
     selectorResolved,
     anyMethod,
