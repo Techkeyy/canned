@@ -216,9 +216,9 @@ The paid test used only BSC testnet. Its final run record, protocol events, time
 
 ## Toolchain boundary
 
-`@bnbagent/sdk@0.5.4` is the verified local protocol dependency. The BNB Agent Studio `bag` install is currently broken on this machine and AgentCore is not installed; both are reported by `npm run doctor`. They are not silently treated as available. The current Canned buyer seam and the protocol control use the SDK directly, so no managed provider-agent deployment is implied.
+`@bnbagent/sdk@0.5.5` and `@bnbagent/studio-runtime@0.0.13` are pinned local protocol dependencies. The official BNB Agent Studio CLI is repaired and pinned at `bag@0.0.13`; AgentCore is not installed and remains optional. The current Canned buyer seam and protocol control use the SDK directly, while the Health Guard x402 face uses the official Studio seller runtime. No managed cloud deployment is implied.
 
-Directive #22 rechecked the current official Studio x402 surface against that installed stack. The SDK provides buyer-side `X402Signer` and `SessionBudgetTracker`, but the seller-side `/x402` handler, payment verification, and B402 settlement live in the uninstalled `@bnbagent/studio-runtime`. Canned therefore does not advertise or execute x402, and claims no x402 payment proof; the ERC-8183 rail remains the verified commerce path. See ADR-066.
+Directive #23 adds the Health Guard `/x402` face through the official Studio B402 seller runtime. It is dynamically reported at `/api/reference/health-factor/x402`, priced at `0.0005` U with a hard `0.001` U cap, and bound to the existing Health Guard provider wallet. Without B402 Sandbox/Testnet merchant credentials it remains dormant and returns a fail-closed `503`; Canned claims no x402 payment or deployment proof. ERC-8183 remains the verified commerce rail. See [docs/X402.md](docs/X402.md) and ADR-067.
 
 `npm run wallet:create` writes the ignored `.env.local` and encrypted SDK keystore needed for this test only. Never commit private keys, wallet keystores, API credentials, or generated deployment secrets.
 

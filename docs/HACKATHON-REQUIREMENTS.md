@@ -238,7 +238,7 @@ BSC Testnet versus Mainnet main-track eligibility is still unresolved by publish
 | TermiX | Met and untouched: 3/3 pairs, wins 2, losses 1. |
 | PancakeSwap | Grid Keeper's bounded, revocable BSC Testnet V2 swap proof remains separate from marketplace benchmark metrics. |
 | Altana | Technical requirement set met: one bounded session-key execution, on-chain registration, revocation, and revoked-key verification. |
-| x402 | **Not implemented or claimed.** The installed SDK has buyer-side x402 signing primitives, but the official seller/facilitator runtime required by current Studio documentation is not installed. |
+| x402 | **Official seller face scaffolded; live capability not yet verified.** Health Guard exposes `/x402` through `@bnbagent/studio-runtime@0.0.13`, but it is dormant without B402 Sandbox/Testnet merchant credentials. No payment or deployment proof is claimed. |
 
 ### Eligibility resolution
 
@@ -246,8 +246,8 @@ BSC Testnet versus Mainnet main-track eligibility is still unresolved by publish
 
 ### x402 compatibility gate
 
-The current official BNB Agent Studio docs describe `/x402` as a seller face backed by `@bnbagent/studio-runtime`, with bounded payment handling and B402 settlement. The installed repository has `@bnbagent/sdk@0.5.4` only: its x402 surface is buyer-side `X402Signer`/`SessionBudgetTracker` plus quote/payment types, with no seller verification or settlement API. `@bnbagent/studio-runtime` is absent and the installed `bag` CLI is broken because its nested `viem` dependency is missing, so Directive #22's early-stop condition is met. No x402 endpoint, payment proof, or x402-derived marketplace claim was fabricated.
+The current official BNB Agent Studio docs describe `/x402` as a seller face backed by `@bnbagent/studio-runtime`, with bounded payment handling and B402 settlement. The repository now pins `@bnbagent/sdk@0.5.5`, `@bnbagent/studio-runtime@0.0.13`, and the repaired `bag@0.0.13`. Health Guard's seller is a separate `/x402` face on the same local process and does not replace its ERC-8183 runtime. With no B402 merchant credentials present, the official seller is dormant and returns `503`; no fake challenge, payment proof, or x402-derived marketplace claim was fabricated.
 
 ### Remaining dependency
 
-Install and pin the current official seller/runtime surface, then repeat the x402 preflight and authorize at most one BSC Testnet payment only if every stated gate passes. Until then, ERC-8183 remains the only Canned-verified commerce rail.
+Provision a B402 Sandbox/Testnet merchant account for the existing Health Guard provider recipient, store its credentials outside the repository, then repeat the public `402` challenge, buyer preflight, one-payment, settlement, replay, and independent-verification gates. Until every gate passes, ERC-8183 remains the only Canned-verified commerce rail. See `docs/X402.md`.

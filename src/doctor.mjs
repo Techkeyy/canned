@@ -69,7 +69,7 @@ export async function runDoctor({ env = process.env, print = true } = {}) {
   add("8004scan", scan.ok ? "PASS" : "WARN", scan.ok ? `HTTP ${scan.status}` : scan.error || `HTTP ${scan.status}`);
   const sdk = await sdkStatus();
   add("bnb_sdk", sdk.available ? "PASS" : "FAIL", sdk.available ? `${sdk.package}@${sdk.version}` : sdk.error);
-  const bag = await commandCheck("bag", ["--version"]);
+  const bag = await commandCheck("bag", ["--version"], 45_000);
   add("optional_bag_cli", bag.status, `optional provider/deployment tooling; ${bag.detail}`);
   const agentcore = await commandCheck("agentcore", ["--version"]);
   add("optional_agentcore_cli", agentcore.status, `optional AWS deployment tooling; ${agentcore.detail}`);

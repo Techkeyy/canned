@@ -61,6 +61,7 @@
   },
   "dependencies": {
     "@altananetwork/sdk": "0.7.1",
-    "@bnbagent/sdk": "0.5.4"
+    "@bnbagent/sdk": "0.5.5",
+    "@bnbagent/studio-runtime": "0.0.13"
   }
 }

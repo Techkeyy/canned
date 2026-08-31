@@ -56,7 +56,7 @@ Reason: the evidence boundary and failure behavior can be tested now without pre
 
 ## ADR-012: Use the official BNB SDK directly for the buyer seam
 
-Decision: use `@bnbagent/sdk@0.5.4` for ERC-8183 buyer construction and lifecycle calls. Keep writes disabled unless the network is exactly BSC testnet, the explicit testnet-write flag is true, and a dedicated wallet configuration is present. Mainnet writes always fail closed.
+Decision: use `@bnbagent/sdk@0.5.5` for ERC-8183 buyer construction and lifecycle calls. Keep writes disabled unless the network is exactly BSC testnet, the explicit testnet-write flag is true, and a dedicated wallet configuration is present. Mainnet writes always fail closed.
 
 Reason: this follows the current official TypeScript SDK surface while keeping the first buyer integration independent of the unresolved Studio CLI installation. No SDK call is allowed to turn a quote probe or fixture into a public benchmark result.
 
@@ -394,10 +394,20 @@ This is an organizer/support clarification of ambiguous wording, not a change to
 
 ## ADR-066: Do not fake an x402 seller when the installed stack cannot settle it
 
-Status: **BLOCKED / DEFERRED 2026-08-31.**
+Status: **SUPERSEDED BY ADR-067 2026-08-31. Historical record retained.**
 
 Decision: do not implement or advertise x402 marketplace payment support from the installed SDK alone. The local `@bnbagent/sdk@0.5.4` exposes `X402Signer`, `SessionBudgetTracker`, and buyer-side quote/payment data types, but it exposes no seller-side resource-server handler, facilitator, payment verification, or settlement API. The local dependency tree also has no `@bnbagent/studio-runtime`, and the optional `bag` CLI is present but broken on this machine because its nested `viem` dependency is missing.
 
 The current official BNB Agent Studio architecture places the bounded seller x402 payment handler in `@bnbagent/studio-runtime` and describes the `/x402` face as part of that runtime. Installed executable behavior is authoritative for this repository, so no proprietary challenge format, fake facilitator, synthetic payment result, or payment transaction is introduced. The existing ERC-8183 job rail remains intact and x402 remains an unverified optional capability until the official seller/runtime surface is installed and independently preflighted.
 
-Security consequence: no buyer signature was requested, no token was sourced, no approval was granted, and no x402 payment was attempted. Reopen this decision only with a pinned official seller/runtime path that can prove challenge parsing, BSC Testnet asset/recipient/amount binding, replay protection, payment verification, and settlement before any real payment is authorized.
+Security consequence: no buyer signature was requested, no token was sourced, no approval was granted, and no x402 payment was attempted under this decision. The follow-on decision below reopens only the implementation scaffold, not the payment authorization.
+
+## ADR-067: Pin the official B402 seller runtime, keep Health Guard dormant until merchant onboarding
+
+Status: **ACCEPTED / LIVE SCAFFOLD, PAYMENT GATE BLOCKED 2026-08-31.**
+
+Decision: pin `@bnbagent/sdk@0.5.5`, `@bnbagent/studio-runtime@0.0.13`, and the repaired official `bag@0.0.13`. Mount one Health Guard `/x402` face using the runtime's B402 seller handler, with `U` on BSC Testnet, a default price of `0.0005` U, a hard cap of `0.001` U, and the existing Health Guard provider wallet as the only accepted recipient. Keep this face separate from the proven ERC-8183 job rail; do not change the ERC-8183 marketplace adapter or claim x402 support for third-party listings.
+
+The seller is dynamically visible through `/api/reference/health-factor/x402`, but the official runtime remains dormant until all required B402 merchant credentials are present. Missing credentials produce a fail-closed `503`, not a synthetic challenge. A configured `CANNED_X402_PAY_TO` that differs from the existing Health Guard provider wallet is rejected.
+
+Security consequence: the implementation exposes no private key, does not let the paid prompt choose a signer or move capital, and runs deterministic Health Guard work only after the official runtime's payment boundary. No public `402`, real payment, deployment, settlement, or replay evidence is claimed yet. The next run may authorize exactly one BSC Testnet payment of no more than `0.001` U only after a B402 Sandbox/Testnet merchant account, a public challenge, exact terms, buyer preflight, on-chain settlement, independent verification, and replay rejection all succeed.

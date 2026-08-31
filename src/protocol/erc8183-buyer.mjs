@@ -1,7 +1,13 @@
 import path from "node:path";
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { parseAbiItem } from "viem";
 import { ERC8183_STATES } from "../domain.mjs";
 import { contentHashes, isPublicHttpUrl, nowIso, requestJson, safeError } from "../core.mjs";
+
+const require = createRequire(import.meta.url);
+const BNB_SDK_PACKAGE = path.resolve(path.dirname(require.resolve("@bnbagent/sdk")), "..", "package.json");
+const BNB_SDK_VERSION = JSON.parse(readFileSync(BNB_SDK_PACKAGE, "utf8")).version;
 
 export function writeSafety(env = process.env) {
   const network = env.CANNED_NETWORK || "bsc-testnet";
@@ -57,7 +63,7 @@ export async function loadSdk() {
 export async function sdkStatus() {
   try {
     const sdk = await loadSdk();
-    return { available: Boolean(sdk.ERC8183Client && sdk.EVMWalletProvider), version: "0.5.4", package: "@bnbagent/sdk" };
+    return { available: Boolean(sdk.ERC8183Client && sdk.EVMWalletProvider), version: BNB_SDK_VERSION, package: "@bnbagent/sdk" };
   } catch (error) {
     return { available: false, package: "@bnbagent/sdk", error: safeError(error) };
   }

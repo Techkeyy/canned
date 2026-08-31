@@ -97,7 +97,7 @@ export function buildInfrastructureControlRun({ runId, precommit, protocolJob, p
     benchmark: CONTROL_BENCHMARK,
     manifest: { hash: precommit.manifestHash, offchainContentHash: precommit.offchainContentHash, level: "offchain_content_addressed", publicPrecommitAnchor: "control_job.description" },
     protocolJob,
-    controlSeller: { providerAddress: provider.address, network: "bsc-testnet", chainId: 97, sdk: "@bnbagent/sdk", sdkVersion: "0.5.4", watcher: "fundedJobWatcher", providerOps: "ERC8183JobOps", storage: "LocalStorageProvider + loopback delivery endpoint", readiness },
+    controlSeller: { providerAddress: provider.address, network: "bsc-testnet", chainId: 97, sdk: "@bnbagent/sdk", sdkVersion: "0.5.5", watcher: "fundedJobWatcher", providerOps: "ERC8183JobOps", storage: "LocalStorageProvider + loopback delivery endpoint", readiness },
     quote: { price: String(quote.price), currency: quote.currency, negotiationHash: quote.negotiationHash, signed: quote.signed === true },
     deliverable: deliverable || null,
     deliverableValidation: validation || null,

@@ -1,6 +1,6 @@
 # Environment and readiness
 
-Audit date: 2026-08-27. This is a record of the current machine, not a promise that all tools are configured for deployment.
+Audit date: 2026-08-31. This is a record of the current machine, not a promise that all tools are configured for deployment.
 
 ## Local tool audit
 
@@ -18,9 +18,10 @@ Audit date: 2026-08-27. This is a record of the current machine, not a promise t
 | Docker Compose | v5.3.1 | Available |
 | Corepack | 0.34.6 | Available |
 | pnpm | shim present, version command not verified in this shell | Required as pnpm 10 for Studio workflow |
-| BNB Agent Studio CLI (`bag`) | command shim present but package is broken; `bag --version` fails | Required only when provider-agent or managed deployment work begins; doctor reports the failure |
+| BNB Agent Studio CLI (`bag`) | official `0.0.13` installed; isolated `bag init` scaffold and `bag x402 sell` status probe pass | Required when provider-agent or managed deployment work begins; merchant credentials are still absent |
 | AgentCore CLI | not installed | Optional AWS deployment path; doctor reports unavailable |
-| `@bnbagent/sdk` | 0.5.4 installed locally and listed in lockfile | ERC-8183 buyer seam and protocol reads |
+| `@bnbagent/sdk` | 0.5.5 installed locally and listed in lockfile | ERC-8183 buyer seam and protocol reads |
+| `@bnbagent/studio-runtime` | 0.0.13 installed locally and listed in lockfile | Official Health Guard B402/x402 seller face; dormant until merchant credentials exist |
 | Foundry (`forge`, `cast`) | not installed | Only needed for custom Solidity/reference-contract work |
 | AWS CLI | not installed | Optional AWS deployment path |
 
@@ -39,7 +40,7 @@ The successful initial read-only testnet smoke result was `0x61`, which is decim
 - A disposable BSC testnet wallet funded only for the minimum test.
 - BSC testnet RPC and explorer access.
 - `@bnbagent/studio-cli` when the first provider-agent or deployment path is selected.
-- A disposable BSC testnet wallet funded only for the minimum ERC-8183 test.
+- A B402 Sandbox/Testnet merchant account and credentials, stored outside the repository, for the one capped x402 payment gate.
 - Further product benchmark runs only after an explicit release decision; the infrastructure control is not a substitute for an external provider deliverable.
 - A reproducible benchmark environment with enough testnet activity to score the selected category.
 

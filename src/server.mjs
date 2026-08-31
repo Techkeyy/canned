@@ -29,6 +29,7 @@ import { buildGridBenchmarkDefinition, publicGridBenchPacket } from "./reference
 import { computeGridGroundTruth, gradeGridBenchResponse } from "./reference/grid-evaluator.mjs";
 import { buildGridTrackRecord } from "./reference/grid-track-record.mjs";
 import { buildLeash, buildLeashProposal, LEASH_STATES } from "./marketplace/leash.mjs";
+import { createHealthFactorX402Seller } from "./reference/health-factor-x402.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
@@ -94,6 +95,16 @@ const gridKeeperRuntime = new ReferenceAgentRuntime({
   spec: referenceSpec("grid"),
   taskHandler: ({ jobId, task, strategy, observation, fills, authority }) =>
     buildGridKeeperDeliverable({ jobId, task, strategy, observation, fills, authority }),
+});
+
+const healthFactorProviderAddress = await referenceProviderAddress();
+const healthFactorX402Recipient = process.env.CANNED_X402_PAY_TO || healthFactorProviderAddress;
+const x402PublicBase = (process.env.CANNED_X402_PUBLIC_URL || `http://localhost:${port}`).replace(/\/+$/u, "");
+const healthFactorX402 = await createHealthFactorX402Seller({
+  walletAddress: healthFactorX402Recipient,
+  expectedRecipient: healthFactorProviderAddress || "",
+  priceUsd: process.env.CANNED_X402_PRICE_USD || "0.0005",
+  resourceUrl: `${x402PublicBase}/x402`,
 });
 
 async function referenceProviderAddress() {
@@ -202,6 +213,10 @@ async function humanBaseline() {
 function json(response, status, body) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   response.end(JSON.stringify(body, (_key, value) => typeof value === "bigint" ? value.toString() : value));
+}
+
+function requestHeaders(request) {
+  return Object.fromEntries(Object.entries(request.headers).map(([name, value]) => [name, Array.isArray(value) ? value.join(",") : value || ""]));
 }
 
 async function snapshot() {
@@ -317,6 +332,22 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (url.pathname === "/api/health") { json(response, 200, { ok: true, network: "bsc-testnet", chainId: 97, mode: process.env.CANNED_MODE || "live", mainnetWrites: false }); return; }
+    if (url.pathname === "/x402") {
+      if (!healthFactorX402.seller) {
+        json(response, 503, { error: "x402_unavailable", service: "health-factor", x402: healthFactorX402.status });
+        return;
+      }
+      const out = await healthFactorX402.seller.handle({
+        method: request.method,
+        path: url.pathname,
+        query: Object.fromEntries(url.searchParams.entries()),
+        headers: requestHeaders(request),
+        body: await readRawBody(request),
+      });
+      response.writeHead(out.status, out.headers);
+      response.end(out.body);
+      return;
+    }
     if (url.pathname === "/api/inventory") { json(response, 200, await store.loadJson("inventory/verified-candidates.json", { candidates: [], categorySummary: {} })); return; }
     if (url.pathname === "/api/runs") { const runs = await store.loadRuns(); json(response, 200, { runs, publicMetrics: publicMetrics(runs) }); return; }
     if (url.pathname === "/api/marketplace") {
@@ -328,7 +359,8 @@ const server = createServer(async (request, response) => {
     }
     if (url.pathname === "/api/metrics") { const current = await snapshot(); json(response, 200, current.metrics); return; }
     if (url.pathname === "/api/reference/fleet") { json(response, 200, { origin: "CANNED_REFERENCE", network: "bsc-testnet", chainId: 97, agents: referenceFleetCatalog() }); return; }
-    if (url.pathname === "/api/reference/health-factor" && request.method === "GET") { json(response, 200, healthFactorRuntime.health()); return; }
+    if (url.pathname === "/api/reference/health-factor" && request.method === "GET") { json(response, 200, { ...healthFactorRuntime.health(), x402: healthFactorX402.status }); return; }
+    if (url.pathname === "/api/reference/health-factor/x402" && request.method === "GET") { json(response, 200, healthFactorX402.status); return; }
     if (url.pathname === "/api/reference/health-factor/readiness") { json(response, 200, healthFactorRuntime.readiness()); return; }
     if (url.pathname === "/api/reference/health-factor/metrics") { json(response, 200, healthFactorRuntime.metrics()); return; }
     if (url.pathname === "/api/reference/health-factor/negotiate") {

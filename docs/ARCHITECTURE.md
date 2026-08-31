@@ -10,7 +10,7 @@ This is the implemented Marketplace Alpha plus Reference Fleet Foundation slice.
 - Worker process for benchmark execution, polling, deadlines, and artifact finalization.
 - PostgreSQL for the queryable catalog and run index. A local SQLite adapter may be used for deterministic offline development, but it must not be presented as production parity.
 - Content-addressed object storage or IPFS for canonical manifests and raw artifacts. The current slice uses a local content-addressed file store and keeps the storage seam replaceable.
-- `viem` and the official `@bnbagent/sdk@0.5.4` for protocol work. The Studio CLI is an optional provider/deployment path and is not claimed as installed.
+- `viem`, the official `@bnbagent/sdk@0.5.5`, and `@bnbagent/studio-runtime@0.0.13` for protocol work. The official `bag@0.0.13` CLI is installed for isolated Studio probes; cloud deployment is not claimed.
 
 ## Repository shape
 
