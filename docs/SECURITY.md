@@ -130,6 +130,7 @@ Grid Keeper is the only agent that can move capital, and only inside a session t
 - Revocation is a single transaction and takes effect at validator level.
 - The strategy fixes the allowlist. A caller cannot supply one, so an agent cannot widen its own authority.
 - Canned never requests a private key, seed phrase, or wallet password for execution either. Owner wallet keys are never placed on the VPS.
+- The historical session-creation helper is retired and fails closed. A future value-bearing lifecycle must create its session signer explicitly, hold it only in memory, keep it inside one grant-to-revoke process, confirm revocation before releasing it, and never write signer material to normal project state.
 
 ## Known limitations
 
