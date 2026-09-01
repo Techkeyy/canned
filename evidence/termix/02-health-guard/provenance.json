@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "canonical-grading-record",
+  "sourceGradingRecord": "data/state/healthbench-grading-run_9e0283a1-0f2f-4c88-850a-3f74fee9e558.json",
+  "sourceGradingRecordSha256": "sha256:0937cfc18af2f6e44007c7d61ab2829699594e33513521ccc96ad83356d53f54",
+  "sourcePairSha256": "sha256:35b7a2bd9c29a8f40aa323549d95e9790f09cc831928d3ef63180fdff0468d84",
+  "sourcePairEvidence": {
+    "durablePublicStorage": false,
+    "keccak256": "0xc611423dc4c6d70b4690767106263dbf415054150f4b05636dae3470089dbbe9",
+    "relativePath": "evidence/e7100a44637daaa8b9aaed37599a6e30388efa76bce43ec56950f812089f89b6.json",
+    "sha256": "sha256:e7100a44637daaa8b9aaed37599a6e30388efa76bce43ec56950f812089f89b6",
+    "store": "local_content_addressed"
+  },
+  "runId": "run_9e0283a1-0f2f-4c88-850a-3f74fee9e558",
+  "jobId": "695",
+  "benchmarkId": "HealthBench_v1",
+  "agentIdentity": "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2003",
+  "provider": "0xD885bd3eEa76c3bDE6B49D7A16D5BAa35ce2F1D7",
+  "referenceBlock": "127521666",
+  "evaluatorVersion": "health-factor-deterministic-v1",
+  "groundTruthHash": "0x875b85e82dd6d9e0f2b61b6815c35e263b1d990c9dd805841285c5658b8f9082",
+  "termix": {
+    "candidateNumber": 1,
+    "categoryOfThisPair": "health_factor_monitoring",
+    "checks": {
+      "actualOutputsAttached": true,
+      "costReported": true,
+      "deterministicEvaluator": true,
+      "observedDeliverable": true,
+      "qualityReported": true,
+      "realPaidMarketplaceJob": true,
+      "timeReported": true,
+      "withAndWithoutPairPresent": true
+    },
+    "highValueCategorySatisfied": false,
+    "qualifyingPairCount": 1,
+    "reason": "Real paired with/without evidence captured. TermiX still needs 2 more qualifying pair(s). This pair is health factor monitoring, which does not satisfy the trading, stock, or security category requirement.",
+    "requiredPairCount": 3,
+    "termixCandidatePair": true,
+    "trackComplete": false
+  },
+  "verifiedRun": {
+    "classification": "CANNED_VERIFIED_RUN",
+    "failedGates": [],
+    "gates": {
+      "contentAddressedEvidence": true,
+      "correctProvider": true,
+      "correctTerminalState": true,
+      "deterministicGrading": true,
+      "noFixture": true,
+      "onchainProvenance": true,
+      "precommitPresent": true,
+      "realDeliverable": true,
+      "realErc8183Lifecycle": true,
+      "realMarketplaceAgent": true,
+      "realPaidService": true,
+      "sealedWithoutAgentBaseline": true
+    },
+    "passed": true
+  },
+  "protocol": {
+    "protocol": "ERC-8183",
+    "network": "bsc-testnet",
+    "paymentToken": "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565",
+    "currentState": "COMPLETED",
+    "transactions": [
+      {
+        "event": "create_job",
+        "transactionHash": "0x12c556b0df7164b1a2b49bb8afc1c9f1c3f0fb5c048203f8dc42cd5e923b18ff"
+      },
+      {
+        "event": "register_job",
+        "transactionHash": "0x5070e9a97666527d079332a2020634391741228e10e81121550b006230c24369"
+      },
+      {
+        "event": "set_budget",
+        "transactionHash": "0x6eb8734486080584306484ccccb8a5582d9979104d22ba4066774352514ba2f3"
+      },
+      {
+        "event": "approve_payment_token",
+        "transactionHash": "0xb932b7d8ec4ece2a4067a5143d67d37c19b2b699f405f1ed76d9d0dd6169eb69"
+      },
+      {
+        "event": "approve_payment_token",
+        "transactionHash": "0x2137258b32bb2ef64c038f284c6b32371a8cec25038208e16277648022dc3cad"
+      },
+      {
+        "event": "fund_job",
+        "transactionHash": "0x2137258b32bb2ef64c038f284c6b32371a8cec25038208e16277648022dc3cad"
+      }
+    ]
+  },
+  "publishedFiles": {
+    "task": "02-health-guard/task.txt",
+    "agentOutput": {
+      "path": "02-health-guard/agent-output.json",
+      "sha256": "sha256:ea720262a0b6304be4aaeaa571f114833ae4cb693ea3bfa4fb5888ecb7c35de3"
+    },
+    "controlOutput": {
+      "path": "02-health-guard/control-output.json",
+      "sha256": "sha256:ee4c22734a62ba29d515e541d502eb48401f86d03adc20ccc16508e1b9a7dfe7"
+    },
+    "metrics": "02-health-guard/metrics.json",
+    "provenance": "02-health-guard/provenance.json"
+  }
+}

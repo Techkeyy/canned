@@ -1,0 +1,368 @@
+{
+  "category": "yield_optimisation",
+  "comparison": [
+    {
+      "aprDeltaPct": 0.874,
+      "assetSymbol": "FDUSD",
+      "breakEvenDays": 0,
+      "disqualifiers": [],
+      "gasCostAsset": 0.0296,
+      "grossReturnOverHorizon": 58.0869,
+      "incentivesIncluded": true,
+      "incrementalReturnOverHorizon": 17.9593,
+      "isCurrentPosition": false,
+      "liquidityAsset": 2557251.01,
+      "liquidityCoverMultiple": 102.29,
+      "marketKey": "vFDUSD",
+      "netBenefitBps": 9.83,
+      "netBenefitOverHorizon": 24.5777,
+      "oneOffCost": -6.6185,
+      "positionShareOfMarketBps": 97.76,
+      "qualifies": true,
+      "supplyAprPct": 2.8269,
+      "supplyApyPct": 2.8671,
+      "swapCostAsset": -6.648,
+      "swapRoute": {
+        "costFraction": -0.0002659208425089742,
+        "costPct": -0.0266,
+        "fees": [
+          100,
+          100
+        ],
+        "hops": [
+          "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+          "0x55d398326f99059fF775485246999027B3197955",
+          "0xc5f0f7b66764F6ec8C8Dff7BA683102295E16409"
+        ],
+        "kind": "routed"
+      },
+      "utilisationBps": 5604,
+      "vToken": "0xC4eF4229FEc74Ccfe17B2bdeF7715fAC740BA0ba"
+    },
+    {
+      "aprDeltaPct": 0.6138,
+      "assetSymbol": "USDT",
+      "breakEvenDays": 14.96,
+      "disqualifiers": [
+        "net_benefit_below_minimum"
+      ],
+      "gasCostAsset": 0.0296,
+      "grossReturnOverHorizon": 52.7395,
+      "incentivesIncluded": true,
+      "incrementalReturnOverHorizon": 12.6119,
+      "isCurrentPosition": false,
+      "liquidityAsset": 67918097.36,
+      "liquidityCoverMultiple": 2716.72,
+      "marketKey": "vUSDT",
+      "netBenefitBps": 2.53,
+      "netBenefitOverHorizon": 6.3227,
+      "oneOffCost": 6.2892,
+      "positionShareOfMarketBps": 3.68,
+      "qualifies": false,
+      "supplyAprPct": 2.5667,
+      "supplyApyPct": 2.5998,
+      "swapCostAsset": 6.2596,
+      "swapRoute": {
+        "costFraction": 0.00025038501069319047,
+        "costPct": 0.025,
+        "fees": [
+          100
+        ],
+        "hops": [
+          "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+          "0x55d398326f99059fF775485246999027B3197955"
+        ],
+        "kind": "direct"
+      },
+      "utilisationBps": 6599,
+      "vToken": "0xfD5840Cd36d94D7229439859C0112a4185BC0255"
+    },
+    {
+      "aprDeltaPct": 0,
+      "assetSymbol": "USDC",
+      "breakEvenDays": 0,
+      "disqualifiers": [],
+      "gasCostAsset": 0,
+      "grossReturnOverHorizon": 40.1276,
+      "incentivesIncluded": true,
+      "incrementalReturnOverHorizon": 0,
+      "isCurrentPosition": true,
+      "liquidityAsset": 21051700.75,
+      "liquidityCoverMultiple": 842.07,
+      "marketKey": "vUSDC",
+      "netBenefitBps": 0,
+      "netBenefitOverHorizon": 0,
+      "oneOffCost": 0,
+      "positionShareOfMarketBps": 11.88,
+      "qualifies": true,
+      "supplyAprPct": 1.9529,
+      "supplyApyPct": 1.972,
+      "swapCostAsset": 0,
+      "swapRoute": null,
+      "utilisationBps": 5756,
+      "vToken": "0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8"
+    },
+    {
+      "aprDeltaPct": -0.1253,
+      "assetSymbol": "DAI",
+      "breakEvenDays": null,
+      "disqualifiers": [
+        "does_not_break_even_within_horizon",
+        "net_benefit_below_minimum",
+        "no_net_benefit"
+      ],
+      "gasCostAsset": 0.0296,
+      "grossReturnOverHorizon": 37.5533,
+      "incentivesIncluded": true,
+      "incrementalReturnOverHorizon": -2.5743,
+      "isCurrentPosition": false,
+      "liquidityAsset": 1011271.62,
+      "liquidityCoverMultiple": 40.45,
+      "marketKey": "vDAI",
+      "netBenefitBps": -6.84,
+      "netBenefitOverHorizon": -17.0944,
+      "oneOffCost": 14.5201,
+      "positionShareOfMarketBps": 247.21,
+      "qualifies": false,
+      "supplyAprPct": 1.8276,
+      "supplyApyPct": 1.8443,
+      "swapCostAsset": 14.4906,
+      "swapRoute": {
+        "costFraction": 0.0005796222016272152,
+        "costPct": 0.058,
+        "fees": [
+          100,
+          100
+        ],
+        "hops": [
+          "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+          "0x55d398326f99059fF775485246999027B3197955",
+          "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3"
+        ],
+        "kind": "routed"
+      },
+      "utilisationBps": 4506,
+      "vToken": "0x334b3eCB4DCa3593BCCC3c7EBD1A1C1d1780FBF1"
+    }
+  ],
+  "confidence": {
+    "allMarketsSameBlock": true,
+    "incentivesVerifiedZero": true,
+    "limitations": [
+      "Supply rates move with utilisation; the figures describe one block, not the horizon.",
+      "Returns are simple over the horizon, not compounded.",
+      "Swap costs are a quote at one block, not a guaranteed execution price."
+    ],
+    "marketsCompared": 4,
+    "missingData": []
+  },
+  "costs": {
+    "gasCostAsset": 0.0296,
+    "gasCostNative": 0.0000415,
+    "gasPriceWei": "50000000",
+    "swapPricing": "Both a direct and a routed quote were taken from the venue; the cheaper route prices the move.",
+    "transactionSequence": [
+      {
+        "contract": "Venus vToken (source market)",
+        "gasUnits": 250000,
+        "method": "redeemUnderlying",
+        "step": "redeem"
+      },
+      {
+        "contract": "PancakeSwap SmartRouter",
+        "gasUnits": 220000,
+        "method": "exactInput",
+        "step": "swap"
+      },
+      {
+        "contract": "destination asset",
+        "gasUnits": 60000,
+        "method": "approve",
+        "step": "approve"
+      },
+      {
+        "contract": "Venus vToken (destination market)",
+        "gasUnits": 300000,
+        "method": "mint",
+        "step": "supply"
+      }
+    ]
+  },
+  "decision": {
+    "action": "MOVE",
+    "breakEvenDays": 0,
+    "expectedIncrementalReturn": 17.9593,
+    "expectedNetBenefit": 24.5777,
+    "highestAdvertisedYield": {
+      "assetSymbol": "FDUSD",
+      "isTheRecommendation": true,
+      "marketKey": "vFDUSD",
+      "supplyAprPct": 2.8269
+    },
+    "moveRecommended": true,
+    "policyVersion": "yield-scout-policy-v1",
+    "reason": "Moving to FDUSD clears every policy threshold: the destination holds 102.29x the position, the move repays its cost in 0 days inside a 30-day horizon, and it is ahead by 9.83 bps after costs.",
+    "recommendedAsset": "FDUSD",
+    "recommendedMarketKey": "vFDUSD",
+    "rejectedCandidates": [
+      {
+        "assetSymbol": "USDT",
+        "disqualifiers": [
+          "net_benefit_below_minimum"
+        ],
+        "marketKey": "vUSDT",
+        "supplyAprPct": 2.5667
+      },
+      {
+        "assetSymbol": "DAI",
+        "disqualifiers": [
+          "does_not_break_even_within_horizon",
+          "net_benefit_below_minimum",
+          "no_net_benefit"
+        ],
+        "marketKey": "vDAI",
+        "supplyAprPct": 1.8276
+      }
+    ],
+    "thresholds": {
+      "breakEvenMustBeWithinHorizon": true,
+      "maximumPositionShareOfMarketBps": 500,
+      "minimumLiquidityCoverMultiple": 20,
+      "minimumNetBenefitBpsOfPosition": 5
+    }
+  },
+  "evidence": {
+    "authoritativeProtocol": "Venus",
+    "readSource": {
+      "authoritative": true,
+      "blockTag": "118529435",
+      "chainId": 56,
+      "comptroller": "0xfD36E2c2a6789Db23113685031d7F16329158384",
+      "methods": [
+        "supplyRatePerBlock()",
+        "getCash()",
+        "totalBorrows()",
+        "totalReserves()",
+        "reserveFactorMantissa()",
+        "interestRateModel()",
+        "blocksPerYear()",
+        "venusSupplySpeeds(address)",
+        "supplyCaps(address)"
+      ],
+      "note": "Every market is read at the same block, so the comparison is between simultaneous states.",
+      "source": "https://docs-v4.venus.io/"
+    },
+    "snapshotHash": "0x9c3c38428f0510a46ff4b2754ec1c985ec2440575ccf472ceb8bf0fe63dee978",
+    "venueContracts": {
+      "comptroller": "0xfD36E2c2a6789Db23113685031d7F16329158384",
+      "markets": [
+        {
+          "key": "vUSDT",
+          "vToken": "0xfD5840Cd36d94D7229439859C0112a4185BC0255"
+        },
+        {
+          "key": "vUSDC",
+          "vToken": "0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8"
+        },
+        {
+          "key": "vFDUSD",
+          "vToken": "0xC4eF4229FEc74Ccfe17B2bdeF7715fAC740BA0ba"
+        },
+        {
+          "key": "vDAI",
+          "vToken": "0x334b3eCB4DCa3593BCCC3c7EBD1A1C1d1780FBF1"
+        }
+      ]
+    }
+  },
+  "execution": {
+    "automaticActionTaken": false,
+    "capitalMoved": false,
+    "futureBoundedPlan": {
+      "asset": "USDC",
+      "chainId": 97,
+      "contractAllowlist": [
+        "Venus vUSDC",
+        "Venus vFDUSD",
+        "PancakeSwap SmartRouter"
+      ],
+      "expirySeconds": 900,
+      "forbidden": [
+        "borrow",
+        "repayBorrow",
+        "transferFrom to an external address",
+        "unlimited allowance",
+        "arbitrary calldata",
+        "bridging"
+      ],
+      "horizonDays": 30,
+      "maximumAmount": 25000,
+      "maximumApprovalPerStep": 25000,
+      "maximumSwapCostBps": 50,
+      "methodAllowlist": [
+        "redeemUnderlying",
+        "exactInput",
+        "approve",
+        "mint"
+      ],
+      "minimumAcceptableNetBenefitBps": 5,
+      "network": "bsc-testnet",
+      "note": "No Altana session exists for this plan. It is a declared boundary, not an authorization.",
+      "protocolAllowlist": [
+        "Venus",
+        "PancakeSwap"
+      ],
+      "requiresOperatorConfirmation": true,
+      "revocable": true,
+      "status": "PLANNED_NOT_AUTHORIZED"
+    },
+    "mode": "recommendation_only",
+    "reason": "Canned Yield Scout v1 compares and recommends. It never withdraws, supplies, swaps, borrows, repays, bridges, or approves spending."
+  },
+  "horizon": {
+    "basis": "simple, non-compounded return over the declared horizon",
+    "days": 30
+  },
+  "jobId": 810,
+  "observedAt": "2026-08-30T16:28:55.278Z",
+  "origin": "CANNED_REFERENCE",
+  "position": {
+    "amount": 25000,
+    "asOfBlock": "118529435",
+    "assetSymbol": "USDC",
+    "chainId": 56,
+    "currentSupplyAprPct": 1.9529,
+    "currentSupplyApyPct": 1.972,
+    "marketKey": "vUSDC",
+    "poolType": "core",
+    "protocol": "Venus",
+    "source": "onchain"
+  },
+  "risks": {
+    "identified": [
+      {
+        "detail": "Venus supply rates follow utilisation and can fall at any block; the advantage is not locked in.",
+        "risk": "yield_is_variable"
+      },
+      {
+        "detail": "Moving from USDC to FDUSD exchanges one stablecoin issuer's risk for another's.",
+        "risk": "issuer_risk"
+      },
+      {
+        "detail": "The destination market holds 2557251.01 FDUSD, 102.29x the position. A thinner market is harder to exit in stress.",
+        "risk": "destination_liquidity"
+      },
+      {
+        "detail": "The swap is priced from a quote. Real execution can differ, and the quoted advantage can disappear.",
+        "risk": "execution_price"
+      },
+      {
+        "detail": "The swap is currently favourable because FDUSD trades slightly below USDC. That discount is also the risk being taken on.",
+        "risk": "peg_deviation"
+      }
+    ],
+    "note": "These are the risks a holder accepts, not a prediction. Yields move with utilisation and are not fixed for the horizon."
+  },
+  "schemaVersion": "1.0.0",
+  "venue": "Venus"
+}

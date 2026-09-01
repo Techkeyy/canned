@@ -140,3 +140,44 @@ Grid Keeper is the only agent that can move capital, and only inside a session t
 - `maxDrawdownBps` in the grid track record is unpublished rather than estimated, because Canned does not yet record the priced time series an honest figure would need.
 
 **Fixed in Directive #17:** the previous entries here were no rate limiting on the claim flow, and hostname-only SSRF filtering with no DNS re-check. Both are now closed and covered by tests.
+
+## Generic MPP payment boundary
+
+The Health Guard MPP face is pinned to BSC Testnet chain 97, the official
+curated `TEST_USDT` contract, the existing provider wallet, and an exact
+`0.01` token charge with a hard `0.02` ceiling. The accepted payment paths are
+the payer-funded `hash` and `transaction` credentials. The seller never holds
+a payer signing key and never settles on the payer's behalf. No unlimited
+approval, Permit2 approval, EIP-3009 authorization, facilitator, or mainnet
+endpoint is permitted by this adapter.
+
+Payment verification is performed by the official MPP package and backed by a
+durable atomic replay store. The server-only `MPP_SECRET_KEY` is purpose
+specific, ignored by Git, and never included in status or evidence output.
+Health Guard work is invoked only after successful verification; malformed or
+unpaid requests cannot run the deliverable.
+
+## B402 application key boundary
+
+B402 Sandbox request signing uses a dedicated RSA-2048 keypair, with a PKCS#8
+DER-base64 private key and an SPKI DER-base64 public key. The private key stays
+in ignored local secure state and is never served, printed, committed, or
+copied to the public marketplace VPS. It is not derived from a wallet, SSH,
+Altana, or ERC-8004 key. Binance `clientId`, `accessToken`, and other merchant
+credentials are not present, so the official Studio `/x402` seller remains
+dormant.
+
+The prior RSA-1024 private file is protected by the local offline-owner ACL
+and could not be retired by the current workspace account without weakening
+that protection. The new RSA-2048 pair is isolated under a new ignored secure
+state directory and must be treated as the only candidate application key;
+the protected orphan requires owner-level removal before any B402 application
+key inventory is considered clean.
+
+## Public deployment boundary
+
+The marketplace VPS service runs as the unprivileged `canned` user on its own
+loopback port and has a separate data directory. Existing Health Guard, Range
+Keeper, Yield Scout, Grid Keeper, Technocore, Tradoor, and Caddy routes are not
+reused or rewritten. No wallet key, provider password, storage credential,
+B402 credential, or MPP secret is included in the deployment payload.

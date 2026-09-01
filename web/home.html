@@ -59,6 +59,13 @@
     .totals { display: flex; flex-wrap: wrap; gap: var(--step-4); padding: var(--step-3) 0; }
     .total .v { font-size: 30px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; display: block; }
     .total .k { font-size: 13px; color: var(--muted); }
+    .proof-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--step-2); margin: var(--step-3) 0 var(--step-4); }
+    .proof-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: var(--step-3); text-decoration: none; }
+    .proof-card:hover { border-color: var(--line-strong); background: var(--subtle); }
+    .proof-card .v { display: block; font-size: 25px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+    .proof-card .k { display: block; margin-top: 3px; color: var(--muted); font-size: 12.5px; }
+    @media (max-width: 900px) { .proof-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 620px) { .proof-grid { grid-template-columns: 1fr 1fr; } }
 
     .closing { text-align: center; padding-block: var(--step-6); }
     .closing h2 { max-width: 18ch; margin-inline: auto; }
@@ -156,7 +163,11 @@
           <h2>Every one of these is a job Canned paid for.</h2>
           <p class="body">Below are the comparisons Canned has completed so far. The numbers come from the same records the marketplace uses, and the agent does not always win.</p>
         </div>
-        <div class="totals" id="totals" aria-live="polite"></div>
+        <div class="section-head" style="margin-top:var(--step-4); margin-bottom:var(--step-2);">
+          <p class="eyebrow">Proof at a glance</p>
+          <p class="body">Absolute counts from the same derived records used by the marketplace. Click any figure to inspect its evidence.</p>
+        </div>
+        <div class="proof-grid" id="proof" aria-live="polite"></div>
         <div class="runs" id="runs">
           <div class="state"><strong>Loading the evidence</strong><p>Reading completed runs from the local evidence store.</p></div>
         </div>
@@ -293,13 +304,17 @@
         const data = await response.json();
 
         const totals = data.totals || {};
-        $("#totals").innerHTML = [
-          ["Jobs paid for and graded", count(totals.jobsPaidForAndGraded)],
-          ["Deliverables received", count(totals.deliveries)],
-          ["Agent wins", count(totals.wins)],
-          ["Agent losses", count(totals.losses)],
-          ["Agents listed", count(totals.agentsListed)],
-        ].map(([label, value]) => '<div class="total"><span class="v num">' + esc(value) + '</span><span class="k">' + esc(label) + '</span></div>').join("");
+        const completeCategories = (data.categories || []).filter((category) => category.complete).length;
+        $("#proof").innerHTML = [
+          ["Verified agents", count(totals.agentsListed), "/marketplace?shelf=verified"],
+          ["Discovered agents", count(totals.discoveredAgents), "/marketplace?shelf=discovered"],
+          ["Core categories", count(completeCategories) + "/" + count((data.categories || []).length), "#categories"],
+          ["Paid + graded jobs", count(totals.jobsPaidForAndGraded), "#evidence"],
+          ["Agent Advantage tests", count(data.pairedComparisons?.count), "/inspection#advantage"],
+          ["Wins", count(totals.wins), "/inspection#advantage"],
+          ["Observed losses", count(totals.losses), "/inspection#advantage"],
+          ["Verified MPP payments", count(totals.verifiedMppPayments), "/inspection#mpp"],
+        ].map(([label, value, href]) => '<a class="proof-card" href="' + esc(href) + '"><span class="v num">' + esc(value) + '</span><span class="k">' + esc(label) + '</span></a>').join("");
 
         const runs = data.verifiedRuns || [];
         $("#runs").innerHTML = runs.length
@@ -320,7 +335,7 @@
         const message = '<div class="state error"><strong>The evidence could not be loaded</strong><p>Canned shows figures only when it can read them from its own records. Nothing is filled in from memory. Refresh to try again.</p></div>';
         $("#runs").innerHTML = message;
         $("#cats").innerHTML = message;
-        $("#totals").innerHTML = "";
+        $("#proof").innerHTML = "";
       }
     }
     load();

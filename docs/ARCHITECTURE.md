@@ -1,16 +1,16 @@
 # Architecture and Marketplace Alpha
 
-This is the implemented Marketplace Alpha plus Reference Fleet Foundation slice. It keeps the proven discovery, evidence, benchmark, and protocol boundaries while adding four category shelves, evidence ladder projections, comparison, protocol-aware activation review, negative history, conservative scheduler policy, and an explicitly first-party Health Factor reference module.
+This is the implemented Marketplace Alpha plus Reference Fleet Foundation slice. It keeps the proven discovery, evidence, benchmark, and protocol boundaries while adding four category shelves, evidence ladder projections, comparison, protocol-aware activation review, negative history, conservative scheduler policy, and an explicitly first-party Health Factor reference module. The deployed judge-facing marketplace is a small Node HTTP service behind a dedicated Caddy route; it is separate from the existing reference-agent services.
 
 ## Recommended stack
 
-- TypeScript-first workspace, Node 22 or newer, because current BNB Agent Studio supports a TypeScript end-to-end flow.
-- React-based web app for the public marketplace and run detail pages.
-- Node/TypeScript API for catalog queries, run creation, and server-side integration credentials.
+- Node 22 or newer with ES modules. The current public UI is server-served HTML and browser JavaScript, not React.
+- Single Node HTTP service for the public marketplace and inspection pages.
+- Server-side catalog derivation and protocol status routes; browser pages receive public facts only.
 - Worker process for benchmark execution, polling, deadlines, and artifact finalization.
 - PostgreSQL for the queryable catalog and run index. A local SQLite adapter may be used for deterministic offline development, but it must not be presented as production parity.
 - Content-addressed object storage or IPFS for canonical manifests and raw artifacts. The current slice uses a local content-addressed file store and keeps the storage seam replaceable.
-- `viem`, the official `@bnbagent/sdk@0.5.5`, and `@bnbagent/studio-runtime@0.0.13` for protocol work. The official `bag@0.0.13` CLI is installed for isolated Studio probes; cloud deployment is not claimed.
+- `viem`, the official `@bnbagent/sdk@0.5.5`, `@bnbagent/studio-runtime@0.0.13`, `@bnb-chain/mpp@0.7.0`, and `mppx@0.8.12` for protocol work. The official `bag@0.0.13` CLI is installed for isolated Studio probes.
 
 ## Repository shape
 
@@ -47,11 +47,11 @@ canned/
   web/inspection.html          Marketplace Alpha surface
   src/marketplace/             agent projections, trust states, metrics, adapters
   src/scheduler/               paused repeat-run safety policy
-  src/reference/               first-party fleet specs, Health Factor task, Venus reads, seller runtime, Altana policy checks
+  src/reference/               first-party fleet specs, Health Factor task, Venus reads, seller runtime, generic MPP face, Altana policy checks
   data/inventory/              verified discovery artifact
 ```
 
-PostgreSQL, object storage, worker queues, and a production UI remain later adapters, not hidden assumptions.
+PostgreSQL, object storage, worker queues, and a larger production UI remain later adapters, not hidden assumptions. The current VPS deployment uses a dedicated marketplace service and read-only evidence payload; it does not reuse the live agent ports or copy their credentials.
 
 ## Runtime boundaries
 
@@ -81,6 +81,13 @@ Adapters isolate protocol differences:
 - Job adapter: ERC-8183 creation, funding, submission, evaluation, expiry, and references.
 - Authority adapter: Altana session grant, execute, status, and revoke.
 - Payment adapter: x402 only for per-request HTTP payment where required.
+
+The generic MPP adapter is a separate official BNB-native HTTP-402 face for
+the existing Health Guard. It verifies payer-funded EVM transfers and records
+the settlement and replay evidence; the captured paid response did not retain
+the original `Payment-Receipt` header. It does not replace ERC-8183 or the
+Studio x402/B402 face.
+MPP, x402/B402, and ERC-8183 evidence are never interchangeable.
 
 ## Data model at a glance
 

@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { deriveAgentRecord, deriveTrustStates, compareAgents } from "../src/marketplace/model.mjs";
+import { buildMarketplace } from "../src/marketplace/public-api.mjs";
+import { loadGradingArtifact } from "../src/marketplace/termix-evidence.mjs";
 import { protocolCapabilities, selectHiringAdapter } from "../src/marketplace/adapters.mjs";
 import { deriveMarketplaceMetrics } from "../src/marketplace/metrics.mjs";
 import { assessBnbEligibility, TESTNET_CONFIRMATION_FLAG } from "../src/marketplace/eligibility.mjs";
@@ -72,4 +77,38 @@ test("fixture and infrastructure control runs do not enter marketplace metrics",
   assert.equal(metrics.jobsPaidForAndGraded, 0);
   assert.equal(metrics.excludedFixtureAndControlRuns, 2);
   assert.equal(metrics.categories.rebalancing.tested, 1);
+});
+
+test("the default marketplace shelf separates endpoint-verified agents from discovery", () => {
+  const verified = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2001" };
+  const discovered = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2002", probes: [] };
+  const market = buildMarketplace({ candidates: [verified, discovered], runs: [] });
+  assert.equal(market.verifiedAgents.length, 1);
+  assert.equal(market.discoveredAgents.length, 1);
+  assert.equal(market.agents[0].identity, verified.identity);
+  assert.equal(market.discoveredAgents[0].availability.reachable, false);
+  assert.equal(market.discoveredAgents[0].availability.lastCheckedAt, null);
+  assert.equal(market.categories.find((item) => item.category === "rebalancing").listed, 1);
+});
+
+test("TermiX grading loader resolves the legitimate artifact by run and benchmark", async () => {
+  const stateDir = await mkdtemp(path.join(os.tmpdir(), "canned-termix-"));
+  try {
+    await writeFile(path.join(stateDir, "rebalancebench-grading-run_range-1.json"), JSON.stringify({
+      runId: "run_range-1",
+      benchmarkId: "RebalanceBench_v1",
+      human: { rawSubmission: "human answer" },
+      agent: { rawOutput: { answer: "agent answer" } },
+    }));
+    await writeFile(path.join(stateDir, "healthbench-grading-run_range-1.json"), JSON.stringify({
+      runId: "run_range-1",
+      benchmarkId: "HealthBench_v1",
+    }));
+    const resolved = await loadGradingArtifact({ stateDir, runId: "run_range-1", benchmarkId: "RebalanceBench_v1" });
+    assert.equal(resolved.name, "rebalancebench-grading-run_range-1.json");
+    assert.equal(resolved.artifact.agent.rawOutput.answer, "agent answer");
+    assert.equal((await loadGradingArtifact({ stateDir, runId: "run_missing", benchmarkId: "YieldBench_v1" })), null);
+  } finally {
+    await rm(stateDir, { recursive: true, force: true });
+  }
 });

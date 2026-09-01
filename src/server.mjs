@@ -29,12 +29,23 @@ import { buildGridBenchmarkDefinition, publicGridBenchPacket } from "./reference
 import { computeGridGroundTruth, gradeGridBenchResponse } from "./reference/grid-evaluator.mjs";
 import { buildGridTrackRecord } from "./reference/grid-track-record.mjs";
 import { buildLeash, buildLeashProposal, LEASH_STATES } from "./marketplace/leash.mjs";
+import { loadGradingArtifact } from "./marketplace/termix-evidence.mjs";
 import { createHealthFactorX402Seller } from "./reference/health-factor-x402.mjs";
+import { createHealthFactorMpp, HEALTH_FACTOR_MPP_EVIDENCE_PATH, HEALTH_FACTOR_MPP_PATH, HEALTH_FACTOR_MPP_STATUS_PATH, publicMppEvidence } from "./reference/health-factor-mpp.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
-const baselineHtml = await readFile(path.resolve(process.cwd(), "web/health-baseline.html"), "utf8");
-const rebalanceBaselineHtml = await readFile(path.resolve(process.cwd(), "web/rebalance-baseline.html"), "utf8");
+async function readOptionalPage(file, label) {
+  try { return await readFile(file, "utf8"); }
+  catch (error) {
+    if (error?.code === "ENOENT") {
+      return "<!doctype html><meta charset=\"utf-8\"><title>" + label + "</title><main><h1>" + label + "</h1><p>This page is not included in the public summary deployment.</p></main>";
+    }
+    throw error;
+  }
+}
+const baselineHtml = await readOptionalPage(path.resolve(process.cwd(), "web/health-baseline.html"), "Baseline unavailable");
+const rebalanceBaselineHtml = await readOptionalPage(path.resolve(process.cwd(), "web/rebalance-baseline.html"), "Baseline unavailable");
 const homeHtml = await readFile(path.resolve(process.cwd(), "web/home.html"), "utf8");
 const marketplaceHtml = await readFile(path.resolve(process.cwd(), "web/marketplace.html"), "utf8");
 const agentHtml = await readFile(path.resolve(process.cwd(), "web/agent.html"), "utf8");
@@ -77,8 +88,9 @@ async function publicMarketplace() {
   const [candidates, runs, listings] = await Promise.all([marketplaceCandidates(), store.loadRuns(), agentListings()]);
   return buildMarketplace({ candidates, runs: publicRunsOnly(runs), listings });
 }
-const yieldBaselineHtml = await readFile(path.resolve(process.cwd(), "web/yield-baseline.html"), "utf8");
+const yieldBaselineHtml = await readOptionalPage(path.resolve(process.cwd(), "web/yield-baseline.html"), "Baseline unavailable");
 const port = Number(process.env.PORT || 8787);
+const host = process.env.HOST || "127.0.0.1";
 const healthFactorRuntime = new ReferenceAgentRuntime({
   spec: referenceSpec("health-factor"),
   taskHandler: ({ jobId, task, previousSnapshot }) => buildHealthFactorDeliverable({ jobId, task, previousSnapshot }),
@@ -105,6 +117,11 @@ const healthFactorX402 = await createHealthFactorX402Seller({
   expectedRecipient: healthFactorProviderAddress || "",
   priceUsd: process.env.CANNED_X402_PRICE_USD || "0.0005",
   resourceUrl: `${x402PublicBase}/x402`,
+});
+const healthFactorMpp = await createHealthFactorMpp({
+  dataDir: path.resolve(process.env.CANNED_DATA_DIR || path.join(process.cwd(), "data")),
+  recipient: healthFactorProviderAddress,
+  publicUrl: process.env.CANNED_MPP_PUBLIC_URL || `http://localhost:${port}`,
 });
 
 async function referenceProviderAddress() {
@@ -163,12 +180,15 @@ async function gridSessionRecord() {
 
 /** The graded outcome of the most recent YieldBench run, or null before one exists. */
 async function latestYieldResult() {
+  const publicTracks = await store.loadJson("state/public-track-records.json", null);
+  if (publicTracks?.publicProjection === true && publicTracks.yield?.latestResult) return publicTracks.yield.latestResult;
   const runs = await store.loadRuns();
   const latest = runs
     .filter((item) => item?.benchmark?.id === YIELD_BENCHMARK_ID && item?.grading)
     .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))[0] || null;
   if (!latest) return null;
-  const grading = await store.loadJson(`state/yieldbench-grading-${latest.runId}.json`, null);
+  const gradingRecord = await loadGradingArtifact({ stateDir: store.stateDir, runId: latest.runId, benchmarkId: YIELD_BENCHMARK_ID });
+  const grading = gradingRecord?.artifact || null;
   const runRecord = await store.loadJson(`state/yieldbench-run-${latest.runId}.json`, null);
   if (!grading) return null;
   return {
@@ -283,7 +303,15 @@ async function readJsonBody(request) {
   return { body: parseJsonObject(raw), raw };
 }
 
+function applySecurityHeaders(response) {
+  response.setHeader("Content-Security-Policy", "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+}
+
 const server = createServer(async (request, response) => {
+  applySecurityHeaders(response);
   try {
     const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
     if (url.pathname === "/canned.css") {
@@ -348,19 +376,48 @@ const server = createServer(async (request, response) => {
       response.end(out.body);
       return;
     }
+    if (url.pathname === HEALTH_FACTOR_MPP_PATH) {
+      if (!healthFactorMpp.handler) {
+        json(response, 503, { error: "mpp_unavailable", service: "health-factor", mpp: healthFactorMpp.status });
+        return;
+      }
+      await healthFactorMpp.handle({ request, response, protocol: request.socket.encrypted ? "https:" : "http:" });
+      return;
+    }
     if (url.pathname === "/api/inventory") { json(response, 200, await store.loadJson("inventory/verified-candidates.json", { candidates: [], categorySummary: {} })); return; }
     if (url.pathname === "/api/runs") { const runs = await store.loadRuns(); json(response, 200, { runs, publicMetrics: publicMetrics(runs) }); return; }
     if (url.pathname === "/api/marketplace") {
-      const current = await snapshot();
+      const market = await publicMarketplace();
+      const shelf = url.searchParams.get("shelf") === "discovered" ? "discovered" : "verified";
       const category = url.searchParams.get("category");
-      const agents = category ? current.marketplace.categories.find((item) => item.category === category)?.agents || [] : current.marketplace.agents;
-      json(response, 200, { ...current.marketplace, agents, metrics: current.metrics });
+      const shelfAgents = shelf === "discovered" ? market.discoveredAgents : market.verifiedAgents;
+      const categories = shelf === "discovered" ? market.discoveredCategories : market.categories;
+      const agents = category ? categories.find((item) => item.category === category)?.agents || [] : shelfAgents;
+      json(response, 200, {
+        schemaVersion: 1,
+        network: "bsc-testnet",
+        chainId: 97,
+        shelf,
+        agents,
+        categories,
+        verifiedCount: market.verifiedAgents.length,
+        discoveredCount: market.discoveredAgents.length,
+        pendingEligibilityCount: market.pendingEligibility.length,
+        metrics: (await snapshot()).metrics,
+      });
       return;
     }
     if (url.pathname === "/api/metrics") { const current = await snapshot(); json(response, 200, current.metrics); return; }
     if (url.pathname === "/api/reference/fleet") { json(response, 200, { origin: "CANNED_REFERENCE", network: "bsc-testnet", chainId: 97, agents: referenceFleetCatalog() }); return; }
     if (url.pathname === "/api/reference/health-factor" && request.method === "GET") { json(response, 200, { ...healthFactorRuntime.health(), x402: healthFactorX402.status }); return; }
     if (url.pathname === "/api/reference/health-factor/x402" && request.method === "GET") { json(response, 200, healthFactorX402.status); return; }
+    if (url.pathname === HEALTH_FACTOR_MPP_STATUS_PATH && request.method === "GET") { json(response, 200, healthFactorMpp.status); return; }
+    if (url.pathname === HEALTH_FACTOR_MPP_EVIDENCE_PATH && request.method === "GET") {
+      const publicRecord = await store.loadJson("state/public-mpp-evidence.json", null);
+      const legacyRecord = publicRecord ? null : await store.loadJson("state/mpp-payment-reconciliation.json", null);
+      json(response, 200, publicRecord || publicMppEvidence(legacyRecord));
+      return;
+    }
     if (url.pathname === "/api/reference/health-factor/readiness") { json(response, 200, healthFactorRuntime.readiness()); return; }
     if (url.pathname === "/api/reference/health-factor/metrics") { json(response, 200, healthFactorRuntime.metrics()); return; }
     if (url.pathname === "/api/reference/health-factor/negotiate") {
@@ -399,6 +456,8 @@ const server = createServer(async (request, response) => {
     if (url.pathname === "/api/reference/yield/readiness") { json(response, 200, yieldScoutRuntime.readiness()); return; }
     if (url.pathname === "/api/reference/yield/metrics") { json(response, 200, yieldScoutRuntime.metrics()); return; }
     if (url.pathname === "/api/reference/yield/track-record") {
+      const publicTracks = await store.loadJson("state/public-track-records.json", null);
+      if (publicTracks?.publicProjection === true && publicTracks.yield) { json(response, 200, publicTracks.yield); return; }
       const definition = await yieldBenchDefinition();
       json(response, 200, {
         agent: "Canned Yield Scout",
@@ -479,6 +538,11 @@ const server = createServer(async (request, response) => {
      * session exists. It never describes an authority that was not granted.
      */
     if (url.pathname === "/api/grid/leash") {
+      const publicLeash = await store.loadJson("state/public-leash-evidence.json", null);
+      if (publicLeash?.publicProjection === true) {
+        json(response, 200, publicLeash);
+        return;
+      }
       const [strategyRecord, sessionRecord] = await Promise.all([gridStrategyRecord(), gridSessionRecord()]);
       const { BNB_TESTNET } = await import("@altananetwork/sdk");
       // The stored record names the key `sessionPublicKey`; The Leash reads
@@ -514,10 +578,13 @@ const server = createServer(async (request, response) => {
     if (url.pathname === "/api/reference/rebalancing/readiness") { json(response, 200, rangeKeeperRuntime.readiness()); return; }
     if (url.pathname === "/api/reference/rebalancing/metrics") { json(response, 200, rangeKeeperRuntime.metrics()); return; }
     if (url.pathname === "/api/reference/rebalancing/track-record") {
+      const publicTracks = await store.loadJson("state/public-track-records.json", null);
+      if (publicTracks?.publicProjection === true && publicTracks.range) { json(response, 200, publicTracks.range); return; }
       const definition = await rebalanceBenchDefinition();
       const runs = await store.loadRuns();
       const latest = runs.filter((item) => item?.benchmark?.id === REBALANCE_BENCHMARK_ID && item?.grading).sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))[0] || null;
-      const grading = latest ? await store.loadJson(`state/rebalancebench-grading-${latest.runId}.json`, null) : null;
+      const gradingRecord = latest ? await loadGradingArtifact({ stateDir: store.stateDir, runId: latest.runId, benchmarkId: REBALANCE_BENCHMARK_ID }) : null;
+      const grading = gradingRecord?.artifact || null;
       const runRecord = latest ? await store.loadJson(`state/rebalancebench-run-${latest.runId}.json`, null) : null;
       json(response, 200, {
         agent: "Canned Range Keeper",
@@ -596,10 +663,13 @@ const server = createServer(async (request, response) => {
     }
     if (url.pathname === "/api/agents") {
       const market = await publicMarketplace();
+      const shelf = url.searchParams.get("shelf") === "discovered" ? "discovered" : "verified";
       const category = url.searchParams.get("category");
       const search = (url.searchParams.get("q") || "").trim().toLowerCase();
       const sort = url.searchParams.get("sort") || "evidence";
-      let agents = market.agents;
+      const shelfAgents = shelf === "discovered" ? market.discoveredAgents : market.verifiedAgents;
+      const categories = shelf === "discovered" ? market.discoveredCategories : market.categories;
+      let agents = shelfAgents;
       if (category && category !== "all") agents = agents.filter((agent) => agent.category.claimedCategory === category);
       if (search) agents = agents.filter((agent) => [agent.name, agent.description, agent.purpose, agent.identity].filter(Boolean).some((field) => String(field).toLowerCase().includes(search)));
       const rank = (agent) => agent.trust.reached.length * 100 + agent.trackRecord.qualifyingBenchmarks * 10 + (agent.availability.reachable ? 1 : 0);
@@ -609,12 +679,23 @@ const server = createServer(async (request, response) => {
         name: (left, right) => String(left.name).localeCompare(String(right.name)),
       };
       agents = [...agents].sort(sorters[sort] || sorters.evidence);
-      json(response, 200, { agents, categories: market.categories, pendingEligibilityCount: market.pendingEligibility.length, total: agents.length, sort, appliedCategory: category || "all", query: search || null });
+      json(response, 200, {
+        agents,
+        categories,
+        shelf,
+        verifiedCount: market.verifiedAgents.length,
+        discoveredCount: market.discoveredAgents.length,
+        pendingEligibilityCount: market.pendingEligibility.length,
+        total: agents.length,
+        sort,
+        appliedCategory: category || "all",
+        query: search || null,
+      });
       return;
     }
     if (url.pathname === "/api/homepage") {
-      const [market, runs, current, storedPairs] = await Promise.all([publicMarketplace(), store.loadRuns(), snapshot(), store.loadJson("state/agent-advantage-pairs.json", { pairs: [] })]);
-      json(response, 200, buildHomepageEvidence({ agents: market.agents, runs: publicRunsOnly(runs), metrics: current.metrics, pairs: storedPairs.pairs || [] }));
+      const [market, runs, current, storedPairs, mppEvidence] = await Promise.all([publicMarketplace(), store.loadRuns(), snapshot(), store.loadJson("state/agent-advantage-pairs.json", { pairs: [] }), store.loadJson("state/public-mpp-evidence.json", null)]);
+      json(response, 200, buildHomepageEvidence({ agents: market.agents, discoveredCount: market.discoveredAgents.length, runs: publicRunsOnly(runs), metrics: current.metrics, pairs: storedPairs.pairs || [], verifiedMppPayments: mppEvidence?.available === true ? 1 : 0 }));
       return;
     }
     if (url.pathname.startsWith("/api/agent/")) {
@@ -727,10 +808,13 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (url.pathname === "/api/agent-advantage") {
+      const publicEvidence = await store.loadJson("state/public-termix-evidence.json", null);
+      if (publicEvidence?.publicProjection === true && Array.isArray(publicEvidence.pairs)) { json(response, 200, publicEvidence); return; }
       const stored = await store.loadJson("state/agent-advantage-pairs.json", { pairs: [] });
       const runs = await store.loadRuns();
       const pairs = await Promise.all((stored.pairs || []).map(async (entry) => {
-        const grading = await store.loadJson(`state/healthbench-grading-${entry.runId}.json`, null);
+        const gradingRecord = await loadGradingArtifact({ stateDir: store.stateDir, runId: entry.runId, benchmarkId: entry.benchmarkId });
+        const grading = gradingRecord?.artifact || null;
         const run = runs.find((item) => item.runId === entry.runId) || null;
         return {
           runId: entry.runId,
@@ -749,6 +833,7 @@ const server = createServer(async (request, response) => {
           verifiedRun: entry.verifiedRun,
           protocol: run ? { chainState: run.protocolJob?.currentState || null, transactions: (run.protocolJob?.events || []).filter((event) => event.tx?.transactionHash).map((event) => ({ event: event.event, transactionHash: event.tx.transactionHash })) } : null,
           reconciliation: run?.reconciliation || null,
+          gradingArtifact: gradingRecord ? { benchmarkId: grading.benchmarkId, runId: grading.runId, available: true } : { benchmarkId: entry.benchmarkId, runId: entry.runId, available: false },
           gradedAt: entry.gradedAt,
         };
       }));
@@ -834,4 +919,4 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(port, () => console.log(`Canned inspection server listening on http://localhost:${port}`));
+server.listen(port, host, () => console.log("Canned inspection server listening on http://" + host + ":" + port));

@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "task": {
+    "runId": "run_08399351-0f8a-4888-bbe2-74b4ac68c086",
+    "jobId": "700",
+    "benchmarkId": "RebalanceBench_v1",
+    "benchmarkVersion": "1.0.0",
+    "category": null,
+    "role": "Trading Agent-vs-Control / ROI proof"
+  },
+  "agent": {
+    "identity": "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2005",
+    "elapsedMs": 69923,
+    "cost": {
+      "declaredOperatorCost": null,
+      "serviceFeeRaw": "1000000000000000",
+      "serviceFeeTokenDecimals": 18,
+      "networkGasWei": "60257000000000"
+    },
+    "qualityScore": 100,
+    "rawFile": "01-range-keeper/agent-output.json",
+    "publishedSha256": "sha256:779bfc96276eda63cadf8128f0e308f206bee266160d004d2302453e739e1e3d",
+    "canonicalRawSha256": "sha256:99eee4e8651e866aa98546095aec7d1467b2d6ddf8a4d89e9045b72b0d492cc5"
+  },
+  "control": {
+    "responder": "human",
+    "elapsedMs": 152528,
+    "cost": {
+      "declaredOperatorCost": "just my time",
+      "serviceFeeRaw": "0",
+      "serviceFeeTokenDecimals": 18,
+      "networkGasWei": "0"
+    },
+    "qualityScore": 30,
+    "rawFile": "01-range-keeper/control-output.json",
+    "publishedSha256": "sha256:c92f693303cf7454fb30518b909f863cd98f77a0b09aea598544260d9e26924b",
+    "canonicalRawSha256": "sha256:c92f693303cf7454fb30518b909f863cd98f77a0b09aea598544260d9e26924b"
+  },
+  "comparison": {
+    "agentAdvantage": true,
+    "costNote": "The human baseline paid no service fee and no gas. The agent path pays a quoted service fee plus buyer gas. Cost is reported on both sides rather than netted into a single score.",
+    "fasterResponder": "agent",
+    "higherQualityResponder": "agent",
+    "qualityComparable": true,
+    "qualityDelta": 70,
+    "timeComparable": true,
+    "timeDeltaMs": -82605
+  }
+}

@@ -27,6 +27,8 @@
     "health:baseline:seal": "node scripts/seal-health-baseline.mjs",
     "health:baseline:audit": "node scripts/audit-health-baseline.mjs",
     "health:hire": "node scripts/run-health-guard-hire.mjs",
+    "mpp:health:pay": "node scripts/run-mpp-health-check-payment.mjs",
+    "public:summary": "node scripts/build-public-summary-bundle.mjs",
     "health:reconcile": "node scripts/reconcile-health-guard-hire.mjs",
     "health:grade": "node scripts/grade-healthbench.mjs",
     "range:benchmark:freeze": "node scripts/freeze-rebalance-benchmark.mjs",
@@ -61,7 +63,10 @@
   },
   "dependencies": {
     "@altananetwork/sdk": "0.7.1",
+    "@bnb-chain/mpp": "0.7.0",
     "@bnbagent/sdk": "0.5.5",
-    "@bnbagent/studio-runtime": "0.0.13"
+    "@bnbagent/studio-runtime": "0.0.13",
+    "mppx": "0.8.12",
+    "viem": "2.55.19"
   }
 }

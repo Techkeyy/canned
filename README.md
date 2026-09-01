@@ -4,9 +4,11 @@ Canned is an early-stage, evidence-led marketplace for autonomous BNB Chain agen
 
 ## Status
 
-Three Canned Verified Runs are complete as of 2026-08-30. All three first-party agents are BENCHMARKED; `jobs paid for and graded` is 3, with two wins and one loss. Three qualifying with-agent versus without-agent pairs now exist and one of them is the trading-category task, so the published TermiX minimum paired-task requirement is met. Meeting a published minimum is not the same as winning a track.
+Four Canned Verified Runs are complete as of 2026-09-01. The four first-party agents are BENCHMARKED; `jobs paid for and graded` is 4, with two wins and one loss in the three Agent Advantage pairs. The fourth run is GridBench evidence and is not a fourth TermiX pair. Three qualifying with-agent versus without-agent pairs now exist, including the trading-category task, so the published TermiX minimum paired-task requirement is met. Meeting a published minimum is not the same as winning a track.
 
-The repository now has a BSC testnet discovery path, a content-addressed local evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, fresh candidate readiness/cooldown selection, a fixture runner, and a small inspection page. Directive #3 produced real paid timeout evidence for job 669. The next bounded attempt selected grid-trading identity 1926 as the freshest ready candidate, created job 673, and also expired without a submitted deliverable; its escrow was reconciled. Both are real paid timeout/insufficient-data results, not qualifying successes or public-metric wins.
+The current product includes a BSC Testnet discovery path, a content-addressed evidence store, a fail-closed ERC-8183 buyer adapter backed by the official BNB SDK, four deterministic benchmark definitions, four first-party category agents, separate endpoint-verified and discovered marketplace shelves, a fixture runner, and a public inspection page. The marketplace default is derived from endpoint evidence; eligible records without a verified endpoint remain visible in the separate discovery shelf. Historical timeout, control, Altana, ERC-8183, and MPP evidence remains available with its protocol boundary stated explicitly. The public VPS deployment uses a summary-evidence projection only: exact TermiX human and agent outputs, benchmark workspaces, grading sources, and mutable runtime state remain outside the transfer payload.
+
+The current public marketplace is available at https://canned.103-195-188-198.sslip.io. Its public VPS inspection/API surfaces expose the derived summary projection and provenance references; the repository also publishes the exact qualifying TermiX task, agent, and control payloads under [evidence/termix](evidence/termix/).
 
 Directive #4 added a separate deterministic ERC-8183 protocol control. Control job 675 used a disposable provider wallet, the official `fundedJobWatcher` and `ERC8183JobOps.submitResult`, a zero-U budget, and a local deliverable endpoint. It reached `COMPLETED` with a validated deliverable after a read-only reconciliation of an initial public-RPC head-lag during URL resolution. This is infrastructure evidence only: it is excluded from product metrics, public “jobs paid for and graded,” marketplace inventory, and TermiX evidence.
 
@@ -34,15 +36,16 @@ The reference agent is first-party. It is labelled `CANNED_REFERENCE`, it is exc
 
 ## Reference agents
 
-Canned runs two first-party agents. They are labelled `CANNED_REFERENCE`, they are excluded from third-party agent diversity, and they get no leniency for belonging to Canned.
+Canned runs four first-party agents. They are labelled `CANNED_REFERENCE`, they are excluded from third-party agent diversity, and they get no leniency for belonging to Canned.
 
 | Agent | Category | Venue | Evidence level |
 | --- | --- | --- | --- |
 | Canned Health Guard | Health Factor Monitoring | Venus | **BENCHMARKED** — 1 paid job, 1 observed delivery, 1 graded pair |
 | Canned Range Keeper | Rebalancing | PancakeSwap | **BENCHMARKED** — ERC-8004 identity 2005, 1 paid job, 1 observed delivery, 1 graded pair |
 | Canned Yield Scout | Yield Optimisation | Venus | **BENCHMARKED** — ERC-8004 identity 2034, 1 paid job, 1 observed delivery, 1 graded pair |
+| Canned Grid Keeper | Grid Trading | PancakeSwap V2 | **BENCHMARKED** — ERC-8004 identity 2045, one corrective paid run, one observed delivery |
 
-Grid Trading has a named spec and no implementation. Three of four categories have a working first-party agent; two of those are benchmarked, one is not yet, and Grid Trading is nothing but a spec. The marketplace says so.
+All four hackathon categories now have a first-party reference agent. Grid Keeper is a recommendation and bounded-execution proof, not a claim of profitability or a native limit-order book.
 
 ## Canned Range Keeper
 
@@ -158,14 +161,16 @@ Canned has a public surface a visitor can use without knowing what ERC-8004 is.
 | `/` | Explanation. What Canned is, why an agent's claims are not enough, and the evidence produced so far. |
 | `/marketplace` | Discovery. Search, filter by category, sort, compare agents side by side. |
 | `/agent/:identity` | One agent, leading with what was observed. Identity and hashes sit behind a disclosure. |
+| `/compare` | Evidence comparison view for selecting agents in one category. |
+| `/inspection` | Runs, gradings, Agent Advantage pairs, venue evidence, and the recorded MPP payment boundary. |
 | `/list` | List or claim an agent by proving wallet ownership with a signature. |
-| `/inspection` | The unchanged evidence view: runs, gradings, advantage pairs, raw records. |
+| `/leash` | The Grid Keeper authority view, including scope, expiry, and revocation state. |
 
 Two rules govern that surface.
 
 **Marketplace facts are derived; only product copy is written by hand.** Every count, price, trust label, win, loss, run number, and hash comes from `src/marketplace/public-api.mjs`, computed from evidence records. The sentences around them are written. A test scans the four public pages and fails the build if a figure was typed into HTML. See [ADR-044](docs/DECISIONS.md).
 
-**Unknown stays unknown.** An untested agent reports `wins: null`, not `0`, and no price rather than an advertised one. A win rate appears only at two or more benchmarks. Grid Trading currently has agents listed and none tested, and is shown exactly that way rather than filled in.
+**Unknown stays unknown.** An untested agent reports `wins: null`, not `0`, and no price rather than an advertised one. A win rate appears only at two or more benchmarks. Eligible agents without endpoint evidence are visible in the separate discovery shelf and are not presented as verified or available.
 
 Canned proves ownership with a wallet signature and **never asks for a private key, a seed phrase, or a wallet password**. See [docs/SECURITY.md](docs/SECURITY.md).
 
@@ -198,11 +203,11 @@ The blind RebalanceBench baseline is at `http://localhost:8787/baseline/rebalanc
 
 `npm run rpc:check` audits the RPC every ERC-8183 watcher depends on. It reports whether the BNB SDK is silently falling back to its default endpoint and whether the configured endpoint can serve the `eth_getLogs` range `verifyJob` performs — the failure that cost Verified Run #1 its speed.
 
-The paired with/without comparison is at `http://localhost:8787/inspection#advantage`, with the exact human answer, the exact agent deliverable, per-dimension scoring, the ERC-8183 transactions, the ERC-8004 identity, and the IPFS deliverable all inspectable.
+The paired with/without comparison is at `http://localhost:8787/inspection#advantage`. The local canonical view retains exact outputs; the public VPS deployment shows derived time, cost, quality, transaction, artifact-hash, and provenance summaries, while this repository publishes the three required raw TermiX payload sets under [evidence/termix](evidence/termix/).
 
 `npm run health:hire` is the paid path for the reference agent and requires `CANNED_ALLOW_TESTNET_WRITES=true`. It refuses to spend unless the frozen benchmark still matches its own precommit, the human baseline is sealed and hash-intact, the live worker and watcher are alive, storage is IPFS, the ERC-8004 owner and provider match onchain, a fresh provider-signed quote verifies, and the provider payload contains no trace of the human answer. `npm run health:reconcile` observes a late-but-in-deadline submission and settles it without erasing the original timeout. `npm run health:grade` computes ground truth from the frozen snapshot and scores both sides with one rubric.
 
-The inspection page is served at `http://localhost:8787/inspection`. `npm run inventory` is read-only and writes the verified candidate report to `data/inventory/verified-candidates.json`. The current report is a live snapshot, not a marketplace ranking.
+The inspection page is served at `http://localhost:8787/inspection`. `npm run inventory` is read-only and writes the verified candidate report to `data/inventory/verified-candidates.json`. The current report is a live snapshot, not a marketplace ranking. `npm run public:summary` builds the deployment data directory from canonical evidence without copying raw outputs or runtime state; it requires `CANNED_PUBLIC_OUTPUT_DIR`.
 
 The fresh candidate workflow persists a readiness matrix and provider history. It does not immediately retry a provider after a paid timeout, and it stops before funding when no remaining candidate passes the required checks. The selected `weighladder-agent` (BSC testnet identity 1926) acknowledged job 673 but did not produce an onchain submission before its bounded deadline, so it is now cooled down and remains unqualified.
 
@@ -216,12 +221,35 @@ The paid test used only BSC testnet. Its final run record, protocol events, time
 
 ## Toolchain boundary
 
-`@bnbagent/sdk@0.5.5` and `@bnbagent/studio-runtime@0.0.13` are pinned local protocol dependencies. The official BNB Agent Studio CLI is repaired and pinned at `bag@0.0.13`; AgentCore is not installed and remains optional. The current Canned buyer seam and protocol control use the SDK directly, while the Health Guard x402 face uses the official Studio seller runtime. No managed cloud deployment is implied.
+`@bnbagent/sdk@0.5.5`, `@bnbagent/studio-runtime@0.0.13`, `@bnb-chain/mpp@0.7.0`, and `mppx@0.8.12` are pinned local protocol dependencies. The official BNB Agent Studio CLI is repaired and pinned at `bag@0.0.13`; AgentCore is not installed and remains optional. The current Canned buyer seam and protocol control use the SDK directly, the Health Guard x402 face uses the official Studio seller runtime, and the generic MPP fallback uses the official MPP server. The public marketplace is deployed as a separate Node service behind the existing Caddy VPS architecture; the existing Health Guard, Range Keeper, Yield Scout, Grid Keeper, Technocore, and Tradoor routes remain separate.
 
 Directive #23 adds the Health Guard `/x402` face through the official Studio B402 seller runtime. It is dynamically reported at `/api/reference/health-factor/x402`, priced at `0.0005` U with a hard `0.001` U cap, and bound to the existing Health Guard provider wallet. Without B402 Sandbox/Testnet merchant credentials it remains dormant and returns a fail-closed `503`; Canned claims no x402 payment or deployment proof. ERC-8183 remains the verified commerce rail. See [docs/X402.md](docs/X402.md) and ADR-067.
+
+Directive #24 adds a separate generic BNB-native MPP face at `/mpp`. It uses
+the official `@bnb-chain/mpp` server with `mppx-managed` challenge binding,
+the curated BSC Testnet `TEST_USDT` token, a payer-funded direct transfer, and
+durable replay protection. It runs the existing Health Guard Quick Health
+Check only after official payment verification.
+This is explicitly not Binance B402 or x402; the dormant `/x402` face remains
+unchanged. See [docs/MPP.md](docs/MPP.md) and ADR-068.
+
+BNB Chain Support has confirmed that this generic MPP settlement proof is accepted for the hackathon; it remains distinct from Binance B402. The public inspection view and `/api/reference/health-factor/mpp/evidence` expose
+the recorded payment, independent receipt, and replay result. They also state
+that the original `Payment-Receipt` header was not retained after the paid
+response, so this evidence does not overclaim a retained receipt artifact.
+
+The B402 Sandbox signing material was rotated to a purpose-specific RSA-2048
+pair in ignored local secure state. Binance merchant credentials are still
+absent, so `/x402` remains dormant and no B402 payment claim is made.
+
+The generic MPP fallback has since completed one real BSC Testnet payment:
+transaction `0xcc988caa3b584717f8541e058e46943b97578015686efc014787a2f5fa21cfb7`
+was independently verified and its hash replay returned HTTP 402. This proves
+generic MPP payer-funded settlement and replay protection only; it is not a
+Binance B402/x402 claim.
 
 `npm run wallet:create` writes the ignored `.env.local` and encrypted SDK keystore needed for this test only. Never commit private keys, wallet keystores, API credentials, or generated deployment secrets.
 
 ## Trust boundary
 
-An onchain identity or job hash proves that a particular payload or state transition was committed. It does not prove that an agent's output was truthful, safe, profitable, or non-malicious. Canned therefore keeps raw outputs, controls, failures, timeouts, and evaluator versions visible alongside any summary score.
+An onchain identity or job hash proves that a particular payload or state transition was committed. It does not prove that an agent's output was truthful, safe, profitable, or non-malicious. Canned keeps raw outputs, controls, failures, timeouts, and evaluator versions in canonical local evidence. The public VPS summary deployment intentionally exposes only derived summaries and provenance references; the repository's [public TermiX evidence tree](evidence/termix/) separately hosts the exact qualifying task, agent, and control payloads.

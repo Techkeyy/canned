@@ -155,6 +155,15 @@
         + '<div class="ladder">' + agent.failures.map((failure) => '<div class="rung"><span class="mark">!</span><span>' + esc(String(failure).replace(/_/g, " ")) + "</span></div>").join("") + "</div></div>";
     }
 
+    function executionBlock(agent) {
+      const model = agent.executionModel;
+      if (!model) return "";
+      return '<div class="block"><h2>Execution route</h2>'
+        + '<p class="body"><strong>' + esc(model.routerVersion) + ' route.</strong> ' + esc(model.summary) + '</p>'
+        + '<p class="why" style="margin-top:12px;">This is software-managed execution, not a resting exchange order, and it produces no order id.</p>'
+        + '<p style="margin-top:12px;"><a href="' + esc(model.source) + '">Open the route evidence</a></p></div>';
+    }
+
     function render(agent) {
       const price = u(agent.price);
       document.title = "Canned | " + agent.name;
@@ -173,6 +182,8 @@
         + '<div class="block"><h2>What Canned observed</h2>' + ladder(agent) + "</div>"
 
         + '<div class="block"><h2>Results</h2>' + resultBlock(agent) + "</div>"
+
+        + executionBlock(agent)
 
         + failureBlock(agent)
 

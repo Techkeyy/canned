@@ -22,5 +22,13 @@ data/state/
 data/runs/
 data/*.tmp
 
+# Dedicated B402 Sandbox RSA material remains local/secret.
+data/state/b402-sandbox/
+data/state/b402-sandbox-rsa2048/
+
+# Internal release operator notes; never publish as submission evidence.
+docs/SUBMISSION-FACT-SHEET.md
+docs/DEMO-SHOT-LIST.md
+
 .DS_Store
 Thumbs.db

@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "canonical-grading-record",
+  "sourceGradingRecord": "data/state/rebalancebench-grading-run_08399351-0f8a-4888-bbe2-74b4ac68c086.json",
+  "sourceGradingRecordSha256": "sha256:c92f3f3105eb2469e765688db5fde4c13fc57992abadb9e796b9778541b84d93",
+  "sourcePairSha256": "sha256:96458f9f5b08496a243d99af52e0224acba89cc904c41767d562642ed28df5a8",
+  "sourcePairEvidence": {
+    "durablePublicStorage": false,
+    "keccak256": "0x9c2e16391827ce07d295a9e56d345588fbab80cef6e8f9960f6fa116f0f28a54",
+    "relativePath": "evidence/af291c0c2889c7767a524b3218d3532d3ee83a3248688c78520ecffb58767c60.json",
+    "sha256": "sha256:af291c0c2889c7767a524b3218d3532d3ee83a3248688c78520ecffb58767c60",
+    "store": "local_content_addressed"
+  },
+  "runId": "run_08399351-0f8a-4888-bbe2-74b4ac68c086",
+  "jobId": "700",
+  "benchmarkId": "RebalanceBench_v1",
+  "agentIdentity": "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2005",
+  "provider": "0x0eAc2F4d215A416f891C43BFFa83329Ec249AD5a",
+  "referenceBlock": {
+    "hash": "0xc5effd7ab750f6afdc0ec3889d437405890dbd1a1f37ea50f611f7b50ef90180",
+    "number": "118445030",
+    "timestamp": 1787861334
+  },
+  "evaluatorVersion": "range-keeper-deterministic-v1",
+  "groundTruthHash": "0xddbaf5a827661f144fc660616a0e5b7b994810449aec795c1a3a43b5dc748b83",
+  "termix": {
+    "candidateNumber": 2,
+    "categoryOfThisPair": "trading",
+    "checks": {
+      "actualOutputsAttached": true,
+      "costReported": true,
+      "deterministicEvaluator": true,
+      "observedDeliverable": true,
+      "qualityReported": true,
+      "realPaidMarketplaceJob": true,
+      "timeReported": true,
+      "withAndWithoutPairPresent": true
+    },
+    "highValueCategorySatisfied": true,
+    "qualifyingPairCount": 2,
+    "reason": "Real paired with/without evidence captured. TermiX still needs 1 more qualifying pair(s). This pair is a trading task, which satisfies the trading, stock, or security category requirement.",
+    "requiredPairCount": 3,
+    "termixCandidatePair": true,
+    "trackComplete": false
+  },
+  "verifiedRun": {
+    "classification": "CANNED_VERIFIED_RUN",
+    "failedGates": [],
+    "gates": {
+      "contentAddressedEvidence": true,
+      "correctProvider": true,
+      "correctTerminalState": true,
+      "deterministicGrading": true,
+      "noFixture": true,
+      "onchainProvenance": true,
+      "precommitPresent": true,
+      "realDeliverable": true,
+      "realErc8183Lifecycle": true,
+      "realMarketplaceAgent": true,
+      "realPaidService": true,
+      "sealedWithoutAgentBaseline": true
+    },
+    "passed": true
+  },
+  "protocol": {
+    "protocol": "ERC-8183",
+    "network": "bsc-testnet",
+    "paymentToken": "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565",
+    "currentState": "COMPLETED",
+    "transactions": [
+      {
+        "event": "create_job",
+        "transactionHash": "0x81fa5065b4c4dd625b7ce6a925e55870c85d12d4916cf9db459e6db4bd552d63"
+      },
+      {
+        "event": "register_job",
+        "transactionHash": "0xd05cad56a96f3de7229216e45d4addc73feacd0e4720ed2e37bac9fe7ed71777"
+      },
+      {
+        "event": "set_budget",
+        "transactionHash": "0x9a07ff25f12b8e085ca35459d2dab33bceb1fc171268e789ffc943209f7a918e"
+      },
+      {
+        "event": "approve_payment_token",
+        "transactionHash": "0xba9ca06664cd8f3b869fa2c94e346837835665d5a6dc467fd96e167dda362709"
+      },
+      {
+        "event": "approve_payment_token",
+        "transactionHash": "0xa654a0fa539d9e0725a8bffad9b99334e694cf3d0bbc0e824785284c35b8c687"
+      },
+      {
+        "event": "fund_job",
+        "transactionHash": "0xa654a0fa539d9e0725a8bffad9b99334e694cf3d0bbc0e824785284c35b8c687"
+      },
+      {
+        "event": "settle_job",
+        "transactionHash": "0xbb42575b99b2044625d17efb0e99bbdb079e09dfeaa96f6609f4fbf8c0f31a60"
+      }
+    ]
+  },
+  "publishedFiles": {
+    "task": "01-range-keeper/task.txt",
+    "agentOutput": {
+      "path": "01-range-keeper/agent-output.json",
+      "sha256": "sha256:779bfc96276eda63cadf8128f0e308f206bee266160d004d2302453e739e1e3d"
+    },
+    "controlOutput": {
+      "path": "01-range-keeper/control-output.json",
+      "sha256": "sha256:c92f693303cf7454fb30518b909f863cd98f77a0b09aea598544260d9e26924b"
+    },
+    "metrics": "01-range-keeper/metrics.json",
+    "provenance": "01-range-keeper/provenance.json"
+  }
+}

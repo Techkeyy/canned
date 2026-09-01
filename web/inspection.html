@@ -27,6 +27,7 @@
       <section class="metricbar" id="metrics"><div class="metric"><span class="metric-value" data-metric="discoveredAgents">...</span><span class="metric-label">discovered agents</span></div><div class="metric"><span class="metric-value" data-metric="reachableAgents">...</span><span class="metric-label">reachable now</span></div><div class="metric"><span class="metric-value" data-metric="deliveries">...</span><span class="metric-label">observed deliveries</span></div><div class="metric"><span class="metric-value" data-metric="qualifyingBenchmarks">...</span><span class="metric-label">qualifying benchmarks</span></div><div class="metric"><span class="metric-value" data-metric="jobsPaidForAndGraded">...</span><span class="metric-label">paid and graded</span></div></section>
       <section id="marketplace"><div class="section-head"><div><div class="eyebrow">Browse the shelves</div><h2>What do you need done?</h2><p class="section-note">Four categories. One evidence model.</p></div></div><div class="categories" id="categories" role="tablist"></div><div class="toolbar"><span class="filter-note" id="filter-note">Loading the latest indexed inventory...</span><span class="filter-note">Compare up to 3 agents in one category.</span></div><div class="cards" id="cards"><div class="loading">Loading marketplace evidence...</div></div><p class="bottom-note">Trust is an evidence ladder, not a magic score. A live quote can still have zero observed deliveries.</p></section>
       <section class="compare-section" id="compare"><div class="section-head"><div><div class="eyebrow">Evidence side by side</div><h2>Compare</h2><p class="section-note">Missing evidence is shown as “Not enough data”.</p></div></div><div id="compare-content" class="empty">Select two or three agents from the same category to compare them.</div></section>
+      <section class="venue-section" id="mpp"><div class="section-head"><div><div class="eyebrow">BNB-native payment evidence</div><h2>Health Guard MPP</h2><p class="section-note">One recorded payer-funded BSC Testnet payment, shown with its verification boundary.</p></div></div><div id="mpp-content" class="empty">Loading MPP evidence...</div></section>
       <section class="venue-section" id="pancakeswap"><div class="section-head"><div><div class="eyebrow">PancakeSwap &middot; Rebalancing shelf</div><h2>Range Keeper</h2><p class="section-note">What a PancakeSwap liquidity provider would actually be hiring, and what Canned has observed so far.</p></div></div><div id="pancakeswap-content" class="empty">Loading Range Keeper…</div></section>
       <section class="venue-section" id="venus"><div class="section-head"><div><div class="eyebrow">Venus &middot; Yield Optimisation shelf</div><h2>Yield Scout</h2><p class="section-note">Where a stablecoin position earns most, after the cost of moving it.</p></div></div><div id="venus-content" class="empty">Loading Yield Scout&hellip;</div></section>
       <section class="advantage-section" id="advantage"><div class="section-head"><div><div class="eyebrow">With an agent vs without</div><h2>Agent Advantage</h2><p class="section-note">Real paired tasks. Time, cost, and quality are shown on both sides, including where the human wins.</p></div></div><div id="advantage-content" class="empty">Loading paired evidence...</div></section>
@@ -54,10 +55,9 @@
     function quality(score){return score===null||score===undefined?'Not enough data':score+' / 100';}
     function cmpClass(side,winner){if(!winner||winner==='tie')return '';return winner===side?'better':'worse';}
     function verdict(pair){var c=pair.comparison;if(c.higherQualityResponder==='agent'&&c.fasterResponder!=='human')return ['win','Agent won on quality and time'];if(c.higherQualityResponder==='agent')return ['mixed','Agent won on quality, lost on time'];if(c.higherQualityResponder==='human')return ['loss','Human scored higher'];return ['mixed','Mixed result'];}
-    function dimRows(list){if(!list)return '';return '<table><thead><tr><th>Dimension</th><th>Score</th><th>Answer as submitted</th></tr></thead><tbody>'+list.map(function(d){var raw=typeof d.rawValue==='string'?d.rawValue:JSON.stringify(d.rawValue);return '<tr><td>'+esc(d.dimension)+'</td><td>'+d.awarded+'/'+d.available+'</td><td>'+esc(raw===null?'not answered':raw)+'</td></tr>';}).join('')+'</tbody></table>';}
-    function pairView(pair){var c=pair.comparison;var v=verdict(pair);var timeWin=c.fasterResponder;var qualWin=c.higherQualityResponder;var cid=pair.withAgent.deliverableUrl?String(pair.withAgent.deliverableUrl).replace('ipfs://',''):null;var txs=(pair.protocol&&pair.protocol.transactions)||[];
-      return '<article class="pair"><div class="pair-head"><h3>'+esc(pair.task)+'</h3><span class="verdict '+v[0]+'">'+esc(v[1])+'</span></div>'
-        +'<p class="pair-sub">'+esc(pair.agent.name||pair.agent.identity)+' &middot; ERC-8183 job '+esc(String(pair.jobId))+' &middot; reference block '+esc(String(pair.referenceBlock))+' &middot; evaluator '+esc(pair.evaluatorVersion||'unknown')+'</p>'
+    function pairView(pair){var c=pair.comparison;var v=verdict(pair);var timeWin=c.fasterResponder;var qualWin=c.higherQualityResponder;var cid=pair.withAgent.deliverableUrl?String(pair.withAgent.deliverableUrl).replace('ipfs://',''):null;var txs=(pair.protocol&&pair.protocol.transactions)||[];var rawDir={RebalanceBench_v1:'01-range-keeper',HealthBench_v1:'02-health-guard',YieldBench_v1:'03-yield-scout'}[pair.benchmarkId]||null;var evidenceBase='https://github.com/Techkeyy/canned/blob/master/evidence/termix/';var rawPrefix=rawDir?evidenceBase+rawDir+'/':null;
+      return '<article class="pair"><div class="pair-head"><h3>'+esc(pair.taskSummary||pair.benchmarkId||'Canonical benchmark comparison')+'</h3><span class="verdict '+v[0]+'">'+esc(v[1])+'</span></div>'
+        +'<p class="pair-sub">'+esc(pair.agent.name||pair.agent.identity)+' &middot; ERC-8183 job '+esc(String(pair.jobId))+' &middot; reference block '+esc(String(pair.referenceBlock?.number??pair.referenceBlock??'not published'))+' &middot; evaluator '+esc(pair.evaluatorVersion||'unknown')+' &middot; public summary projection</p>'
         +'<div class="sbs"><div class="hd">Metric</div><div class="hd">Without agent</div><div class="hd">With agent</div>'
         +'<div class="rowlabel">Time</div><div class="val '+cmpClass('human',timeWin)+'">'+ms(pair.withoutAgent.elapsedMs)+'<small>human, unaided</small></div><div class="val '+cmpClass('agent',timeWin)+'">'+ms(pair.withAgent.elapsedMs)+'<small>hire to onchain submission</small></div>'
         +'<div class="rowlabel">Cost</div><div class="val">'+uAmount(pair.withoutAgent.cost.serviceFeeRaw)+'<small>no fee, no gas</small></div><div class="val">'+uAmount(pair.withAgent.cost.serviceFeeRaw)+'<small>plus '+gasAmount(pair.withAgent.cost.networkGasWei)+' buyer gas</small></div>'
@@ -67,14 +67,34 @@
         +'<p class="pair-notes">TermiX: '+(pair.termix.termixCandidatePair?'candidate '+pair.termix.candidateNumber:'not qualifying')+'. '+esc(pair.termix.reason)+'</p>'
         +'<div class="pair-links">'
         +(cid?'<a href="https://gateway.pinata.cloud/ipfs/'+esc(cid)+'" target="_blank" rel="noreferrer">IPFS deliverable</a>':'')
+        +(rawPrefix?'<a href="'+rawPrefix+'agent-output.json" target="_blank" rel="noreferrer">Raw agent output</a><a href="'+rawPrefix+'control-output.json" target="_blank" rel="noreferrer">Raw control output</a><a href="'+rawPrefix+'provenance.json" target="_blank" rel="noreferrer">Provenance</a>'+(pair.benchmarkId==='HealthBench_v1'?'<a href="'+rawPrefix+'mpp-proof.json" target="_blank" rel="noreferrer">MPP proof</a>':''):'')
         +'<a href="https://testnet.8004scan.io/agents/97/'+esc(pair.agent.identity.split(':').pop())+'" target="_blank" rel="noreferrer">ERC-8004 identity</a>'
         +txs.map(function(t){return '<a href="https://testnet.bscscan.com/tx/'+esc(t.transactionHash)+'" target="_blank" rel="noreferrer">'+esc(t.event)+'</a>';}).join('')
-        +'<a href="/api/agent-advantage" target="_blank">raw record</a></div>'
-        +'<details class="raw"><summary>Without agent: exact human answer and per-dimension scoring</summary><pre>'+esc(pair.withoutAgent.rawOutput||'not preserved')+'</pre>'+dimRows(pair.withoutAgent.dimensions)+'</details>'
-        +'<details class="raw"><summary>With agent: exact deliverable and per-dimension scoring</summary><pre>'+esc(JSON.stringify(pair.withAgent.rawOutput,null,2))+'</pre>'+dimRows(pair.withAgent.dimensions)+'</details>'
+        +'<a href="/api/agent-advantage" target="_blank">public summary record</a></div>'
+        +'<p class="pair-notes">The VPS hosts derived time, cost, quality, transaction, artifact-hash, and provenance summaries. The exact task, agent, and control payloads are linked in the public repository evidence tree.</p>'
         +'</article>';}
     async function loadAdvantage(){var root=$('#advantage-content');try{var response=await fetch('/api/agent-advantage');var data=await response.json();if(!data.pairs||!data.pairs.length){root.className='empty';root.textContent='No paired with/without evidence has been recorded yet.';return;}root.className='';root.innerHTML=data.pairs.map(pairView).join('')+'<p class="bottom-note">'+esc(String(data.pairCount))+' of '+esc(String(data.requiredForTermix))+' TermiX pairs recorded. '+esc(data.note)+'</p>';}catch(error){root.className='error';root.textContent='Paired evidence could not be loaded.';}}
     function cell(label, value, note){return '<div class="venue-cell"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong>'+(note?'<em>'+esc(note)+'</em>':'')+'</div>';}
+    async function loadMpp(){var root=$('#mpp-content');try{
+      var evidence=await (await fetch('/api/reference/health-factor/mpp/evidence')).json();
+      if(!evidence.available){root.className='empty';root.textContent=evidence.reason||'No verified MPP payment record is available.';return;}
+      var token=evidence.token||{};var amount=evidence.amountRaw&&token.decimals!==null&&token.decimals!==undefined?(Number(evidence.amountRaw)/10**Number(token.decimals)).toString():'Not enough data';var receipt=evidence.independentReceipt||{};var replay=evidence.officialReplayVerification||{};var receiptNote=evidence.paymentReceipt&&evidence.paymentReceipt.originalHeaderRetained?'retained':'not retained';
+      root.className='';root.innerHTML='<article class="venue-card"><div class="venue-head"><h3>One official generic MPP payment</h3><span class="status ready"><span class="dot"></span>RECORDED</span></div>'
+        +'<p class="section-note">This proves payer-funded MPP acceptance and replay protection on BSC Testnet. It is explicitly not Binance B402 and not x402.</p>'
+        +'<div class="venue-grid">'
+        +cell('Network',evidence.network+' / chain '+evidence.chainId,'official BNB Testnet')
+        +cell('Transfer',amount+' '+esc(token.symbol||'token'),'exact amount observed onchain')
+        +cell('Receipt',receipt.status||'Not enough data',String(receipt.exactTransferEvents??'Not enough data')+' exact Transfer event')
+        +cell('Replay',replay.state||'Not enough data','same hash returned HTTP '+String(replay.replayHttpStatus??'not checked'))
+        +cell('Payment-Receipt',receiptNote,'original response header retention')
+        +cell('Recipient',evidence.recipient||'Not enough data','existing Health Guard provider wallet')
+        +'</div>'
+        +'<p class="venue-note">'+esc(evidence.paymentReceipt?.reason||'No Payment-Receipt limitation recorded.')+'</p>'
+        +'<div class="pair-links">'
+        +(evidence.transactionHash?'<a href="https://testnet.bscscan.com/tx/'+esc(evidence.transactionHash)+'" target="_blank" rel="noreferrer">BSC Testnet transaction</a>':'')
+        +'<a href="/api/reference/health-factor/mpp" target="_blank">current MPP offer</a><a href="/api/reference/health-factor/mpp/evidence" target="_blank">public evidence JSON</a></div>'
+        +'</article>';
+    }catch(error){root.className='error';root.textContent='MPP evidence could not be loaded.';}}
     async function loadPancakeSwap(){var root=$('#pancakeswap-content');try{
       var responses=await Promise.all([fetch('/api/reference/rebalancing/track-record'),fetch('/api/marketplace')]);
       var record=await responses[0].json();var market=await responses[1].json();
@@ -144,7 +164,7 @@
         +(agent&&agent.activation.selection.status!=='ready'?'<p class="venue-note">Not hireable: '+esc(agent.activation.selection.reason)+'</p>':'')
         +'</article>';
     }catch(error){root.className='error';root.textContent='Yield Scout data could not be loaded.';}}
-    document.querySelectorAll('[data-scroll]').forEach((button)=>button.addEventListener('click',()=>{document.getElementById(button.dataset.scroll).scrollIntoView({behavior:'smooth'});if(button.dataset.scroll==='operator')loadOperator();if(button.dataset.scroll==='advantage')loadAdvantage();}));$('#drawer-backdrop').addEventListener('click',(event)=>{if(event.target.id==='drawer-backdrop')closeDrawer();});load();loadAdvantage();loadPancakeSwap();loadYieldScout();
+    document.querySelectorAll('[data-scroll]').forEach((button)=>button.addEventListener('click',()=>{document.getElementById(button.dataset.scroll).scrollIntoView({behavior:'smooth'});if(button.dataset.scroll==='operator')loadOperator();if(button.dataset.scroll==='advantage')loadAdvantage();}));$('#drawer-backdrop').addEventListener('click',(event)=>{if(event.target.id==='drawer-backdrop')closeDrawer();});load();loadMpp();loadAdvantage();loadPancakeSwap();loadYieldScout();
   </script>
 </body>
 </html>

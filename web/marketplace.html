@@ -9,6 +9,11 @@
     .page-head { padding-block: var(--step-5) var(--step-3); }
     .controls { display: flex; flex-wrap: wrap; gap: var(--step-2); align-items: center; padding-bottom: var(--step-3); border-bottom: 1px solid var(--line); }
     .search { flex: 1 1 260px; max-width: 380px; }
+    .shelves { display: flex; flex-wrap: wrap; gap: 8px; padding: var(--step-3) 0 0; }
+    .shelf { border: 1px solid var(--line); background: var(--panel); color: var(--ink-soft); border-radius: var(--radius-pill); padding: 9px 15px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 44px; }
+    .shelf:hover { border-color: var(--line-strong); }
+    .shelf.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .shelf small { opacity: 0.7; margin-left: 6px; }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: var(--step-3) 0; }
     .chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink-soft); border-radius: var(--radius-pill); padding: 9px 15px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; min-height: 44px; }
     .chip:hover { border-color: var(--line-strong); }
@@ -76,6 +81,8 @@
       </div>
     </div>
 
+    <div class="shelves" id="shelves" role="tablist" aria-label="Evidence shelves"></div>
+
     <div class="chips" id="chips" role="tablist" aria-label="Categories"></div>
     <div class="result-line"><span id="result-count">Loading agents</span><span id="eligibility-note"></span></div>
 
@@ -109,7 +116,8 @@
     const $ = (selector) => document.querySelector(selector);
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
     const params = new URLSearchParams(location.search);
-    const state = { category: params.get("category") || "all", q: "", sort: "evidence", agents: [], categories: [], compare: new Set(), totalAll: 0 };
+    const state = { shelf: params.get("shelf") === "discovered" ? "discovered" : "verified", category: params.get("category") || "all", q: params.get("q") || "", sort: "evidence", agents: [], categories: [], compare: new Set(), totalAll: 0, verifiedCount: 0, discoveredCount: 0 };
+    $("#q").value = state.q;
 
     function u(price) {
       if (!price || price.raw === null || price.raw === undefined) return null;
@@ -141,7 +149,7 @@
         + trustPill(agent)
         + '<div class="facts">'
         + fact("Price", price || "No verified price", !price)
-        + fact("Available", agent.availability.reachable ? "Responding" : "Not responding", !agent.availability.reachable)
+        + fact("Available", agent.availability.reachable ? "Responding" : (agent.availability.lastCheckedAt ? "Not responding" : "Not checked"), !agent.availability.reachable)
         + fact("Deliverables", String(agent.trackRecord.deliveriesObserved), agent.trackRecord.deliveriesObserved === 0)
         + fact("Track record", record, benchmarks === 0)
         + "</div>"
@@ -158,6 +166,17 @@
       $("#chips").innerHTML = '<button class="chip ' + (state.category === "all" ? "on" : "") + '" data-cat="all" role="tab">All agents <small>' + all + "</small></button>"
         + state.categories.map((cat) => '<button class="chip ' + (state.category === cat.category ? "on" : "") + '" data-cat="' + esc(cat.category) + '" role="tab">' + esc(cat.label) + " <small>" + cat.listed + "</small></button>").join("");
       $("#chips").querySelectorAll("[data-cat]").forEach((button) => button.addEventListener("click", () => { state.category = button.dataset.cat; load(); }));
+    }
+
+    function renderShelves() {
+      $("#shelves").innerHTML = '<button class="shelf ' + (state.shelf === "verified" ? "on" : "") + '" data-shelf="verified" role="tab" aria-selected="' + (state.shelf === "verified") + '">Verified and usable <small>' + esc(state.verifiedCount) + "</small></button>"
+        + '<button class="shelf ' + (state.shelf === "discovered" ? "on" : "") + '" data-shelf="discovered" role="tab" aria-selected="' + (state.shelf === "discovered") + '">Discovered, not yet verified <small>' + esc(state.discoveredCount) + "</small></button>";
+      $("#shelves").querySelectorAll("[data-shelf]").forEach((button) => button.addEventListener("click", () => {
+        state.shelf = button.dataset.shelf;
+        state.category = "all";
+        state.compare.clear();
+        load();
+      }));
     }
 
     function emptyState() {
@@ -208,7 +227,7 @@
     }
 
     async function load() {
-      const query = new URLSearchParams({ category: state.category, sort: state.sort });
+      const query = new URLSearchParams({ shelf: state.shelf, category: state.category, sort: state.sort });
       if (state.q) query.set("q", state.q);
       try {
         const response = await fetch("/api/agents?" + query.toString());
@@ -216,12 +235,15 @@
         const data = await response.json();
         state.agents = data.agents || [];
         state.categories = data.categories || [];
+        state.verifiedCount = Number(data.verifiedCount || 0);
+        state.discoveredCount = Number(data.discoveredCount || 0);
         if (state.category === "all" && !state.q) state.totalAll = state.agents.length;
+        renderShelves();
         renderChips();
         $("#result-count").textContent = state.agents.length === 1 ? "1 agent" : state.agents.length + " agents";
-        $("#eligibility-note").textContent = data.pendingEligibilityCount
-          ? data.pendingEligibilityCount + " discovered agents are hidden until Canned can confirm they are on BNB Chain."
-          : "";
+        $("#eligibility-note").textContent = state.shelf === "verified"
+          ? state.discoveredCount + " eligible listings stay in the separate discovery shelf until their endpoint is verified."
+          : "These listings are eligible for discovery, but Canned has not yet verified an endpoint response.";
         render();
       } catch (error) {
         $("#grid").innerHTML = '<div class="state error" style="grid-column:1/-1;"><strong>The marketplace could not be loaded</strong><p>Canned only shows agents it can read from its own records, so nothing is displayed rather than showing something stale. Refresh to try again.</p></div>';

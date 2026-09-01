@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "task": {
+    "runId": "run_7fe9e15f-4001-428b-bd29-c687528127ee",
+    "jobId": "810",
+    "benchmarkId": "YieldBench_v1",
+    "benchmarkVersion": "1.0.0",
+    "category": null,
+    "role": "High-ROI optimization comparison"
+  },
+  "agent": {
+    "identity": "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2034",
+    "elapsedMs": 57146,
+    "cost": {
+      "declaredOperatorCost": null,
+      "serviceFeeRaw": "1000000000000000",
+      "serviceFeeTokenDecimals": 18,
+      "networkGasWei": "60257000000000"
+    },
+    "qualityScore": 100,
+    "rawFile": "03-yield-scout/agent-output.json",
+    "publishedSha256": "sha256:00c74aa4698a566f860c36db48d763a4e5e36fceae3c98dbec54fda720c9443e",
+    "canonicalRawSha256": "sha256:5aa886ad0dc754ec5200c81610e3f1a055adbeffa794ec65fc1383444bdfe00c"
+  },
+  "control": {
+    "responder": "human",
+    "elapsedMs": 197312,
+    "cost": {
+      "declaredOperatorCost": "just my time",
+      "serviceFeeRaw": "0",
+      "serviceFeeTokenDecimals": 18,
+      "networkGasWei": "0"
+    },
+    "qualityScore": 58.21,
+    "rawFile": "03-yield-scout/control-output.json",
+    "publishedSha256": "sha256:aac1d7af6f274797cb72bb6af5ee9cef1ed0b925676a6a8b0fbeb0d204c79cc0",
+    "canonicalRawSha256": "sha256:aac1d7af6f274797cb72bb6af5ee9cef1ed0b925676a6a8b0fbeb0d204c79cc0"
+  },
+  "comparison": {
+    "agentAdvantage": true,
+    "costNote": "The human baseline paid no service fee and no gas. The agent path pays a quoted service fee plus buyer gas. Cost is reported on both sides rather than netted into a single score.",
+    "fasterResponder": "agent",
+    "higherQualityResponder": "agent",
+    "qualityComparable": true,
+    "qualityDelta": 41.79,
+    "timeComparable": true,
+    "timeDeltaMs": -140166
+  }
+}

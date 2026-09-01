@@ -40,6 +40,9 @@
     .lvl .buy { color: var(--good); font-weight: 700; }
     .lvl .sell { color: var(--accent-ink); font-weight: 700; }
     .mono2 { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+    .proof { margin-top: var(--step-3); padding: var(--step-2); border: 1px solid var(--bad-line); border-radius: var(--radius-md); background: var(--bad-soft); }
+    .proof strong { display: block; margin-bottom: 6px; }
+    .proof p { margin: 5px 0 0; }
     @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } .leash { position: static; } .two, .three { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -164,6 +167,15 @@
         rows.push("</dl>");
         rows.push('<ul class="canlist can">' + leash.can.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>");
         rows.push('<ul class="canlist cannot">' + leash.cannot.map((item) => "<li>" + esc(item) + "</li>").join("") + "</ul>");
+        if (leash.proof?.successfulUseObserved && leash.proof?.revoked) {
+          const tx = (label, hash) => /^0x[0-9a-f]{64}$/i.test(String(hash || ""))
+            ? '<a href="https://testnet.bscscan.com/tx/' + esc(hash) + '" target="_blank" rel="noreferrer">' + label + "</a>"
+            : label + " not recorded";
+          rows.push('<div class="proof"><strong>Used, then revoked</strong>'
+            + '<p class="small">A bounded session execution was observed on-chain, then access was revoked. A later retry was rejected and the session key was removed.</p>'
+            + '<p class="small">' + tx("Execution transaction", leash.executions?.find((item) => item.succeeded)?.transactionHash) + " · "
+            + tx("Revocation transaction", leash.revocationTransactionHash) + "</p></div>");
+        }
         if (leash.revocable) {
           rows.push('<div class="revoke"><button class="btn" id="revoke">Revoke access now</button><p class="small" style="margin-top:8px;">Takes effect on chain. The agent’s next attempt fails.</p></div>');
         }

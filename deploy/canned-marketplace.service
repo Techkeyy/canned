@@ -1,0 +1,33 @@
+[Unit]
+Description=Canned public evidence marketplace
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=canned
+Group=canned
+WorkingDirectory=/opt/canned-marketplace
+Environment=NODE_ENV=production
+Environment=CANNED_MODE=public
+Environment=PORT=8794
+Environment=HOST=127.0.0.1
+Environment=CANNED_DATA_DIR=/var/lib/canned-marketplace/data
+Environment=CANNED_RPC_URL=https://bsc-testnet-dataseed.bnbchain.org
+Environment=CANNED_REFERENCE_HEALTH_PROVIDER_ADDRESS=0xD885bd3eEa76c3bDE6B49D7A16D5BAa35ce2F1D7
+Environment=CANNED_X402_PAY_TO=0xD885bd3eEa76c3bDE6B49D7A16D5BAa35ce2F1D7
+Environment=CANNED_X402_PUBLIC_URL=https://canned.103-195-188-198.sslip.io
+Environment=CANNED_MPP_PUBLIC_URL=https://canned.103-195-188-198.sslip.io
+ExecStart=/usr/bin/node /opt/canned-marketplace/src/server.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadOnlyPaths=/opt/canned-marketplace
+ReadWritePaths=/var/lib/canned-marketplace
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

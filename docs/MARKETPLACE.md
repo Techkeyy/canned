@@ -9,8 +9,10 @@ How a stranger sees Canned, and what guarantees the surface makes.
 | `/` | Explanation. What Canned is, why an agent's claims are not enough, what a hire actually does, and the evidence produced so far. |
 | `/marketplace` | Discovery. Search, category filter, sort, agent cards, side-by-side comparison. |
 | `/agent/:identity` | One agent. Leads with what was observed; identity, hashes, and protocol detail sit behind a disclosure. |
+| `/compare` | Evidence comparison for agents in one category. |
 | `/list` | List or claim an agent. Resolve identity, prove ownership by signature, describe it. |
-| `/inspection` | The unchanged evidence view. Runs, gradings, advantage pairs, raw records. |
+| `/inspection` | Runs, gradings, Agent Advantage pairs, venue evidence, and the recorded MPP payment boundary. |
+| `/leash` | Grid Keeper authority scope, expiry, and revocation state. |
 
 ## The rule the whole surface rests on
 
@@ -46,9 +48,18 @@ Canned is a BNB Chain marketplace, so the primary shelves are gated mechanically
 
 Testnet identities are eligible. The former `FINAL_BNB_ELIGIBILITY_CONFIRMATION_REQUIRED` marker is resolved by the BNB Chain Support clarification recorded in ADR-065; this is not presented as a change to the public rules.
 
+## Evidence shelves
+
+The default `/api/agents` and `/api/marketplace` responses are the verified
+usable shelf. A record must be BNB-eligible and have an observed reachable
+endpoint before it appears there. Eligible records without that endpoint
+observation are retained in the `shelf=discovered` response and the separate
+marketplace tab. Resolved non-BNB identities are excluded from both shelves;
+unresolved identities remain pending rather than being relabeled.
+
 ## Reference agents versus third-party agents
 
-Three agents are built by Canned: Health Guard, Range Keeper, Yield Scout. They carry `origin: CANNED_REFERENCE`, are shown as **Built by Canned**, are claimed by construction rather than by a form, and **never count toward third-party diversity**. They exist to prove the pipeline end to end and to give each category a worked example.
+Four agents are built by Canned: Health Guard, Range Keeper, Yield Scout, and Grid Keeper. They carry `origin: CANNED_REFERENCE`, are shown as **Built by Canned**, are claimed by construction rather than by a form, and **never count toward third-party diversity**. They exist to prove the pipeline end to end and to give each category a worked example.
 
 Everything else on the shelf was discovered on chain by reading the ERC-8004 registry. A discovered agent is `UNCLAIMED` until its owner proves control.
 
@@ -63,11 +74,37 @@ Claiming changes how an agent describes itself. It changes nothing about what Ca
 
 `categorySummary()` reports `listed`, `reachable`, `hireable`, `benchmarked`, and `complete` per category. `complete` is `benchmarked > 0`.
 
-Grid Trading currently has agents listed and none benchmarked. It is shown that way — a real count of real discovered agents, with the plain statement that none has been tested. It is not hidden, and no score is invented to fill the column.
+Grid Keeper is benchmarked through the recorded GridBench evidence and has a separate bounded execution proof. No profitability, alpha, or native order-book claim is made. Third-party agents with no benchmark remain `not_enough_data`; no score is invented to fill a column.
 
 ## What is excluded from every public surface
 
 `publicRunsOnly()` drops `FIXTURE`, `INFRASTRUCTURE_SMOKE_TEST`, and `INFRASTRUCTURE_PROTOCOL_CONTROL` runs. Those exist to prove the plumbing works and are not evidence about any agent's ability.
+
+## Payment faces are not interchangeable
+
+Health Guard's protocol surfaces are recorded independently:
+
+- ERC-8183 is the existing escrow/job rail.
+- Studio x402/B402 is the Binance merchant rail and remains dormant without Binance merchant credentials.
+- Generic MPP is the separate official BNB-native HTTP-402 rail at `/mpp`, using payer-funded BSC Testnet TEST_USDT. The published evidence records successful settlement and replay protection; the original `Payment-Receipt` header was not retained.
+
+MPP evidence must not be relabeled as x402 or B402 evidence.
+
+The MPP inspection card links to the public sanitized evidence endpoint. It
+shows the successful exact Transfer check and replay rejection, and states
+that the original Payment-Receipt header was not retained. That limitation is
+part of the evidence, not hidden in the UI.
+
+## Public deployment evidence boundary
+
+The public VPS data directory is a derived summary projection. It contains
+agent identity and endpoint observations, benchmark/run identifiers, scores,
+timings, costs, transaction and artifact hashes, public links, TermiX
+qualification summaries, and the sanitized MPP reconciliation. It does not
+contain exact human submissions, exact agent outputs, benchmark workspaces,
+grading source records, local decision databases, replay databases, or other
+mutable runtime state. The inspection page labels the projection explicitly
+and does not imply that exact TermiX outputs are hosted by Canned.
 
 ## Modules
 

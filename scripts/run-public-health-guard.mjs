@@ -8,6 +8,7 @@ import { buildHealthFactorDeliverable } from "../src/reference/health-factor.mjs
 import { healthBenchProviderTask } from "../src/reference/health-benchmark.mjs";
 import { referenceSpec, REFERENCE_NETWORK, REFERENCE_CHAIN_ID, REFERENCE_PAYMENT_TOKEN } from "../src/reference/constants.mjs";
 import { publicHealthGuardMetadata, publicReadinessSummary, validatePublicReferenceConfig } from "../src/reference/public-service.mjs";
+import { createHealthFactorMpp, HEALTH_FACTOR_MPP_PATH, HEALTH_FACTOR_MPP_STATUS_PATH } from "../src/reference/health-factor-mpp.mjs";
 
 const env = process.env;
 const dataDir = path.resolve(env.CANNED_DATA_DIR || path.join(process.cwd(), "data"));
@@ -33,6 +34,7 @@ const registeredRegistry = env.CANNED_REFERENCE_REGISTRY || null;
 if (registeredAgentId !== null && (!Number.isInteger(registeredAgentId) || !registeredRegistry)) throw new Error("CANNED_REFERENCE_AGENT_ID requires a matching CANNED_REFERENCE_REGISTRY.");
 const metadata = publicHealthGuardMetadata({ agentUrl, providerAddress: wallet.address, agentId: registeredAgentId, registry: registeredRegistry });
 const baseUrl = new URL(agentUrl);
+const mpp = await createHealthFactorMpp({ dataDir, recipient: wallet.address, publicUrl: agentUrl, env });
 const taskFile = env.CANNED_REFERENCE_TASK_FILE ? path.resolve(env.CANNED_REFERENCE_TASK_FILE) : null;
 
 async function requestBody(request) {
@@ -61,6 +63,12 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && (url.pathname === `${baseUrl.pathname}/readiness` || url.pathname === "/readiness")) { json(response, 200, publicReadinessSummary({ runtime, providerAddress: wallet.address, agentUrl, storageMode: seller.storageMode, fulfillmentEnabled, metadata })); return; }
     if (request.method === "GET" && (url.pathname === `${baseUrl.pathname}/status` || url.pathname === "/status")) {
       json(response, 200, { ok: true, name: metadata.name, category: metadata.category, origin: metadata.origin, network: REFERENCE_NETWORK, chainId: REFERENCE_CHAIN_ID, provider: wallet.address, paymentToken: REFERENCE_PAYMENT_TOKEN, priceRaw: referenceSpec("health-factor").priceRaw, currency: REFERENCE_PAYMENT_TOKEN, quote: "signed_provider_quote", storage: seller.storageMode, fulfillmentEnabled, serviceVersion: metadata.version });
+      return;
+    }
+    if (request.method === "GET" && url.pathname === HEALTH_FACTOR_MPP_STATUS_PATH) { json(response, 200, mpp.status); return; }
+    if (url.pathname === HEALTH_FACTOR_MPP_PATH) {
+      if (!mpp.handler) { json(response, 503, { error: "mpp_unavailable", service: "health-factor", mpp: mpp.status }); return; }
+      await mpp.handle({ request, response, protocol: request.socket.encrypted ? "https:" : "http:" });
       return;
     }
     if (request.method === "GET" && (url.pathname === `${baseUrl.pathname}/metadata` || url.pathname === "/metadata" || url.pathname === "/.well-known/agent.json")) { json(response, 200, metadata); return; }

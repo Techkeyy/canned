@@ -411,3 +411,35 @@ Decision: pin `@bnbagent/sdk@0.5.5`, `@bnbagent/studio-runtime@0.0.13`, and the 
 The seller is dynamically visible through `/api/reference/health-factor/x402`, but the official runtime remains dormant until all required B402 merchant credentials are present. Missing credentials produce a fail-closed `503`, not a synthetic challenge. A configured `CANNED_X402_PAY_TO` that differs from the existing Health Guard provider wallet is rejected.
 
 Security consequence: the implementation exposes no private key, does not let the paid prompt choose a signer or move capital, and runs deterministic Health Guard work only after the official runtime's payment boundary. No public `402`, real payment, deployment, settlement, or replay evidence is claimed yet. The next run may authorize exactly one BSC Testnet payment of no more than `0.001` U only after a B402 Sandbox/Testnet merchant account, a public challenge, exact terms, buyer preflight, on-chain settlement, independent verification, and replay rejection all succeed.
+
+## ADR-068: Generic MPP is an explicitly separate BNB-native fallback
+
+Status: **ACCEPTED / LIVE VERIFIED 2026-09-01.**
+
+Decision: add a second Health Guard payment face at `/mpp` using the official
+`@bnb-chain/mpp@0.7.0` server and `mppx@0.8.12`. It is pinned to BSC Testnet,
+the curated `TEST_USDT` token at
+`0x337610d27c682E347C9cD60BD4b3b107C9d34dDd`, 18 decimals, the existing Health
+Guard provider wallet, and a payer-funded `0.01` token charge with a `0.02`
+hard maximum. It accepts only `hash` and `transaction` credentials and uses a
+durable atomic replay store plus `mppx-managed` challenge binding.
+
+Reason: generic MPP can verify a payer-funded EVM transfer and emit an
+official `Payment-Receipt` without a Binance merchant `clientId` or
+`accessToken`. That capability is useful as a BNB-native fallback, but it is
+not evidence of Binance B402/x402 merchant onboarding. The existing Studio
+`/x402` face stays dormant and the ERC-8183 surface stays unchanged.
+
+Security consequence: the MPP seller has no settlement signer, requests no
+approval, Permit2 authorization, or EIP-3009 authorization, and runs the
+existing deterministic Health Guard Quick Health Check only after the official
+verifier accepts payment. The payer helper is separately gated and fails
+closed if either BSC Testnet verification RPC cannot be reached, the offer
+changes, balances are insufficient, or the caller has not supplied `--confirm`.
+No live MPP payment is claimed until all onchain and HTTP receipt/replay
+evidence exists. That gate was satisfied by one direct transfer at
+`0xcc988caa3b584717f8541e058e46943b97578015686efc014787a2f5fa21cfb7` in
+block `128468610`, independent receipt/Transfer verification, official replay
+state `consumed`, and a fresh replay returning HTTP 402. The original runner
+did not retain the Payment-Receipt header because of a post-response output
+shape assertion; no payment was retried, and the assertion is fixed.

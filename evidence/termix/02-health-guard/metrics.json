@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "task": {
+    "runId": "run_9e0283a1-0f2f-4c88-850a-3f74fee9e558",
+    "jobId": "695",
+    "benchmarkId": "HealthBench_v1",
+    "benchmarkVersion": "1.0.0",
+    "category": null,
+    "role": "Agent-vs-Control + payment-flow proof"
+  },
+  "agent": {
+    "identity": "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2003",
+    "elapsedMs": 861284,
+    "cost": {
+      "declaredOperatorCost": null,
+      "serviceFeeRaw": "1000000000000000",
+      "serviceFeeTokenDecimals": 18,
+      "networkGasWei": "60257000000000"
+    },
+    "qualityScore": 92,
+    "rawFile": "02-health-guard/agent-output.json",
+    "publishedSha256": "sha256:ea720262a0b6304be4aaeaa571f114833ae4cb693ea3bfa4fb5888ecb7c35de3",
+    "canonicalRawSha256": "sha256:4fe48ba13ec574d93630a2f2e03ac50184d48818014286dfa4c7bc2e88aa0400"
+  },
+  "control": {
+    "responder": "human",
+    "elapsedMs": 306762,
+    "cost": {
+      "declaredOperatorCost": "i don't know",
+      "serviceFeeRaw": "0",
+      "serviceFeeTokenDecimals": 18,
+      "networkGasWei": "0"
+    },
+    "qualityScore": 8,
+    "rawFile": "02-health-guard/control-output.json",
+    "publishedSha256": "sha256:ee4c22734a62ba29d515e541d502eb48401f86d03adc20ccc16508e1b9a7dfe7",
+    "canonicalRawSha256": "sha256:ee4c22734a62ba29d515e541d502eb48401f86d03adc20ccc16508e1b9a7dfe7"
+  },
+  "comparison": {
+    "agentAdvantage": false,
+    "costNote": "The human baseline paid no service fee and no gas. The agent path pays a quoted service fee plus buyer gas. Cost is reported on both sides rather than netted into a single score.",
+    "fasterResponder": "human",
+    "higherQualityResponder": "agent",
+    "qualityComparable": true,
+    "qualityDelta": 84,
+    "timeComparable": true,
+    "timeDeltaMs": 554522
+  }
+}

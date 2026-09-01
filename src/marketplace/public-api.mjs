@@ -3,6 +3,7 @@ import { deriveAgentRecord } from "./model.mjs";
 import { selectHiringAdapter } from "./adapters.mjs";
 import { assessBnbEligibility, ELIGIBILITY } from "./eligibility.mjs";
 import { applyListing, listingStateFor, LISTING_STATES } from "./listings.mjs";
+import { GRID_EXECUTION_MODEL } from "../reference/grid-keeper.mjs";
 
 /**
  * The public marketplace view.
@@ -67,6 +68,20 @@ function permissionsFrom(candidate) {
   };
 }
 
+function executionModelFrom(candidate) {
+  const modelId = candidate?.referenceFleet?.executionModel || (candidate?.referenceKey === "grid" ? GRID_EXECUTION_MODEL.id : null);
+  if (modelId !== GRID_EXECUTION_MODEL.id) return null;
+  return {
+    id: GRID_EXECUTION_MODEL.id,
+    label: GRID_EXECUTION_MODEL.label,
+    venue: GRID_EXECUTION_MODEL.venue,
+    routerVersion: GRID_EXECUTION_MODEL.routerVersion,
+    isNativeLimitOrder: GRID_EXECUTION_MODEL.isNativeLimitOrder,
+    summary: GRID_EXECUTION_MODEL.summary,
+    source: "/api/grid/execution-model",
+  };
+}
+
 export function buildPublicAgent({ candidate, runs, listing = null }) {
   const withListing = applyListing(candidate, listing);
   const record = deriveAgentRecord(withListing, runs);
@@ -88,6 +103,7 @@ export function buildPublicAgent({ candidate, runs, listing = null }) {
     claimedBy: listing?.claimedBy || null,
     developer: withListing.ownerListing ? { name: withListing.ownerListing.developerName, url: withListing.ownerListing.developerUrl, contactUrl: withListing.ownerListing.contactUrl, documentationUrl: withListing.ownerListing.documentationUrl } : null,
     category: capabilityFrom({ ...record, ownerListing: withListing.ownerListing }),
+    executionModel: executionModelFrom(withListing),
     eligibility,
     chain: { network: record.network, chainId: record.chainId },
     erc8004: record.erc8004,
@@ -113,18 +129,36 @@ export function buildPublicAgent({ candidate, runs, listing = null }) {
 }
 
 /**
- * The public shelf. Ineligible chains never appear; unverified eligibility is
- * kept separate so it is visible without being presented as a BNB agent.
+ * The public shelf. Ineligible chains never appear; eligible agents without an
+ * endpoint observation stay in a separate discovery shelf. Endpoint evidence
+ * is the minimum threshold for the default judge-facing shelf.
  */
 export function buildMarketplace({ candidates = [], runs = [], listings = {} } = {}) {
-  const agents = [];
+  const verifiedAgents = [];
+  const discoveredAgents = [];
   const pending = [];
   for (const candidate of candidates) {
     const agent = buildPublicAgent({ candidate, runs, listing: listings[candidate.identity] || null });
-    if (agent.eligibility.status === ELIGIBILITY.ELIGIBLE) agents.push(agent);
+    if (agent.eligibility.status === ELIGIBILITY.ELIGIBLE && agent.trust.states.ENDPOINT_VERIFIED) verifiedAgents.push(agent);
+    else if (agent.eligibility.status === ELIGIBILITY.ELIGIBLE) discoveredAgents.push(agent);
     else if (agent.eligibility.status === ELIGIBILITY.UNVERIFIED) pending.push(agent);
   }
-  return { agents, pendingEligibility: pending, categories: categorySummary(agents) };
+  return {
+    // `agents` is the safe default for a public consumer. Keep the explicit
+    // names below so callers cannot accidentally confuse the two shelves.
+    agents: verifiedAgents,
+    verifiedAgents,
+    discoveredAgents,
+    allEligibleAgents: [...verifiedAgents, ...discoveredAgents],
+    pendingEligibility: pending,
+    categories: categorySummary(verifiedAgents),
+    discoveredCategories: categorySummary(discoveredAgents),
+    counts: {
+      verified: verifiedAgents.length,
+      discovered: discoveredAgents.length,
+      pendingEligibility: pending.length,
+    },
+  };
 }
 
 export function categorySummary(agents = []) {
@@ -148,7 +182,7 @@ export function categorySummary(agents = []) {
  * Homepage figures. These are the same derivations the marketplace uses, so the
  * homepage can never drift from the shelf or show a number nothing produced.
  */
-export function buildHomepageEvidence({ agents = [], runs = [], metrics = {}, pairs = [] } = {}) {
+export function buildHomepageEvidence({ agents = [], runs = [], metrics = {}, pairs = [], discoveredCount = 0, verifiedMppPayments = UNKNOWN } = {}) {
   const qualifying = pairs.filter((entry) => entry.termix?.termixCandidatePair === true);
   const verified = runs
     .filter((run) => run?.qualification?.isVerifiedRun === true)
@@ -180,12 +214,14 @@ export function buildHomepageEvidence({ agents = [], runs = [], metrics = {}, pa
   return {
     totals: {
       agentsListed: agents.length,
+      discoveredAgents: discoveredCount,
       agentsBenchmarked: agents.filter((agent) => agent.trust.states.BENCHMARKED).length,
       jobsPaidForAndGraded: metrics.jobsPaidForAndGraded ?? UNKNOWN,
       deliveries: metrics.deliveries ?? UNKNOWN,
       wins: metrics.wins ?? UNKNOWN,
       losses: metrics.losses ?? UNKNOWN,
       timeouts: metrics.timeouts ?? UNKNOWN,
+      verifiedMppPayments,
     },
     verifiedRuns: verified,
     pairedComparisons: { count: qualifying.length, required: 3 },

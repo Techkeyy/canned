@@ -1,6 +1,6 @@
 # PancakeSwap integration plan
 
-Status: architecture review only. No PancakeSwap write is being made in Directive #6.
+Status: the Canned PancakeSwap surfaces are implemented on BSC Testnet. Range Keeper is recommendation-only and benchmarked; Grid Keeper has a separately scoped, revoked Altana session proof for one bounded V2 trade. No new PancakeSwap write is authorized in this remediation sprint.
 
 Scope: this document covers the read-only Range Keeper/Rebalancing plan. It does not describe Grid Keeper's live execution route; that route is PancakeSwap V2 as selected in [ADR-060](DECISIONS.md#adr-060-a-route-must-be-proven-executable-before-it-can-be-permitted).
 
@@ -25,7 +25,7 @@ The product should claim PancakeSwap integration only when a real measurable tra
 
 ## Implemented: Canned Range Keeper
 
-Status as of 2026-08-27: implemented, deployed, and bound to a frozen benchmark. Not yet hired, not yet benchmarked.
+Status as of 2026-09-01: implemented, publicly deployed, hired through the existing ERC-8183 path, and bound to a frozen benchmark. Its track record and limitations are rendered from the stored evidence.
 
 ### What it does for a liquidity provider
 

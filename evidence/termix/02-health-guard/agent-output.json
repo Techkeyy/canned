@@ -1,0 +1,66 @@
+{
+  "assessment": {
+    "currentHealthFactor": null,
+    "liquidationProximity": "protocol_liquidity_fields_only",
+    "liquidityRaw": "2349997739537201063",
+    "shortfallRaw": "0",
+    "status": "NO_SHORTFALL_OBSERVED",
+    "validation": {
+      "errors": [],
+      "valid": true
+    }
+  },
+  "category": "health_factor_monitoring",
+  "changes": {
+    "changes": [],
+    "status": "not_enough_data"
+  },
+  "evidence": {
+    "authoritativeProtocol": "Venus",
+    "readSource": {
+      "account": "0xD164600c50B4F35593Cdc24F808cDA6DcFB1D645",
+      "args": [
+        "0xD164600c50B4F35593Cdc24F808cDA6DcFB1D645"
+      ],
+      "authoritative": true,
+      "blockTag": "127521666",
+      "chainId": 97,
+      "contract": "0x94d1820b2D1c7c7452A163983Dc888CEC546b77D",
+      "contracts": {
+        "chainId": 97,
+        "comptroller": "0x94d1820b2D1c7c7452A163983Dc888CEC546b77D",
+        "oracle": "0x3cD69251D04A28d887Ac14cbe2E14c52F3D57823",
+        "poolRegistry": "0xC85491616Fa949E048F3aAc39fbf5b0703800667",
+        "poolType": "core",
+        "source": "https://raw.githubusercontent.com/VenusProtocol/venus-protocol-documentation/main/deployed-contracts/markets.md",
+        "usdt": "0xA11c8D9DC9b66E209Ef60F0C8D969D3CD988782c",
+        "vBNB": "0x2E7222e51c0f6e98610A1543Aa3836E092CDe62c",
+        "vUSDT": "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A"
+      },
+      "markets": [
+        "0x2E7222e51c0f6e98610A1543Aa3836E092CDe62c",
+        "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A"
+      ],
+      "method": "getAccountLiquidity(address)",
+      "poolType": "core"
+    },
+    "snapshotHash": "0xa0c4ca10c0f7af57983f8f8911bfe67d189c8ed6fe458950e161f7ab5f208cc4"
+  },
+  "jobId": 695,
+  "observedAt": "2026-08-27T18:52:41.732Z",
+  "origin": "CANNED_REFERENCE",
+  "position": {
+    "account": "0xD164600c50B4F35593Cdc24F808cDA6DcFB1D645",
+    "asOfBlock": "127521666",
+    "poolType": "core",
+    "protocol": "Venus",
+    "source": "onchain"
+  },
+  "recommendation": {
+    "automaticActionTaken": false,
+    "boundedAction": "No intervention recommended from this snapshot; continue monitoring at the declared interval.",
+    "mode": "recommendation_only",
+    "reason": "Canned Reference Agent is read-only by default and never moves capital without a separately approved policy."
+  },
+  "schemaVersion": "1.0.0"
+}

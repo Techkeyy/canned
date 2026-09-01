@@ -1,6 +1,18 @@
 # Hackathon requirements matrix
 
-Research date: 2026-08-27. Status labels are Confirmed, Inferred, or Unknown. The current official sources are the [BNB Chain hackathon page](https://www.bnbchain.org/en/hackathons/smart-money-era?tab=tracks), the [official Build the Era announcement](https://www.bnbchain.org/en/blog/build-the-era-build-the-official-bnb-agent-studio-marketplace), and the [BNB Agent Studio documentation](https://docs.bnbchain.org/developer-kit/bnbchain-studio/quickstart/).
+Research date: 2026-08-27 for the source matrix; current implementation status: 2026-09-01. Status labels are Confirmed, Inferred, or Unknown. The current official sources are the [BNB Chain hackathon page](https://www.bnbchain.org/en/hackathons/smart-money-era?tab=tracks), the [official Build the Era announcement](https://www.bnbchain.org/en/blog/build-the-era-build-the-official-bnb-agent-studio-marketplace), and the [BNB Agent Studio documentation](https://docs.bnbchain.org/developer-kit/bnbchain-studio/quickstart/).
+
+## Current submission state
+
+Canned has a public BSC Testnet marketplace with four first-party category
+agents, a default shelf limited to endpoint-verified eligible records, and a
+separate discovered shelf for eligible records without endpoint verification.
+Three real Agent Advantage pairs are preserved with two wins and one loss,
+including Rebalancing as the trading-category pair. The fourth GridBench run is
+real benchmark evidence but is not a TermiX pair. The Health Guard MPP fallback
+has one real payer-funded Testnet payment and replay rejection; it remains
+explicitly separate from Binance B402 and x402. Binance Sandbox credentials are
+not present, so no B402 payment claim is made.
 
 | Area | Requirement or fact | Status | Canned response |
 | --- | --- | --- | --- |
@@ -251,3 +263,17 @@ The current official BNB Agent Studio docs describe `/x402` as a seller face bac
 ### Remaining dependency
 
 Provision a B402 Sandbox/Testnet merchant account for the existing Health Guard provider recipient, store its credentials outside the repository, then repeat the public `402` challenge, buyer preflight, one-payment, settlement, replay, and independent-verification gates. Until every gate passes, ERC-8183 remains the only Canned-verified commerce rail. See `docs/X402.md`.
+
+## Status re-stated 2026-09-01 (summary-only public deployment)
+
+The public deployment payload is now intentionally minimized. It contains
+derived marketplace and TermiX summaries, scores, timings, costs, transaction
+hashes, artifact hashes, public links, identity metadata, and the one recorded
+generic MPP payment summary. It does not transfer exact human or agent
+outputs, benchmark workspaces, grading source files, or mutable runtime state.
+The public inspection surface distinguishes Canned's summary projection from
+canonical evidence and links only to existing public artifacts.
+
+The four first-party category agents and the three qualifying Agent Advantage
+pairs remain unchanged. Generic MPP remains explicitly separate from Binance
+B402/x402; no B402 credentials, payment, or activation proof is claimed.

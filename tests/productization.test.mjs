@@ -384,7 +384,7 @@ test("a developer-supplied listing never raises the trust level", () => {
 
 test("the shelf shows eligible BNB agents and holds the rest back", () => {
   const marketplace = buildMarketplace({
-    candidates: [candidateAt("2001"), candidateAt("2002"), { identity: `1:${REGISTRY}:9`, name: "Ethereum agent" }, { name: "unresolved" }],
+    candidates: [candidateAt("2001", { probes: [{ reachable: true, observedAt: "2026-08-30T00:00:00.000Z" }] }), candidateAt("2002", { probes: [{ reachable: true, observedAt: "2026-08-30T00:00:00.000Z" }] }), { identity: `1:${REGISTRY}:9`, name: "Ethereum agent" }, { name: "unresolved" }],
     runs: [],
   });
   assert.equal(marketplace.agents.length, 2);

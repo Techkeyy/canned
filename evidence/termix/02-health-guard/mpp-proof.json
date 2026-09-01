@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "protocol": "MPP",
+  "notB402": true,
+  "notX402": true,
+  "network": "bsc-testnet",
+  "chainId": 97,
+  "endpoint": "https://health-guard.103-195-188-198.sslip.io/mpp",
+  "payer": "0x14342bE6726f1f5AaFa30b673c787D696e3F09eB",
+  "recipient": "0xD885bd3eEa76c3bDE6B49D7A16D5BAa35ce2F1D7",
+  "token": {
+    "address": "0x337610d27c682E347C9cD60BD4b3b107C9d34dDd",
+    "symbol": "USDT",
+    "decimals": 18
+  },
+  "amountRaw": "10000000000000000",
+  "transactionHash": "0xcc988caa3b584717f8541e058e46943b97578015686efc014787a2f5fa21cfb7",
+  "blockNumber": "128468610",
+  "independentReceipt": {
+    "status": "success",
+    "exactTransferEvents": 1,
+    "rpc": "https://bsc-testnet-dataseed.bnbchain.org"
+  },
+  "officialReplayVerification": {
+    "state": "consumed",
+    "replayHttpStatus": 402,
+    "replayDetail": "Payment verification failed: hash credential already consumed",
+    "secondBroadcast": false
+  },
+  "paymentReceipt": {
+    "originalHeaderRetained": false,
+    "reason": "The original runner failed after the paid response on an output-shape assertion; no payment retry was made."
+  },
+  "verifiedAt": "2026-09-01T10:09:46.585Z"
+}

@@ -1,0 +1,5 @@
+# Add this site block without changing the existing Canned reference-agent sites.
+canned.103-195-188-198.sslip.io {
+    encode gzip
+    reverse_proxy 127.0.0.1:8794
+}

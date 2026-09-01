@@ -1,0 +1,135 @@
+{
+  "category": "rebalancing",
+  "decision": {
+    "action": "HOLD",
+    "policyVersion": "range-keeper-policy-v1",
+    "reason": "The position is still in range and drift does not justify paying gas, realising impermanent loss, and resetting fee accrual.",
+    "rebalanceRecommended": false,
+    "thresholds": {
+      "edgeProximityActPct": 10,
+      "edgeProximityWarnPct": 25
+    },
+    "triggers": []
+  },
+  "evidence": {
+    "authoritativeProtocol": "PancakeSwapV3",
+    "limitations": [
+      "A single frozen block describes one moment and does not predict the next one.",
+      "Oracle mean ticks describe what happened, not what will happen."
+    ],
+    "oracleWindowsUsed": [
+      3600,
+      300
+    ],
+    "readSource": {
+      "authoritative": true,
+      "blockTag": "118445030",
+      "chainId": 56,
+      "factory": "0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865",
+      "methods": [
+        "slot0()",
+        "liquidity()",
+        "token0()",
+        "token1()",
+        "fee()",
+        "tickSpacing()",
+        "feeGrowthGlobal0X128()",
+        "feeGrowthGlobal1X128()",
+        "observe(uint32[])",
+        "positions(uint256)"
+      ],
+      "pool": "0x172fcD41E0913e95784454622d1c3724f546f849",
+      "positionManager": "0x46A15B0b27311cedF172AB29E4f4766fbE7F4364",
+      "source": "https://docs.pancakeswap.finance/trading-tools/building-trading-agents-on-pancakeswap-v3"
+    },
+    "snapshotHash": "0x98a5104e318d590bd791581c702ffa6a4cbf454a74357ef8cfb62d1332739e31"
+  },
+  "execution": {
+    "automaticActionTaken": false,
+    "capitalMoved": false,
+    "futureBoundedPlan": null,
+    "mode": "recommendation_only",
+    "reason": "Canned Range Keeper v1 observes and recommends. It never removes liquidity, mints liquidity, swaps, or approves spending."
+  },
+  "jobId": 700,
+  "marketContext": {
+    "available": true,
+    "direction": "rising",
+    "longestWindowSeconds": 3600,
+    "note": "Drift is the current tick minus the pool's own arithmetic-mean tick over each window. Tick direction is quote-dependent: a rising tick is a rising token1-per-token0 price and a falling token0-per-token1 price. It is a description of what happened, not a forecast.",
+    "relativeToRange": {
+      "available": true,
+      "deltaPctOfRangeWidth": 7.5,
+      "directionRelativeToRange": "away from the lower edge",
+      "materiality": "small",
+      "note": "Movement measured against this position's own range width, so it reads the same in either price quote convention.",
+      "tickDelta": 15,
+      "towardNearestEdge": false,
+      "windowSeconds": 3600
+    },
+    "shortestWindowSeconds": 300,
+    "tickDeltaOverLongestWindow": 15,
+    "windows": [
+      {
+        "meanTick": -65669,
+        "secondsAgo": 3600,
+        "tickDelta": 15
+      },
+      {
+        "meanTick": -65655,
+        "secondsAgo": 300,
+        "tickDelta": 1
+      }
+    ]
+  },
+  "observedAt": "2026-08-28T04:39:48.037Z",
+  "origin": "CANNED_REFERENCE",
+  "position": {
+    "asOfBlock": "118445030",
+    "chainId": 56,
+    "feePercent": 0.01,
+    "feeTier": 100,
+    "liquidity": "11964304490633407270133",
+    "pair": "USDT/WBNB",
+    "pool": "0x172fcD41E0913e95784454622d1c3724f546f849",
+    "protocol": "PancakeSwapV3",
+    "source": "onchain",
+    "tickLower": -65724,
+    "tickSpacing": 1,
+    "tickUpper": -65524,
+    "tokenId": "7261944"
+  },
+  "proposedRange": null,
+  "rangeStatus": {
+    "composition": "Mixed token0 and token1; the split moves toward token0 as price falls and toward token1 as price rises.",
+    "currentTick": -65654,
+    "edgeProximityPct": 70,
+    "inRange": true,
+    "nearestEdge": "lower",
+    "positionInRange": 0.35,
+    "priceCurrent": 0.0014087228687618145,
+    "priceLower": 0.0013988967315806426,
+    "priceQuote": "WBNB per USDT",
+    "priceUpper": 0.0014271548930571475,
+    "status": "IN_RANGE",
+    "ticksToLower": 70,
+    "ticksToNearestEdge": 70,
+    "ticksToUpper": 130,
+    "widthTicks": 200
+  },
+  "schemaVersion": "1.0.0",
+  "tradeoffs": {
+    "costOfActing": [
+      "gas for decrease, collect, and mint",
+      "realised impermanent loss at the current price",
+      "fee accrual resets",
+      "slippage if the position is rebalanced through a swap"
+    ],
+    "costOfNotActing": [
+      "the position may leave the range and stop earning fees",
+      "a later rebalance may happen at a worse price"
+    ],
+    "note": "Constant rebalancing is not automatically better. Holding is the correct answer whenever expected fees do not cover the cost of acting."
+  },
+  "venue": "PancakeSwap"
+}

@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "sourceType": "canonical-grading-record",
+  "sourceGradingRecord": "data/state/yieldbench-grading-run_7fe9e15f-4001-428b-bd29-c687528127ee.json",
+  "sourceGradingRecordSha256": "sha256:77b871e5ec11e72f0b7d016beaeb0b0bf141aaf7a6e32da3889a81dc52e60604",
+  "sourcePairSha256": "sha256:b183912e7e886b664da18e339b1e4b7218bd1a2b60d54a6166f0ecab37da8907",
+  "sourcePairEvidence": {
+    "durablePublicStorage": false,
+    "keccak256": "0x60f6b9d47b1df1590ed8384751a760c26b861b9b52a0f13c0d36fcdc096b33cc",
+    "relativePath": "evidence/d78629c6efb554944fd3df2e1605a1fd1fe4ebfe2f26924d97966fef05fad46f.json",
+    "sha256": "sha256:d78629c6efb554944fd3df2e1605a1fd1fe4ebfe2f26924d97966fef05fad46f",
+    "store": "local_content_addressed"
+  },
+  "runId": "run_7fe9e15f-4001-428b-bd29-c687528127ee",
+  "jobId": "810",
+  "benchmarkId": "YieldBench_v1",
+  "agentIdentity": "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2034",
+  "provider": "0x99E5Fee06CF247F522119314980c58B8501d5684",
+  "referenceBlock": {
+    "hash": "0xf924859ccb5d291aa58068daa9dde7711ec37aa0e2dbff0447c4bfaba67229bb",
+    "number": "118529435",
+    "timestamp": 1787899324
+  },
+  "evaluatorVersion": "yield-scout-deterministic-v1",
+  "groundTruthHash": "0x4291a7fa12f72ffbd4d5abf16d8aaeaa64ebbe1d23df85ac99cd6b67ff67c9c5",
+  "termix": {
+    "candidateNumber": 3,
+    "categoryOfThisPair": "yield_optimisation",
+    "checks": {
+      "actualOutputsAttached": true,
+      "costReported": true,
+      "deterministicEvaluator": true,
+      "observedDeliverable": true,
+      "qualityReported": true,
+      "realPaidMarketplaceJob": true,
+      "timeReported": true,
+      "withAndWithoutPairPresent": true
+    },
+    "highValueCategorySatisfied": false,
+    "qualifyingPairCount": 3,
+    "reason": "Real paired with/without evidence captured. The three-pair minimum is met. This pair is yield optimisation, which does not satisfy the trading, stock, or security category requirement.",
+    "requiredPairCount": 3,
+    "termixCandidatePair": true,
+    "trackComplete": false
+  },
+  "verifiedRun": {
+    "classification": "CANNED_VERIFIED_RUN",
+    "failedGates": [],
+    "gates": {
+      "contentAddressedEvidence": true,
+      "correctProvider": true,
+      "correctTerminalState": true,
+      "deterministicGrading": true,
+      "noFixture": true,
+      "onchainProvenance": true,
+      "precommitPresent": true,
+      "realDeliverable": true,
+      "realErc8183Lifecycle": true,
+      "realMarketplaceAgent": true,
+      "realPaidService": true,
+      "sealedWithoutAgentBaseline": true
+    },
+    "passed": true
+  },
+  "protocol": {
+    "protocol": "ERC-8183",
+    "network": "bsc-testnet",
+    "paymentToken": "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565",
+    "currentState": "COMPLETED",
+    "transactions": [
+      {
+        "event": "create_job",
+        "transactionHash": "0x77c2f25310db8b56b9d345259aeb69a974e52662a2066717e6e0b7fbf2732733"
+      },
+      {
+        "event": "register_job",
+        "transactionHash": "0x9d81e5ad57bbac3c874d9965b9104f080afc05d855cd6e5d64b266e19c151d27"
+      },
+      {
+        "event": "set_budget",
+        "transactionHash": "0xf98be6aac9ecd78cf11b43d488dce87dd958452ebd4a8a2d2f9a4894938b43a7"
+      },
+      {
+        "event": "approve_payment_token",
+        "transactionHash": "0x9efc67a70e9754fc52e9f1a876ad10b07fe44293f56c464b998f4c9ef3a45d6c"
+      },
+      {
+        "event": "approve_payment_token",
+        "transactionHash": "0x65e1f898f425c89d74b52001eda767966f0f604700ebcd531c08c83b41f16ade"
+      },
+      {
+        "event": "fund_job",
+        "transactionHash": "0x65e1f898f425c89d74b52001eda767966f0f604700ebcd531c08c83b41f16ade"
+      },
+      {
+        "event": "settle_job",
+        "transactionHash": "0x735411564f666a3d489dc3f402e484cac42aca27b56cc877088b090bec544b98"
+      }
+    ]
+  },
+  "publishedFiles": {
+    "task": "03-yield-scout/task.txt",
+    "agentOutput": {
+      "path": "03-yield-scout/agent-output.json",
+      "sha256": "sha256:00c74aa4698a566f860c36db48d763a4e5e36fceae3c98dbec54fda720c9443e"
+    },
+    "controlOutput": {
+      "path": "03-yield-scout/control-output.json",
+      "sha256": "sha256:aac1d7af6f274797cb72bb6af5ee9cef1ed0b925676a6a8b0fbeb0d204c79cc0"
+    },
+    "metrics": "03-yield-scout/metrics.json",
+    "provenance": "03-yield-scout/provenance.json"
+  }
+}
