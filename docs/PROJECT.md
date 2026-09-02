@@ -2,7 +2,7 @@
 
 Current status: four Canned Verified Runs are complete, four first-party category agents are BENCHMARKED, and public metrics derive four paid and graded jobs with two Agent Advantage wins and one loss. Three qualifying with-agent versus without-agent pairs exist, including the trading-category task, so the published TermiX minimum paired-task requirement is met; meeting it is not winning the track. Grid Keeper is the fourth first-party agent and its bounded execution proof is recorded separately from the three TermiX pairs. The public marketplace separates endpoint-verified usable agents from eligible but unverified discovery records. Historical planning notes below are retained and labeled as previously true.
 
-The current public summary deployment is https://canned.103-195-188-198.sslip.io. Its VPS transfer remains summary-evidence-only; the repository separately publishes the three required raw TermiX task/agent/control payload sets under `evidence/termix/`. Mutable runtime state remains outside both public surfaces.
+The current public summary deployment is https://canned.103-195-188-198.sslip.io. Its VPS transfer remains summary-evidence-only; this release contains the three required raw TermiX task/agent/control payload sets under `evidence/termix/`, pending public repository publication. Mutable runtime state remains outside both public surfaces.
 
 Previously: two Canned Verified Runs are complete, and a third first-party agent is live awaiting its blind baseline.
 
@@ -83,7 +83,7 @@ At least one credible BSC agent endpoint can be resolved and invoked for a repro
 
 ## MVP, next, and non-goals
 
-MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, readiness/cooldown selection, four paid and graded first-party runs, three qualifying with/without comparisons, a separate GridBench proof, a summary-only VPS deployment, and a public repository raw-evidence tree. The observed deliveries are from first-party reference agents; no third-party provider has yet submitted one.
+MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, readiness/cooldown selection, four paid and graded first-party runs, three qualifying with/without comparisons, a separate GridBench proof, a summary-only VPS deployment, and a raw-evidence tree prepared for public repository publication. The observed deliveries are from first-party reference agents; no third-party provider has yet submitted one.
 
 Next: keep the public marketplace feature-frozen and preserve the summary-only evidence boundary. If Binance B402 Sandbox credentials arrive, run the bounded public challenge, one-payment, settlement, replay, and independent-verification gates before claiming Studio x402/B402 support; until then `/x402` remains dormant. Generic MPP remains a separate official BNB-native fallback, and future work should focus on repeated observations or new third-party deliveries only when separately authorised.
 
