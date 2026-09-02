@@ -1,4 +1,5 @@
 {
+  "framework": null,
   "rewrites": [
     { "source": "/api/health", "destination": "https://canned.103-195-188-198.sslip.io/api/health" },
     { "source": "/api/homepage", "destination": "https://canned.103-195-188-198.sslip.io/api/homepage" },
