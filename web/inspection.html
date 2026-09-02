@@ -36,7 +36,7 @@
   <div class="drawer-backdrop" id="drawer-backdrop"><aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Agent details"></aside></div>
   <script>
     const state={data:null,category:'all',compare:new Set()}; const labels={rebalancing:'Rebalancing',grid_trading:'Grid Trading',yield_optimisation:'Yield Optimisation',health_factor_monitoring:'Health Factor Monitoring'}; const $=(selector)=>document.querySelector(selector); const esc=(value)=>String(value??'').replace(/[&<>'"]/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); const text=(value,fallback='Not enough data')=>value===null||value===undefined||value===''?fallback:esc(value); const date=(value)=>value?new Date(value).toLocaleString([],{dateStyle:'medium',timeStyle:'short'}):'Not observed'; const clean=(value)=>String(value||'').replaceAll(String.fromCharCode(8212),'-');
-    function statusClass(agent){if(agent.quarantine?.active)return'warn';if(agent.status?.label?.includes('TIMED OUT'))return'bad';if(agent.status?.live)return'live';return'neutral';} function categoryCount(category){return state.data?.categories?.find((item)=>item.category===category)?.agents?.length??null;}
+    function statusClass(agent){if(agent.quarantine?.active)return'warn';if(agent.status?.label?.includes('TIMED OUT'))return'bad';if(agent.status?.live)return'live';return'neutral';} function publicStatusLabel(agent){return clean(agent?.status?.label||agent?.trust?.label||'NOT LISTED');} function categoryCount(category){return state.data?.categories?.find((item)=>item.category===category)?.agents?.length??null;}
     function renderCategories(){const root=$('#categories');root.innerHTML='<button class="category '+(state.category==='all'?'active':'')+'" data-category="all">All agents <small>'+text(state.data?.agents?.length,'...')+'</small></button>'+Object.entries(labels).map(([key,label])=>'<button class="category '+(state.category===key?'active':'')+'" data-category="'+key+'">'+label+' <small>'+text(categoryCount(key),'...')+'</small></button>').join('');root.querySelectorAll('[data-category]').forEach((button)=>button.addEventListener('click',()=>{state.category=button.dataset.category;render();}));}
     function visibleAgents(){return state.category==='all'?state.data.agents:state.data.categories.find((item)=>item.category===state.category)?.agents||[];} function protocolChips(agent){return(agent.protocolCapabilities||[]).filter((item)=>item.advertised||item.cannedVerified).slice(0,4).map((item)=>'<span class="chip '+(item.cannedVerified?'good':'')+'">'+esc(item.protocol)+(item.cannedVerified?' verified':' advertised')+'</span>').join('');}
     function card(agent){const selected=state.compare.has(agent.identity);const categories=agent.categoryHypotheses?.slice(0,2).map((item)=>'<span class="chip">'+esc(item.label)+'</span>').join('')||'';const hireReady=agent.activation?.selection?.status==='ready'&&!agent.quarantine?.active;const origin=agent.reference?'<span class="chip good">Canned Reference Agent</span>':'';return'<article class="card"><div class="card-top"><div><h3>'+esc(agent.name)+'</h3><div class="identity">'+esc(agent.identity)+'</div></div><span class="status '+statusClass(agent)+'"><span class="dot"></span>'+esc(clean(agent.status?.label))+'</span></div><p class="desc">'+text(agent.description,'No provider description was published.')+'</p><div class="chips">'+origin+categories+protocolChips(agent)+(agent.quarantine?.active?'<span class="chip warn">new paid hire paused</span>':'')+'</div><div class="card-stats"><div class="card-stat"><strong>'+text(agent.trust?.deliveryCount,'0')+'</strong><span>deliveries observed</span></div><div class="card-stat"><strong>'+text(agent.trust?.benchmarkCount,'0')+'</strong><span>benchmarks</span></div><div class="card-stat"><strong>'+(agent.trust?.paidAttempts?text(Math.round((agent.trust.failures.length/agent.trust.paidAttempts)*100)+'%'):'Not enough data')+'</strong><span>failure rate</span></div></div><div class="card-actions"><button class="secondary" data-detail="'+encodeURIComponent(agent.identity)+'">View evidence</button><button class="primary" data-hire="'+encodeURIComponent(agent.identity)+'" '+(hireReady?'':'disabled')+'>'+(hireReady?'Review hire':'Hire unavailable')+'</button><label class="compare-check"><input type="checkbox" data-compare="'+encodeURIComponent(agent.identity)+'" '+(selected?'checked':'')+'> compare</label></div></article>';}
@@ -102,7 +102,7 @@
       var bench=record.benchmark;
       var trust=agent?agent.trust:null;
       root.className='';
-      root.innerHTML='<article class="venue-card"><div class="venue-head"><h3>'+esc(record.agent)+'</h3><span class="status '+(agent?statusClass(agent):'')+'"><span class="dot"></span>'+esc(agent?clean(agent.status.label):'NOT LISTED')+'</span></div>'
+       root.innerHTML='<article class="venue-card"><div class="venue-head"><h3>'+esc(record.agent)+'</h3><span class="status '+(agent?statusClass(agent):'')+'"><span class="dot"></span>'+esc(agent?publicStatusLabel(agent):'NOT LISTED')+'</span></div>'
         +'<p class="section-note">Answers one question for an LP: is this range still healthy, is price drifting toward an edge, and should you leave it alone or rebalance? It reads the pool and the position directly and never moves your capital.</p>'
         +'<div class="venue-grid">'
         +cell('Pool',bench?bench.pair:'Not enough data',bench?('PancakeSwap V3 '+(bench.feeTier/10000)+'% fee tier'):'')
@@ -127,7 +127,7 @@
             :'')
         +'<p class="venue-note">'+esc(record.statement)+'</p>'
         +'<p class="venue-note">'+esc(record.limitations[0])+'</p>'
-        +(agent&&agent.activation.selection.status!=='ready'?'<p class="venue-note">Not hireable yet: '+esc(agent.activation.selection.reason)+'</p>':'')
+         +(agent&&agent.activation?.selection?.status!=='ready'?'<p class="venue-note">Not hireable yet: '+esc(agent.activation?.selection?.reason||'No verified activation path.')+'</p>':'')
         +'</article>';
     }catch(error){root.className='error';root.textContent='Range Keeper data could not be loaded.';}}
     async function loadYieldScout(){var root=$('#venus-content');try{
@@ -136,7 +136,7 @@
       var agent=(market.agents||[]).filter(function(a){return (a.name||'').indexOf('Yield Scout')>=0;})[0]||null;
       var bench=record.benchmark;var r=record.latestResult;var trust=agent?agent.trust:null;
       root.className='';
-      root.innerHTML='<article class="venue-card"><div class="venue-head"><h3>'+esc(record.agent)+'</h3><span class="status '+(agent?statusClass(agent):'')+'"><span class="dot"></span>'+esc(agent?clean(agent.status.label):'NOT LISTED')+'</span></div>'
+       root.innerHTML='<article class="venue-card"><div class="venue-head"><h3>'+esc(record.agent)+'</h3><span class="status '+(agent?statusClass(agent):'')+'"><span class="dot"></span>'+esc(agent?publicStatusLabel(agent):'NOT LISTED')+'</span></div>'
         +'<p class="section-note">Answers one question for a holder: this stablecoin is earning interest somewhere &mdash; is there a better venue, and is moving it worth the cost over a stated horizon? It reads every market at one block and never moves capital.</p>'
         +'<div class="venue-grid">'
         +cell('Position',bench?(bench.positionAmount+' '+bench.positionAsset):'Not enough data',bench?(bench.marketsCompared+' Venus markets over '+bench.horizonDays+' days'):'')
@@ -161,7 +161,7 @@
             :'')
         +'<p class="venue-note">'+esc(record.statement)+'</p>'
         +'<p class="venue-note">'+esc(record.limitations[0])+'</p>'
-        +(agent&&agent.activation.selection.status!=='ready'?'<p class="venue-note">Not hireable: '+esc(agent.activation.selection.reason)+'</p>':'')
+         +(agent&&agent.activation?.selection?.status!=='ready'?'<p class="venue-note">Not hireable: '+esc(agent.activation?.selection?.reason||'No verified activation path.')+'</p>':'')
         +'</article>';
     }catch(error){root.className='error';root.textContent='Yield Scout data could not be loaded.';}}
     document.querySelectorAll('[data-scroll]').forEach((button)=>button.addEventListener('click',()=>{document.getElementById(button.dataset.scroll).scrollIntoView({behavior:'smooth'});if(button.dataset.scroll==='operator')loadOperator();if(button.dataset.scroll==='advantage')loadAdvantage();}));$('#drawer-backdrop').addEventListener('click',(event)=>{if(event.target.id==='drawer-backdrop')closeDrawer();});load();loadMpp();loadAdvantage();loadPancakeSwap();loadYieldScout();
