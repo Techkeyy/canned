@@ -7,6 +7,11 @@ function realRuns(runs) {
   return runs.filter((run) => run?.runType !== RUN_TYPES.FIXTURE && run?.runType !== RUN_TYPES.INFRASTRUCTURE_SMOKE_TEST && run?.runType !== RUN_TYPES.INFRASTRUCTURE_PROTOCOL_CONTROL);
 }
 
+function endpointUnavailable(record) {
+  return record?.currentAvailability !== "reachable"
+    && record?.cannedObservations?.endpointChecks?.some((probe) => probe?.observedAt) === true;
+}
+
 export function deriveMarketplaceMetrics({ candidates = [], runs = [] } = {}) {
   const records = candidates.map((candidate) => deriveAgentRecord(candidate, runs));
   const actualRuns = realRuns(runs);
@@ -30,6 +35,9 @@ export function deriveMarketplaceMetrics({ candidates = [], runs = [] } = {}) {
     reachableAgents: records.filter((record) => record.currentAvailability === "reachable").length,
     callableAgents: records.filter((record) => record.callableSurface === true).length,
     verifiedQuotes: records.filter((record) => record.trust.states.QUOTE_VERIFIED).length,
+    hireableAgents: records.filter((record) => record.activation.selection.status === "ready").length,
+    verifiedNotHireableAgents: records.filter((record) => record.trust.states.ENDPOINT_VERIFIED && record.activation.selection.status !== "ready").length,
+    unavailableAgents: records.filter(endpointUnavailable).length,
     hireAttempts: actualRuns.filter((run) => run?.qualification?.hasRealPayment === true || run?.protocolJob?.funded === true).length,
     paidAttempts: paidAttempts.length,
     deliveries: deliveredRuns.length,

@@ -99,6 +99,12 @@
       return seconds < 90 ? seconds.toFixed(0) + "s" : Math.floor(seconds / 60) + "m " + Math.round(seconds % 60) + "s";
     }
 
+    function hireState(agent) {
+      if (!agent.availability.reachable && agent.availability.lastCheckedAt) return "UNAVAILABLE";
+      if (!agent.trust.states.ENDPOINT_VERIFIED) return "DISCOVERED — NOT VERIFIED";
+      return agent.hire.ready ? "HIREABLE" : "VERIFIED — NOT CURRENTLY HIREABLE";
+    }
+
     function hireBox(agent) {
       const price = u(agent.price);
       if (!agent.hire.ready) {
@@ -172,6 +178,7 @@
         + "<h1 style=\"margin-top:10px;\">" + esc(agent.name) + "</h1>"
         + '<div class="row">'
         + '<span class="pill ' + (agent.trust.states.BENCHMARKED ? "good" : "info") + '"><span class="dot"></span>' + esc(agent.trust.label.replace(/_/g, " ")) + "</span>"
+        + '<span class="pill">' + esc(hireState(agent)) + "</span>"
         + '<span class="pill">' + esc(agent.category.claimedCategoryLabel || "Uncategorised") + "</span>"
         + (agent.isReferenceAgent ? '<span class="pill warn"><span class="dot"></span>Built by Canned</span>' : '<span class="pill">' + esc(agent.listingState.toLowerCase()) + "</span>")
         + "</div>"
@@ -212,9 +219,18 @@
         hireButton.disabled = true;
         hireButton.textContent = "Preparing";
         fetch("/api/hire/prepare?identity=" + encodeURIComponent(agent.identity))
-          .then((response) => response.json())
+          .then(async (response) => {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.reason || data.error || "unavailable");
+            return data;
+          })
           .then((data) => {
             const box = document.getElementById("hire");
+            if (data.review?.selection?.status !== "ready") {
+              box.innerHTML = "<h3>Verified — not currently hireable</h3>"
+                + '<p class="why">' + esc(data.note || data.review?.selection?.reason || "Canned has not verified a safe activation path.") + "</p>";
+              return;
+            }
             box.innerHTML = "<h3>Ready to hire</h3>"
               + '<div><div class="line"><span>Agent</span><span>' + esc(agent.name) + "</span></div>"
               + '<div class="line"><span>Price</span><span>' + esc(price || "Not enough data") + "</span></div>"

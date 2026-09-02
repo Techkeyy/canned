@@ -154,9 +154,16 @@ export function buildMarketplace({ candidates = [], runs = [], listings = {} } =
     categories: categorySummary(verifiedAgents),
     discoveredCategories: categorySummary(discoveredAgents),
     counts: {
+      listed: verifiedAgents.length,
       verified: verifiedAgents.length,
       discovered: discoveredAgents.length,
       pendingEligibility: pending.length,
+      hireable: verifiedAgents.filter((agent) => agent.hire.ready).length,
+      verifiedNotHireable: verifiedAgents.filter((agent) => !agent.hire.ready && agent.availability.reachable).length,
+      // A discovered record with no endpoint observation is not unavailable;
+      // it is the separate DISCOVERED — NOT VERIFIED state. Unavailable means
+      // Canned checked a published endpoint and it did not respond.
+      unavailable: [...verifiedAgents, ...discoveredAgents].filter((agent) => !agent.availability.reachable && agent.availability.lastCheckedAt).length,
     },
   };
 }
@@ -222,6 +229,7 @@ export function buildHomepageEvidence({ agents = [], runs = [], metrics = {}, pa
       losses: metrics.losses ?? UNKNOWN,
       timeouts: metrics.timeouts ?? UNKNOWN,
       verifiedMppPayments,
+      hireableAgents: agents.filter((agent) => agent.hire.ready).length,
     },
     verifiedRuns: verified,
     pairedComparisons: { count: qualifying.length, required: 3 },

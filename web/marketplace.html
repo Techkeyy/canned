@@ -133,6 +133,12 @@
       return '<div class="fact"><span>' + esc(label) + '</span><strong class="' + (dim ? "dim" : "") + '">' + esc(value) + "</strong></div>";
     }
 
+    function hireState(agent) {
+      if (!agent.availability.reachable && agent.availability.lastCheckedAt) return "UNAVAILABLE";
+      if (state.shelf === "discovered") return "DISCOVERED — NOT VERIFIED";
+      return agent.hire.ready ? "HIREABLE" : "VERIFIED — NOT CURRENTLY HIREABLE";
+    }
+
     function card(agent) {
       const price = u(agent.price);
       const benchmarks = agent.trackRecord.qualifyingBenchmarks;
@@ -146,6 +152,7 @@
         + '<p class="small" style="margin-top:3px;">' + esc(agent.category.claimedCategoryLabel || "Uncategorised") + "</p></div>"
         + (agent.isReferenceAgent ? '<span class="firstparty">Built by Canned</span>' : "") + "</div>"
         + '<p class="purpose">' + esc(agent.purpose || agent.description || "This agent has not published a description.") + "</p>"
+        + '<p class="small"><strong>Hire status:</strong> ' + esc(hireState(agent)) + "</p>"
         + trustPill(agent)
         + '<div class="facts">'
         + fact("Price", price || "No verified price", !price)

@@ -32,6 +32,7 @@ import { buildLeash, buildLeashProposal, LEASH_STATES } from "./marketplace/leas
 import { loadGradingArtifact } from "./marketplace/termix-evidence.mjs";
 import { createHealthFactorX402Seller } from "./reference/health-factor-x402.mjs";
 import { createHealthFactorMpp, HEALTH_FACTOR_MPP_EVIDENCE_PATH, HEALTH_FACTOR_MPP_PATH, HEALTH_FACTOR_MPP_STATUS_PATH, publicMppEvidence } from "./reference/health-factor-mpp.mjs";
+import { baselineSealedFromDerivedEvidence } from "./marketplace/hireability.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
@@ -245,6 +246,7 @@ async function snapshot() {
     store.loadRuns(),
   ]);
   const [identityRecord, rangeRecord, yieldRecord, gridRecord, baseline, rangeBaselineRecord, yieldBaselineRecord] = await Promise.all([referenceIdentityRecord(), rangeIdentityRecord(), yieldIdentityRecord(), gridIdentityRecord(), humanBaseline(), rebalanceBaseline(), yieldBaseline()]);
+  const identityFor = (record) => record?.agentId !== undefined && record?.registry ? `97:${String(record.registry).toLowerCase()}:${record.agentId}` : null;
   const candidates = [...(report.candidates || []), ...implementedReferenceAgentCandidates({
     endpointBase: `http://127.0.0.1:${port}`,
     providerAddress: await referenceProviderAddress(),
@@ -253,7 +255,14 @@ async function snapshot() {
     // GridBench needs no human baseline: TermiX is already satisfied by the
     // other three pairs, so this gate stays false and Grid Keeper is simply
     // shown at the evidence level it has.
-    baselineSealedByKey: { "health-factor": baseline?.status === "submitted", rebalancing: rangeBaselineRecord?.status === "submitted", yield: yieldBaselineRecord?.status === "submitted" },
+    // Public deployments omit mutable baseline files. Preserve the gate from
+    // immutable verified-run metadata when it is available; local submitted
+    // state still wins when the full runtime is present.
+    baselineSealedByKey: {
+      "health-factor": baselineSealedFromDerivedEvidence({ explicitBaseline: baseline?.status === "submitted", identity: identityFor(identityRecord), runs }),
+      rebalancing: baselineSealedFromDerivedEvidence({ explicitBaseline: rangeBaselineRecord?.status === "submitted", identity: identityFor(rangeRecord), runs }),
+      yield: baselineSealedFromDerivedEvidence({ explicitBaseline: yieldBaselineRecord?.status === "submitted", identity: identityFor(yieldRecord), runs }),
+    },
   })];
   const marketplace = buildMarketplaceSnapshot({ report: { ...report, candidates }, runs });
   return { report: { ...report, candidates }, runs, marketplace, metrics: deriveMarketplaceMetrics({ candidates, runs }) };
@@ -403,6 +412,7 @@ const server = createServer(async (request, response) => {
         verifiedCount: market.verifiedAgents.length,
         discoveredCount: market.discoveredAgents.length,
         pendingEligibilityCount: market.pendingEligibility.length,
+        counts: market.counts,
         metrics: (await snapshot()).metrics,
       });
       return;
@@ -686,6 +696,7 @@ const server = createServer(async (request, response) => {
         verifiedCount: market.verifiedAgents.length,
         discoveredCount: market.discoveredAgents.length,
         pendingEligibilityCount: market.pendingEligibility.length,
+        counts: market.counts,
         total: agents.length,
         sort,
         appliedCategory: category || "all",
@@ -852,7 +863,11 @@ const server = createServer(async (request, response) => {
       json(response, 200, { network: "bsc-testnet", chainId: 97, scheduler: schedulerStatus({ attempts }), candidates: current.marketplace.agents.map((agent) => ({ identity: agent.identity, name: agent.name, status: agent.status, quarantine: agent.quarantine, trust: agent.trust })) });
       return;
     }
-    if (url.pathname === "/api/hire/prepare") {
+    if (url.pathname === "/api/hire/prepare" && request.method !== "GET") {
+      json(response, 405, { error: "method_not_allowed", reason: "Hire preparation is a read-only GET preflight." });
+      return;
+    }
+    if (url.pathname === "/api/hire/prepare" && request.method === "GET") {
       const current = await snapshot();
       const identity = url.searchParams.get("identity");
       const agent = current.marketplace.agents.find((item) => item.identity === identity);

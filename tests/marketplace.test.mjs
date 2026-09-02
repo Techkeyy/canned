@@ -4,11 +4,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { deriveAgentRecord, deriveTrustStates, compareAgents } from "../src/marketplace/model.mjs";
-import { buildMarketplace } from "../src/marketplace/public-api.mjs";
+import { buildHomepageEvidence, buildMarketplace } from "../src/marketplace/public-api.mjs";
 import { loadGradingArtifact } from "../src/marketplace/termix-evidence.mjs";
 import { protocolCapabilities, selectHiringAdapter } from "../src/marketplace/adapters.mjs";
 import { deriveMarketplaceMetrics } from "../src/marketplace/metrics.mjs";
 import { assessBnbEligibility, TESTNET_CONFIRMATION_FLAG } from "../src/marketplace/eligibility.mjs";
+import { baselineSealedFromDerivedEvidence } from "../src/marketplace/hireability.mjs";
 
 const identity = "97:0xabc:2001";
 const candidate = {
@@ -89,6 +90,32 @@ test("the default marketplace shelf separates endpoint-verified agents from disc
   assert.equal(market.discoveredAgents[0].availability.reachable, false);
   assert.equal(market.discoveredAgents[0].availability.lastCheckedAt, null);
   assert.equal(market.categories.find((item) => item.category === "rebalancing").listed, 1);
+});
+
+test("hireability counts remain separate from verification counts", () => {
+  const verified = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2001" };
+  const discovered = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2002", probes: [] };
+  const market = buildMarketplace({ candidates: [verified, discovered], runs: [] });
+  assert.deepEqual(market.counts, { listed: 1, verified: 1, discovered: 1, pendingEligibility: 0, hireable: 1, verifiedNotHireable: 0, unavailable: 0 });
+});
+
+test("public homepage exposes derived hireable-agent count", () => {
+  const homepage = buildHomepageEvidence({
+    agents: [{ hire: { ready: true }, category: { claimedCategory: null }, trust: { states: { BENCHMARKED: false } } }],
+    discoveredCount: 2,
+  });
+  assert.equal(homepage.totals.agentsListed, 1);
+  assert.equal(homepage.totals.discoveredAgents, 2);
+  assert.equal(homepage.totals.hireableAgents, 1);
+});
+
+test("only a completed funded verified benchmark can reconstruct an omitted baseline gate", () => {
+  const identity = "97:0xabc:2003";
+  const verifiedRun = { runType: "BENCHMARK", agent: { identity }, protocolJob: { funded: true, currentState: "COMPLETED" }, terminalState: "completed", evaluation: { status: "completed" }, qualification: { isVerifiedRun: true } };
+  assert.equal(baselineSealedFromDerivedEvidence({ identity, runs: [verifiedRun] }), true);
+  assert.equal(baselineSealedFromDerivedEvidence({ identity, runs: [{ ...verifiedRun, qualification: { isVerifiedRun: false } }] }), false);
+  assert.equal(baselineSealedFromDerivedEvidence({ identity, runs: [{ ...verifiedRun, runType: "FIXTURE" }] }), false);
+  assert.equal(baselineSealedFromDerivedEvidence({ explicitBaseline: true, identity: "unknown", runs: [] }), true);
 });
 
 test("TermiX grading loader resolves the legitimate artifact by run and benchmark", async () => {
