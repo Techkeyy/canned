@@ -1,0 +1,12 @@
+# Vercel is the static judge-facing frontend only.
+src/
+data/
+deploy/
+docs/
+evidence/
+scripts/
+tests/
+Dockerfile.health-guard
+.env*
+*.pem
+*.key
