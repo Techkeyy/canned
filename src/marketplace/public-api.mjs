@@ -82,6 +82,26 @@ function executionModelFrom(candidate) {
   };
 }
 
+/**
+ * The installed ERC-8183 buyer path is an operator-controlled chain-writing
+ * workflow. It is deliberately not presented as a public marketplace hire
+ * until a browser-safe confirmation, lifecycle, and result API exists.
+ */
+function publicHireFrom(adapter) {
+  const operatorReady = adapter.status === "ready";
+  return {
+    status: "unavailable",
+    ready: false,
+    publicReady: false,
+    operatorReady,
+    operatorStatus: adapter.status,
+    protocol: adapter.protocol || null,
+    reason: operatorReady
+      ? "Public browser hire is not available in this release. Canned can prepare an operator-controlled ERC-8183 run, but it does not expose public payment, job lifecycle, or result submission."
+      : adapter.reason || "No verified safe public activation path is available for this agent.",
+  };
+}
+
 export function buildPublicAgent({ candidate, runs, listing = null }) {
   const withListing = applyListing(candidate, listing);
   const record = deriveAgentRecord(withListing, runs);
@@ -120,7 +140,7 @@ export function buildPublicAgent({ candidate, runs, listing = null }) {
     permissions: permissionsFrom(withListing),
     trust: { states: record.trust.states, reached: record.trust.reached, label: record.status.label, lastTested: record.status.lastTested },
     trackRecord: trackRecordFrom(record),
-    hire: { status: adapter.status, protocol: adapter.protocol || null, reason: adapter.reason || null, ready: adapter.status === "ready" },
+    hire: publicHireFrom(adapter),
     quarantine: record.quarantine,
     failures: record.trust.failures || [],
     runHistory: record.runHistory || [],
@@ -158,8 +178,8 @@ export function buildMarketplace({ candidates = [], runs = [], listings = {} } =
       verified: verifiedAgents.length,
       discovered: discoveredAgents.length,
       pendingEligibility: pending.length,
-      hireable: verifiedAgents.filter((agent) => agent.hire.ready).length,
-      verifiedNotHireable: verifiedAgents.filter((agent) => !agent.hire.ready && agent.availability.reachable).length,
+      hireable: verifiedAgents.filter((agent) => agent.hire.publicReady === true).length,
+      verifiedNotHireable: verifiedAgents.filter((agent) => agent.hire.publicReady !== true && agent.availability.reachable).length,
       // A discovered record with no endpoint observation is not unavailable;
       // it is the separate DISCOVERED — NOT VERIFIED state. Unavailable means
       // Canned checked a published endpoint and it did not respond.
@@ -177,7 +197,7 @@ export function categorySummary(agents = []) {
       label: CATEGORY_LABELS[category],
       listed: inCategory.length,
       reachable: inCategory.filter((agent) => agent.availability.reachable).length,
-      hireable: inCategory.filter((agent) => agent.hire.ready).length,
+      hireable: inCategory.filter((agent) => agent.hire.publicReady === true).length,
       benchmarked: benchmarked.length,
       // A category with no benchmarked agent is incomplete, and the shelf says so.
       complete: benchmarked.length > 0,
@@ -229,7 +249,7 @@ export function buildHomepageEvidence({ agents = [], runs = [], metrics = {}, pa
       losses: metrics.losses ?? UNKNOWN,
       timeouts: metrics.timeouts ?? UNKNOWN,
       verifiedMppPayments,
-      hireableAgents: agents.filter((agent) => agent.hire.ready).length,
+      hireableAgents: agents.filter((agent) => agent.hire.publicReady === true).length,
     },
     verifiedRuns: verified,
     pairedComparisons: { count: qualifying.length, required: 3 },

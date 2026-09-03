@@ -51,7 +51,7 @@ Testnet identities are eligible. The former `FINAL_BNB_ELIGIBILITY_CONFIRMATION_
 ## Evidence shelves
 
 The default `/api/agents` and `/api/marketplace` responses are the verified
-usable shelf. A record must be BNB-eligible and have an observed reachable
+endpoint shelf. A record must be BNB-eligible and have an observed reachable
 endpoint before it appears there. Eligible records without that endpoint
 observation are retained in the `shelf=discovered` response and the separate
 marketplace tab. Resolved non-BNB identities are excluded from both shelves;
@@ -72,7 +72,30 @@ Claiming changes how an agent describes itself. It changes nothing about what Ca
 
 ## Categories, including the incomplete one
 
-`categorySummary()` reports `listed`, `reachable`, `hireable`, `benchmarked`, and `complete` per category. `complete` is `benchmarked > 0`.
+`categorySummary()` reports `listed`, `reachable`, `hireable`, `benchmarked`, and `complete` per category. `complete` is `benchmarked > 0`. `hireable` means publicly hireable, not merely ready for the operator's chain-writing adapter. The current public release intentionally reports no publicly hireable agents: the operator can inspect an ERC-8183 preflight, but the public payment, confirmation, job-lifecycle, and result routes are not implemented. Cards and agent pages therefore say `VERIFIED — NOT CURRENTLY HIREABLE` and do not expose a live Hire CTA.
+
+## Public function boundary
+
+The production Vercel marketplace currently exposes these complete public
+flows:
+
+- discovery, search, category filters, sorting, and evidence inspection are
+  read-only. Comparison is read-only when two agents share a category; the
+  control is disabled and explains the prerequisite when the current inventory
+  has only one agent in each category;
+- List/Claim resolves the ERC-8004 identity, checks BNB eligibility, issues a
+  one-time challenge, verifies a wallet signature against the on-chain owner,
+  validates presentation fields, persists the signed listing, and returns the
+  public agent record;
+- The Leash review is a bounded, read-only permission proposal. Granting or
+  revoking a permission remains a chain-writing operator action;
+- benchmark baseline capture is operator-only on the VPS and is explicitly
+  unavailable on the public Vercel deployment.
+
+Public Hire is explicitly unavailable until one implementation owns the full
+sequence from quote and confirmation through the supported chain/payment
+mechanism, job lifecycle, and result retrieval. This is a product boundary,
+not a claim that the operator preflight is a completed customer hire.
 
 Grid Keeper is benchmarked through the recorded GridBench evidence and has a separate bounded execution proof. No profitability, alpha, or native order-book claim is made. Third-party agents with no benchmark remain `not_enough_data`; no score is invented to fill a column.
 

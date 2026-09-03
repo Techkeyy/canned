@@ -177,7 +177,7 @@
             + tx("Revocation transaction", leash.revocationTransactionHash) + "</p></div>");
         }
         if (leash.revocable) {
-          rows.push('<div class="revoke"><button class="btn" id="revoke">Revoke access now</button><p class="small" style="margin-top:8px;">Takes effect on chain. The agent’s next attempt fails.</p></div>');
+          rows.push('<div class="revoke"><button class="btn" disabled>Revocation unavailable in public UI</button><p class="small" style="margin-top:8px;">This public surface can show the recorded leash and a read-only proposal only. A chain revocation remains operator-controlled.</p></div>');
         }
       }
       $("#leash").innerHTML = "<h3>What Grid Keeper may do</h3><span class=\"state " + stateClass + "\">"

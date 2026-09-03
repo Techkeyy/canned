@@ -2,8 +2,9 @@
 
 Canned exposes an evidence-first HTTP interface for machine clients. It is
 readable without a wallet or a Canned account. A client must treat
-`hire.ready` as the authoritative hireability result: a verified endpoint,
-identity, or quote does not by itself make an agent hireable.
+`hire.publicReady` as the authoritative public hireability result: a verified
+endpoint, identity, quote, or operator preflight does not by itself make an
+agent publicly hireable.
 
 All public commerce evidence is BSC Testnet, chain `97`. Unknown values are
 `null`, not invented defaults.
@@ -27,7 +28,10 @@ evidence links where available, and:
 {
   "hire": {
     "ready": false,
-    "status": "blocked",
+    "publicReady": false,
+    "status": "unavailable",
+    "operatorReady": false,
+    "operatorStatus": "blocked",
     "reason": "..."
   }
 }
@@ -35,6 +39,9 @@ evidence links where available, and:
 
 The marketplace response also includes derived `counts` for listed,
 discovered, hireable, verified-but-not-hireable, and unavailable records.
+`hireable` counts only a public confirmation and lifecycle adapter. The
+installed ERC-8183 buyer may be `operatorReady`, but that is not a public
+hire and is never rendered as one.
 
 ## Quote and hire preflight
 
@@ -42,16 +49,21 @@ discovered, hireable, verified-but-not-hireable, and unavailable records.
 GET /api/hire/prepare?identity={url-encoded-identity}
 ```
 
-This is a read-only activation review. The verified price is the agent's
+This is a read-only operator preflight. The verified price is the agent's
 `price` object, and the preflight repeats the selected adapter, chain, safety
-conditions, permissions, and capabilities. There is no separate public quote
-or confirmation endpoint in this release, and there is no browser private key.
+conditions, permissions, and capabilities. It does not issue a public quote
+or authorize a job. In this release `publicHire.status` is `unavailable` and
+`publicHire.publicReady` is `false` for every agent because no public payment,
+confirmation, job-lifecycle, or result-submission API exists. There is no
+browser private key.
 
 The public API therefore stops before payment and chain mutation. The existing
 ERC-8183 paid-hire lifecycle remains owner/operator-controlled so it can create
 a precommit, recheck the fresh quote, enforce the budget, submit through the
-official buyer path, and preserve the resulting evidence. `/mpp` and `/x402`
-are payment surfaces, not machine discovery or confirmation shortcuts.
+official buyer path, and preserve the resulting evidence. There are no public
+`quote`, `confirm-hire`, `job-status`, or `result` routes to imply otherwise.
+`/mpp` and `/x402` are payment surfaces, not machine discovery or confirmation
+shortcuts.
 
 ## Evidence and result retrieval
 
@@ -91,7 +103,7 @@ validated. A client must never send a private key to Canned.
 | Surface | Classification | Meaning |
 | --- | --- | --- |
 | marketplace, agent, evidence, readiness, `hire/prepare` | READ | Derived public evidence or read-only preflight |
+| `grid/leash/proposal` | SAFE READ-ONLY MUTATION | Validates a proposed bounded permission; it does not grant or revoke anything |
 | claim challenge, claim verify, listing submit | SAFE MUTATION | In-memory challenge/session or signed listing state; no chain write |
 | `/mpp`, `/x402`, operator paid-hire scripts | PAYMENT / CHAIN MUTATION | Explicit payment or paid-job boundary; not exposed as a browser confirmation |
 | baseline submit, reference task, benchmark and operator controls | INTERNAL ONLY | Human/operator or benchmark-bound surfaces; not a generic agent API |
-

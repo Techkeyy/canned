@@ -136,10 +136,16 @@
     function hireState(agent) {
       if (!agent.availability.reachable && agent.availability.lastCheckedAt) return "UNAVAILABLE";
       if (state.shelf === "discovered") return "DISCOVERED — NOT VERIFIED";
-      return agent.hire.ready ? "HIREABLE" : "VERIFIED — NOT CURRENTLY HIREABLE";
+      return agent.hire.publicReady === true ? "HIREABLE" : "VERIFIED — NOT CURRENTLY HIREABLE";
+    }
+
+    function comparisonAvailable(agent) {
+      const category = agent.category?.claimedCategory || null;
+      return Boolean(category && Number(state.categories.find((item) => item.category === category)?.listed || 0) >= 2);
     }
 
     function card(agent) {
+      const compareAvailable = comparisonAvailable(agent);
       const price = u(agent.price);
       const benchmarks = agent.trackRecord.qualifyingBenchmarks;
       const record = benchmarks === 0
@@ -161,8 +167,8 @@
         + fact("Track record", record, benchmarks === 0)
         + "</div>"
         + '<div class="actions"><a class="btn small secondary" href="/agent/' + encodeURIComponent(agent.identity) + '">View evidence</a>'
-        + (agent.hire.ready ? '<a class="btn small" href="/agent/' + encodeURIComponent(agent.identity) + '#hire">Hire</a>' : "")
-        + '<label class="compare"><input type="checkbox" data-compare="' + esc(agent.identity) + '"' + (state.compare.has(agent.identity) ? " checked" : "") + "> Compare</label>"
+        + '<button class="btn small" type="button" disabled aria-label="Public hire unavailable">Hire unavailable</button>'
+        + '<label class="compare"><input type="checkbox" data-compare="' + esc(agent.identity) + '"' + (state.compare.has(agent.identity) ? " checked" : "") + (compareAvailable ? "" : " disabled") + ' aria-label="' + (compareAvailable ? "Compare agent" : "Comparison unavailable until two agents share this category") + '"> ' + (compareAvailable ? "Compare" : "Comparison unavailable until two agents share this category") + "</label>"
         + "</div></article>";
     }
 
@@ -176,7 +182,7 @@
     }
 
     function renderShelves() {
-      $("#shelves").innerHTML = '<button class="shelf ' + (state.shelf === "verified" ? "on" : "") + '" data-shelf="verified" role="tab" aria-selected="' + (state.shelf === "verified") + '">Verified and usable <small>' + esc(state.verifiedCount) + "</small></button>"
+      $("#shelves").innerHTML = '<button class="shelf ' + (state.shelf === "verified" ? "on" : "") + '" data-shelf="verified" role="tab" aria-selected="' + (state.shelf === "verified") + '">Verified endpoints <small>' + esc(state.verifiedCount) + "</small></button>"
         + '<button class="shelf ' + (state.shelf === "discovered" ? "on" : "") + '" data-shelf="discovered" role="tab" aria-selected="' + (state.shelf === "discovered") + '">Discovered, not yet verified <small>' + esc(state.discoveredCount) + "</small></button>";
       $("#shelves").querySelectorAll("[data-shelf]").forEach((button) => button.addEventListener("click", () => {
         state.shelf = button.dataset.shelf;

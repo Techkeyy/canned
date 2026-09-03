@@ -121,8 +121,17 @@
   </div>
   <script>
     const $ = (selector) => document.querySelector(selector);
+    const PUBLIC_DEPLOYMENT = /\.vercel\.app$/i.test(location.hostname);
     let packet = null; let attempt = null; let startedMs = null; let timerHandle = null;
     const setStatus = (text, kind = "") => { const node = $("#status"); node.textContent = text; node.className = "status " + kind; };
+    function markPublicUnavailable() {
+      $("#start").disabled = true;
+      setStatus("Unavailable on public marketplace deployment", "error");
+      const note = document.createElement("p");
+      note.className = "error";
+      note.textContent = "Human baseline capture is an operator-only benchmark surface. It is not enabled from the public Vercel marketplace.";
+      $("#start").parentElement.appendChild(note);
+    }
     const pad = (value) => String(value).padStart(2, "0");
     const formatMs = (ms) => { const total = Math.floor(ms / 1000); return pad(Math.floor(total / 60)) + ":" + pad(total % 60); };
     const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
@@ -177,6 +186,7 @@
     }
 
     async function load() {
+      if (PUBLIC_DEPLOYMENT) { markPublicUnavailable(); return; }
       const response = await fetch("/api/baseline/rebalance");
       const data = await response.json();
       if (!response.ok) throw new Error(data.reason || "RebalanceBench v1 is not frozen yet.");

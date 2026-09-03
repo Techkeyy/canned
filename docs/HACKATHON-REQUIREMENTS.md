@@ -14,11 +14,18 @@ has one real payer-funded Testnet payment and replay rejection; it remains
 explicitly separate from Binance B402 and x402. Binance Sandbox credentials are
 not present, so no B402 payment claim is made.
 
+Current production boundary: public discovery, evidence inspection, signed
+List/Claim, and read-only safety review are available on Vercel. Public Hire
+is intentionally unavailable until quote, confirmation, payment, job
+lifecycle, and result retrieval are implemented together. Any historical
+matrix row below that describes an agent as `hireable` is not a claim about
+the current public Vercel workflow.
+
 | Area | Requirement or fact | Status | Canned response |
 | --- | --- | --- | --- |
 | Main event | Build the Era online hackathon runs 2026-08-05 through 2026-09-09 UTC+0 | Confirmed | Freeze a public, functional testnet demo before the deadline. |
 | Eligibility | Individuals and teams may enter; one entry per team; globally open | Confirmed | Keep the repository and demo attributable to one entry. |
-| Product | Build an AI agent marketplace, not merely a portfolio of agents | Confirmed | Discovery, hiring, evidence, and comparison are the product loop. |
+| Product | Build an AI agent marketplace, not merely a portfolio of agents | Confirmed | Discovery, signed listing, evidence, safety review, and comparison are the current public loop; public hiring is a declared unavailable boundary until its full commerce lifecycle exists. |
 | Live agents | Agents surfaced during judging must be live on BSC | Confirmed | Do not list a fixture as a live agent; label offline examples. |
 | Categories | Rebalancing, Grid Trading, Yield Optimisation, Health Factor Monitoring | Confirmed | Treat all four as first-class schema values and navigation paths. |
 | Category depth | A single category scores poorly; all four should be equally deep | Confirmed | Build shared task and evidence primitives so categories can reach parity. |

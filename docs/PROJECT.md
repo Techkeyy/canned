@@ -2,7 +2,7 @@
 
 Current status: four Canned Verified Runs are complete, four first-party category agents are BENCHMARKED, and public metrics derive four paid and graded jobs with two Agent Advantage wins and one loss. Three qualifying with-agent versus without-agent pairs exist, including the trading-category task, so the published TermiX minimum paired-task requirement is met; meeting it is not winning the track. Grid Keeper is the fourth first-party agent and its bounded execution proof is recorded separately from the three TermiX pairs. The public marketplace separates endpoint-verified usable agents from eligible but unverified discovery records. Historical planning notes below are retained and labeled as previously true.
 
-The primary judge-facing deployment is https://canned-lilac.vercel.app. Vercel serves the static frontend plus exact evidence, hire-preflight, and signed-owner List/Claim API rewrites; https://canned.103-195-188-198.sslip.io remains the live engine and fallback summary deployment. Its transfer remains summary-evidence-only; the three required raw TermiX task/agent/control payload sets are publicly available under [`evidence/termix`](https://github.com/Techkeyy/canned/tree/master/evidence/termix). Mutable runtime state remains outside both public surfaces. The machine-client contract is in [`docs/AGENT-API.md`](AGENT-API.md).
+The primary judge-facing deployment is https://canned-lilac.vercel.app. Vercel serves the static frontend plus exact evidence, read-only hire-preflight, and signed-owner List/Claim API rewrites; public Hire is intentionally unavailable until its full quote, confirmation, payment, job-lifecycle, and result flow exists. https://canned.103-195-188-198.sslip.io remains the live engine and fallback summary deployment. Its transfer remains summary-evidence-only; the three required raw TermiX task/agent/control payload sets are publicly available under [`evidence/termix`](https://github.com/Techkeyy/canned/tree/master/evidence/termix). Mutable runtime state remains outside both public surfaces. The machine-client contract is in [`docs/AGENT-API.md`](AGENT-API.md).
 
 Previously: two Canned Verified Runs are complete, and a third first-party agent is live awaiting its blind baseline.
 
@@ -12,7 +12,7 @@ Previously: Canned Verified Run #1 is complete, and a second first-party agent i
 
 ## One-sentence product
 
-Canned helps BSC users choose and hire autonomous agents by publishing independently recorded agent-versus-control results with clear provenance, limitations, and failure history.
+Canned helps BSC users discover and evaluate autonomous agents by publishing independently recorded agent-versus-control results with clear provenance, limitations, and failure history. Public hiring is a planned commerce capability, not currently exposed by the production Vercel surface.
 
 ## Problem story
 

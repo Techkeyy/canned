@@ -42,6 +42,7 @@
     { "source": "/api/grid/benchmark", "destination": "https://canned.103-195-188-198.sslip.io/api/grid/benchmark" },
     { "source": "/api/grid/track-record", "destination": "https://canned.103-195-188-198.sslip.io/api/grid/track-record" },
     { "source": "/api/grid/leash", "destination": "https://canned.103-195-188-198.sslip.io/api/grid/leash" },
+    { "source": "/api/grid/leash/proposal", "destination": "https://canned.103-195-188-198.sslip.io/api/grid/leash/proposal" },
     { "source": "/api/baseline/health-factor", "destination": "https://canned.103-195-188-198.sslip.io/api/baseline/health-factor" },
     { "source": "/api/baseline/health-factor/source", "destination": "https://canned.103-195-188-198.sslip.io/api/baseline/health-factor/source" },
     { "source": "/api/baseline/rebalance", "destination": "https://canned.103-195-188-198.sslip.io/api/baseline/rebalance" },

@@ -96,17 +96,27 @@ test("hireability counts remain separate from verification counts", () => {
   const verified = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2001" };
   const discovered = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2002", probes: [] };
   const market = buildMarketplace({ candidates: [verified, discovered], runs: [] });
-  assert.deepEqual(market.counts, { listed: 1, verified: 1, discovered: 1, pendingEligibility: 0, hireable: 1, verifiedNotHireable: 0, unavailable: 0 });
+  assert.deepEqual(market.counts, { listed: 1, verified: 1, discovered: 1, pendingEligibility: 0, hireable: 0, verifiedNotHireable: 1, unavailable: 0 });
 });
 
 test("public homepage exposes derived hireable-agent count", () => {
   const homepage = buildHomepageEvidence({
-    agents: [{ hire: { ready: true }, category: { claimedCategory: null }, trust: { states: { BENCHMARKED: false } } }],
+    agents: [{ hire: { ready: false, publicReady: true }, category: { claimedCategory: null }, trust: { states: { BENCHMARKED: false } } }],
     discoveredCount: 2,
   });
   assert.equal(homepage.totals.agentsListed, 1);
   assert.equal(homepage.totals.discoveredAgents, 2);
   assert.equal(homepage.totals.hireableAgents, 1);
+});
+
+test("operator-ready ERC-8183 does not become a public hire", () => {
+  const readyCandidate = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2001" };
+  const agent = buildMarketplace({ candidates: [readyCandidate], runs: [] }).agents[0];
+  assert.equal(agent.hire.ready, false);
+  assert.equal(agent.hire.publicReady, false);
+  assert.equal(agent.hire.operatorReady, true);
+  assert.equal(agent.hire.status, "unavailable");
+  assert.match(agent.hire.reason, /public browser hire is not available/i);
 });
 
 test("only a completed funded verified benchmark can reconstruct an omitted baseline gate", () => {

@@ -871,8 +871,20 @@ const server = createServer(async (request, response) => {
       const current = await snapshot();
       const identity = url.searchParams.get("identity");
       const agent = current.marketplace.agents.find((item) => item.identity === identity);
-      if (!agent) { json(response, 404, { error: "Agent not found." }); return; }
-      json(response, 200, { agent: { identity: agent.identity, name: agent.name }, review: agent.activation, status: agent.status, trust: agent.trust, note: agent.activation.selection.status === "ready" ? "This is a review step. A separate explicit confirmation is required before any testnet write." : agent.activation.selection.reason });
+      const candidate = current.report.candidates.find((item) => item.identity === identity);
+      if (!agent || !candidate) { json(response, 404, { error: "Agent not found." }); return; }
+      const listings = await agentListings();
+      const publicAgent = buildPublicAgent({ candidate, runs: publicRunsOnly(current.runs), listing: listings[identity] || null });
+      json(response, 200, {
+        agent: { identity: agent.identity, name: agent.name },
+        review: agent.activation,
+        publicHire: publicAgent.hire,
+        status: publicAgent.trust,
+        trust: publicAgent.trust,
+        note: publicAgent.hire.operatorReady
+          ? "Operator preflight is available for inspection only. Public browser payment, job lifecycle, and result retrieval are not enabled."
+          : publicAgent.hire.reason,
+      });
       return;
     }
     if (url.pathname === "/api/baseline/health-factor" && request.method === "GET") {
