@@ -2,7 +2,7 @@
 
 Current status: four Canned Verified Runs are complete, four first-party category agents are BENCHMARKED, and public metrics derive four paid and graded jobs with two Agent Advantage wins and one loss. Three qualifying with-agent versus without-agent pairs exist, including the trading-category task, so the published TermiX minimum paired-task requirement is met; meeting it is not winning the track. Grid Keeper is the fourth first-party agent and its bounded execution proof is recorded separately from the three TermiX pairs. The public marketplace separates endpoint-verified usable agents from eligible but unverified discovery records. Historical planning notes below are retained and labeled as previously true.
 
-The primary judge-facing deployment is https://canned-lilac.vercel.app. Vercel serves the static frontend plus exact evidence, read-only hire-preflight, and signed-owner List/Claim API rewrites; public Hire is intentionally unavailable until its full quote, confirmation, payment, job-lifecycle, and result flow exists. https://canned.103-195-188-198.sslip.io remains the live engine and fallback summary deployment. Its transfer remains summary-evidence-only; the three required raw TermiX task/agent/control payload sets are publicly available under [`evidence/termix`](https://github.com/Techkeyy/canned/tree/master/evidence/termix). Mutable runtime state remains outside both public surfaces. The machine-client contract is in [`docs/AGENT-API.md`](AGENT-API.md).
+The primary judge-facing deployment is https://canned-lilac.vercel.app. Vercel serves the static frontend plus exact evidence, public Hire UI, and API rewrites; the live Node engine and public summary projection run at https://canned.103-195-188-198.sslip.io. Public Hire is BSC Testnet-only and non-custodial: Canned negotiates and verifies quotes, but the user's wallet signs every transaction. Its transfer remains summary-evidence-only; the three required raw TermiX task/agent/control payload sets are publicly available under [`evidence/termix`](https://github.com/Techkeyy/canned/tree/master/evidence/termix). Mutable runtime state remains outside the public frontend; buyer-bound hire state is kept on the marketplace service. The machine-client contract is in [`docs/AGENT-API.md`](AGENT-API.md).
 
 Previously: two Canned Verified Runs are complete, and a third first-party agent is live awaiting its blind baseline.
 
@@ -12,7 +12,7 @@ Previously: Canned Verified Run #1 is complete, and a second first-party agent i
 
 ## One-sentence product
 
-Canned helps BSC users discover and evaluate autonomous agents by publishing independently recorded agent-versus-control results with clear provenance, limitations, and failure history. Public hiring is a planned commerce capability, not currently exposed by the production Vercel surface.
+Canned helps BSC users discover, evaluate, and hire autonomous agents by publishing independently recorded agent-versus-control results with clear provenance, limitations, and failure history. Public hiring is available for four Canned reference agents through a bounded, non-custodial BSC Testnet flow.
 
 ## Problem story
 
@@ -85,7 +85,7 @@ At least one credible BSC agent endpoint can be resolved and invoked for a repro
 
 MVP: one real category slice, one real agent adapter, one declared control, deterministic run records, offline fixtures, truthful profile/comparison UI, and testnet-safe provenance. The current slice has the adapter, control definitions, records, fixtures, inspection UI, readiness/cooldown selection, four paid and graded first-party runs, three qualifying with/without comparisons, a separate GridBench proof, a summary-only VPS deployment, and a publicly available raw-evidence tree. The observed deliveries are from first-party reference agents; no third-party provider has yet submitted one.
 
-Next: keep the public marketplace feature-frozen and preserve the summary-only evidence boundary. If Binance B402 Sandbox credentials arrive, run the bounded public challenge, one-payment, settlement, replay, and independent-verification gates before claiming Studio x402/B402 support; until then `/x402` remains dormant. Generic MPP remains a separate official BNB-native fallback, and future work should focus on repeated observations or new third-party deliveries only when separately authorised.
+Next: preserve the summary-only evidence boundary and monitor the public Hire lifecycle without broadening it beyond BSC Testnet, exact approvals, buyer-owned signing, and verified receipts. If Binance B402 Sandbox credentials arrive, run the bounded public challenge, one-payment, settlement, replay, and independent-verification gates before claiming Studio x402/B402 support; until then `/x402` remains dormant. Generic MPP remains a separate official BNB-native fallback, and future work should focus on repeated observations or new third-party deliveries only when separately authorised.
 
 Non-goals for this milestone: mainnet execution, a general-purpose wallet, an opaque agent ranking model, a fake multi-agent directory, automatic investment advice, unbounded approvals, and a claim that benchmark results guarantee profit or safety.
 

@@ -109,14 +109,39 @@ test("public homepage exposes derived hireable-agent count", () => {
   assert.equal(homepage.totals.hireableAgents, 1);
 });
 
-test("operator-ready ERC-8183 does not become a public hire", () => {
-  const readyCandidate = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2001" };
-  const agent = buildMarketplace({ candidates: [readyCandidate], runs: [] }).agents[0];
-  assert.equal(agent.hire.ready, false);
-  assert.equal(agent.hire.publicReady, false);
+test("public hire is derived from checks, not asserted", () => {
+  const qualified = {
+    ...candidate,
+    identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2001",
+    agentWallet: "0xD885bd3eEa76c3bDE6B49D7A16D5BAa35ce2F1D7",
+    ownerAddress: "0xD885bd3eEa76c3bDE6B49D7A16D5BAa35ce2F1D7",
+    reference: true,
+    services: [{ type: "HTTP task API", endpoint: "https://example.test/erc8183" }],
+    hiring: { price: "1000000000000000", currency: "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565" },
+  };
+  const deliveredRun = {
+    runId: "run-1",
+    runType: "BENCHMARK",
+    createdAt: "2026-08-27T00:00:00Z",
+    agent: { identity: qualified.identity },
+    protocolJob: { funded: true, jobId: 701 },
+    terminalState: "completed",
+  };
+  const agent = buildMarketplace({ candidates: [qualified], runs: [deliveredRun] }).agents[0];
+  assert.equal(agent.hire.ready, true);
+  assert.equal(agent.hire.publicReady, true);
+  assert.equal(agent.hire.status, "ready");
+  assert.equal(agent.hire.statusLabel, "HIREABLE");
   assert.equal(agent.hire.operatorReady, true);
-  assert.equal(agent.hire.status, "unavailable");
-  assert.match(agent.hire.reason, /public browser hire is not available/i);
+  assert.ok(Array.isArray(agent.hire.checks) && agent.hire.checks.every((item) => item.pass));
+
+  const unqualified = { ...candidate, identity: "97:0x8004a818bfb912233c491871b3d84c89a494bd9e:2001" };
+  const blocked = buildMarketplace({ candidates: [unqualified], runs: [] }).agents[0];
+  assert.equal(blocked.hire.ready, false);
+  assert.equal(blocked.hire.publicReady, false);
+  assert.equal(blocked.hire.status, "unavailable");
+  assert.equal(blocked.hire.statusLabel, "VERIFIED — NOT CURRENTLY HIREABLE");
+  assert.match(blocked.hire.reason, /provider_resolved/i);
 });
 
 test("only a completed funded verified benchmark can reconstruct an omitted baseline gate", () => {

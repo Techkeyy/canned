@@ -1,9 +1,9 @@
 import { CATEGORIES, CATEGORY_LABELS, RUN_TYPES } from "../domain.mjs";
 import { deriveAgentRecord } from "./model.mjs";
-import { selectHiringAdapter } from "./adapters.mjs";
 import { assessBnbEligibility, ELIGIBILITY } from "./eligibility.mjs";
 import { applyListing, listingStateFor, LISTING_STATES } from "./listings.mjs";
 import { GRID_EXECUTION_MODEL } from "../reference/grid-keeper.mjs";
+import { HIRE_STATUSES, derivePublicHireability } from "./public-hire.mjs";
 
 /**
  * The public marketplace view.
@@ -83,22 +83,29 @@ function executionModelFrom(candidate) {
 }
 
 /**
- * The installed ERC-8183 buyer path is an operator-controlled chain-writing
- * workflow. It is deliberately not presented as a public marketplace hire
- * until a browser-safe confirmation, lifecycle, and result API exists.
+ * Public hireability, derived from stored observations — never asserted.
+ *
+ * HIREABLE means Canned holds every static prerequisite for a real user
+ * hire. The attempt itself still takes and verifies a fresh provider quote,
+ * because a stored quote is a stale quote.
  */
-function publicHireFrom(adapter) {
-  const operatorReady = adapter.status === "ready";
+function publicHireFrom({ candidate, record, runs }) {
+  const derived = derivePublicHireability({ candidate, record, runs });
+  const firstBlocker = derived.checks.find((item) => !item.pass);
   return {
-    status: "unavailable",
-    ready: false,
-    publicReady: false,
-    operatorReady,
-    operatorStatus: adapter.status,
-    protocol: adapter.protocol || null,
-    reason: operatorReady
-      ? "Public browser hire is not available in this release. Canned can prepare an operator-controlled ERC-8183 run, but it does not expose public payment, job lifecycle, or result submission."
-      : adapter.reason || "No verified safe public activation path is available for this agent.",
+    status: derived.ready ? "ready" : "unavailable",
+    ready: derived.ready,
+    publicReady: derived.ready,
+    statusLabel: derived.status,
+    operatorReady: derived.operatorReady,
+    operatorStatus: derived.operatorStatus,
+    protocol: derived.protocol,
+    reason: derived.ready
+      ? "A fresh provider quote is taken at hire time and verified before anything is spent."
+      : firstBlocker
+        ? `${firstBlocker.name}: ${firstBlocker.detail}`
+        : "No verified safe public activation path is available for this agent.",
+    checks: derived.checks,
   };
 }
 
@@ -106,7 +113,7 @@ export function buildPublicAgent({ candidate, runs, listing = null }) {
   const withListing = applyListing(candidate, listing);
   const record = deriveAgentRecord(withListing, runs);
   const eligibility = assessBnbEligibility(withListing);
-  const adapter = selectHiringAdapter(withListing, { chainId: 97 });
+  const hire = publicHireFrom({ candidate: withListing, record, runs });
   const price = priceFrom(record);
   const lastFailure = record.status?.lastFailure || null;
 
@@ -140,7 +147,7 @@ export function buildPublicAgent({ candidate, runs, listing = null }) {
     permissions: permissionsFrom(withListing),
     trust: { states: record.trust.states, reached: record.trust.reached, label: record.status.label, lastTested: record.status.lastTested },
     trackRecord: trackRecordFrom(record),
-    hire: publicHireFrom(adapter),
+    hire,
     quarantine: record.quarantine,
     failures: record.trust.failures || [],
     runHistory: record.runHistory || [],

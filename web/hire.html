@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canned | Hire</title>
+  <link rel="stylesheet" href="/canned.css">
+  <style>
+    .flow { max-width: 760px; margin: 0 auto; padding-block: var(--step-5) var(--step-6); display: grid; gap: var(--step-4); }
+    .card { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); padding: var(--step-4); }
+    .card h2 { font-size: 19px; margin-bottom: 10px; }
+    .review { display: grid; grid-template-columns: 200px 1fr; gap: 8px var(--step-3); font-size: 14px; margin-top: 12px; }
+    .review dt { color: var(--muted); }
+    .review dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+    .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .field textarea, .field input { width: 100%; border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 10px 12px; font: inherit; background: #fff; }
+    .field textarea { min-height: 110px; resize: vertical; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .step { border-left: 3px solid var(--line-strong); padding: 6px 0 6px 14px; margin-top: 10px; }
+    .step.done { border-color: var(--good); }
+    .step.active { border-color: var(--accent); }
+    .step .t { font-weight: 800; font-size: 14.5px; }
+    .step .p { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+    .step .h { font-size: 12px; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+    .note, .error-note { font-size: 13.5px; margin-top: 12px; }
+    .error-note { color: #8f1d1d; }
+    .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+    .poll { font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">Canned <span>BNB agent marketplace</span></a>
+      <nav class="topnav" aria-label="Main">
+        <a href="/marketplace">Explore agents</a>
+        <a href="/hires">My hires</a>
+        <a href="/list">List your agent</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell"><div class="flow" id="flow">
+    <div class="state"><strong>Loading</strong><p>Reading the agent and your hire.</p></div>
+  </div></main>
+
+  <footer class="footer">
+    <div class="shell">
+      <nav aria-label="Footer"><a href="/">Home</a><a href="/marketplace">Explore agents</a><a href="/inspection">Evidence</a></nav>
+    </div>
+  </footer>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const BSC_TESTNET = "0x61";
+    const state = { identity: null, hireId: null, agent: null, buyer: null, quote: null, hire: null, plan: [], idempotencyKey: null, busy: false };
+
+    function params() { return new URLSearchParams(location.search); }
+    function pathHireId() { const m = location.pathname.match(/^\/hire\/(.+)$/); return m ? decodeURIComponent(m[1]) : null; }
+    function newKey() { const b = new Uint8Array(18); crypto.getRandomValues(b); return Array.from(b).map((x) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".charAt(x % 64)).join(""); }
+    function note(t, p) { return '<p class="note">' + t + (p ? " " + p : "") + "</p>"; }
+    function err(t, p) { return '<p class="error-note"><strong>' + t + "</strong>" + (p ? " " + p : "") + "</p>"; }
+    function remember(hire) {
+      try {
+        const list = JSON.parse(localStorage.getItem("canned_hires") || "[]");
+        if (!list.some((e) => e.hireId === hire.hireId)) list.unshift({ hireId: hire.hireId, quoteId: hire.quoteId || null, agentName: hire.agent?.name || null, buyer: hire.buyer, at: new Date().toISOString() });
+        localStorage.setItem("canned_hires", JSON.stringify(list.slice(0, 20)));
+      } catch { /* resume list is best-effort */ }
+    }
+
+    async function api(path, opts) {
+      const r = await fetch(path, opts);
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.reason || data.error || ("Request failed (" + r.status + ")"));
+      return data;
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) throw new Error("No browser wallet found. Open this page in a wallet browser such as MetaMask.");
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      if (!accounts || !accounts[0]) throw new Error("No account selected.");
+      state.buyer = accounts[0];
+      const chainId = await window.ethereum.request({ method: "eth_chainId" }).catch(() => null);
+      if (chainId !== BSC_TESTNET) await switchToTestnet();
+      return state.buyer;
+    }
+
+    async function switchToTestnet() {
+      try {
+        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BSC_TESTNET }] });
+      } catch (e) {
+        if (e && e.code === 4902) {
+          await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: BSC_TESTNET, chainName: "BSC Testnet", nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 }, rpcUrls: ["https://data-seed-prebsc-2-s2.binance.org:8545"], blockExplorerUrls: ["https://testnet.bscscan.com"] }] });
+        } else throw new Error("Switch to BSC Testnet (chain 97) to continue. Nothing was spent.");
+      }
+    }
+
+    function reviewRows(view) {
+      const q = view.review || {};
+      const rows = [
+        ["Agent", view.agent?.name + ""],
+        ["Task", q.task?.description + ""],
+        ["Network", "BSC Testnet (chain 97)"],
+        ["Provider", view.provider + ""],
+        ["Token", (view.tokenSymbol || "") + " " + (view.token || "")],
+        ["Price", (view.amountHuman || view.amount) + " " + (view.tokenSymbol || "")],
+        ["Maximum spend", (view.amountHuman || view.amount) + " " + (view.tokenSymbol || "") + " plus network fees"],
+        ["Estimated gas", view.plan?.gasEstimate?.detail || "Your wallet shows the live network fee before each transaction; the exact total depends on the approval path."],
+        ["Expected completion", q.estimatedCompletionSeconds ? ("about " + q.estimatedCompletionSeconds + "s after funding") : "as quoted by the provider"],
+        ["Wallet prompts", (view.plan ? view.plan.promptCount : "?") + " transaction(s): " + ((view.plan?.steps || []).map((s) => s.title).join(" / ") || "see plan")],
+      ];
+      return '<dl class="review">' + rows.map(([k, v]) => "<dt>" + esc(k) + "</dt><dd>" + esc(v) + "</dd>").join("") + "</dl>";
+    }
+
+    function renderNew() {
+      const a = state.agent;
+      $("#flow").innerHTML = '<p class="small"><a href="/agent/' + encodeURIComponent(state.identity) + '">Back to ' + esc(a.name) + "</a></p>"
+        + '<div class="card"><h2>Hire ' + esc(a.name) + "</h2>"
+        + "<p>" + esc(a.purpose || a.description || "") + "</p>"
+        + '<div class="field" style="margin-top:14px;"><label for="task">What should it do? (max 2000 characters)</label>'
+        + '<textarea id="task" maxlength="2000" placeholder="Describe your position or the work you want, e.g. the Venus account and pool to assess."></textarea></div>'
+        + '<div class="row"><button class="btn" type="button" id="connect">' + (state.buyer ? "Wallet: " + esc(state.buyer.slice(0, 10)) + "..." : "Connect wallet") + "</button>"
+        + '<button class="btn secondary" type="button" id="quote">Get a real quote</button></div>'
+        + '<div id="out"></div></div>'
+        + '<div class="card"><h2>What happens next</h2><p class="note">Canned takes a fresh signed quote from the provider and verifies it. You review exact terms, confirm, then sign each transaction yourself. Nothing moves until you confirm.</p></div>';
+      $("#connect").addEventListener("click", async () => {
+        const taskBeforeConnect = $("#task")?.value || "";
+        try { await connectWallet(); renderNew(); $("#task").value = taskBeforeConnect; } catch (e) { $("#out").innerHTML = err("Wallet not connected.", esc(e.message)); }
+      });
+      $("#quote").addEventListener("click", requestQuote);
+    }
+
+    async function requestQuote() {
+      const out = $("#out");
+      const description = $("#task").value.trim();
+      if (!state.buyer) { out.innerHTML = err("Connect your wallet first.", "The quote binds to your address."); return; }
+      if (!description) { out.innerHTML = err("Describe the task first."); return; }
+      out.innerHTML = note("<strong>Asking the provider for a fresh quote.</strong> Nothing is spent.");
+      try {
+        const quote = await api("/api/hire/quote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identity: state.identity, buyer: state.buyer, task: { description } }) });
+        state.quote = quote;
+        state.idempotencyKey = newKey();
+        try { sessionStorage.setItem("canned_quote_" + quote.quoteId, state.idempotencyKey); } catch { /* ignore */ }
+        renderReview();
+      } catch (e) { out.innerHTML = err("No quote.", esc(e.message)); }
+    }
+
+    function renderReview() {
+      const q = state.quote;
+      $("#flow").innerHTML = '<p class="small"><a href="/agent/' + encodeURIComponent(state.identity) + '">Back to ' + esc(q.agent.name) + "</a></p>"
+        + '<div class="card"><h2>Review before you spend</h2>'
+        + '<dl class="review">'
+        + "<dt>Agent</dt><dd>" + esc(q.agent.name) + "</dd>"
+        + "<dt>Task</dt><dd>" + esc(q.task.description) + "</dd>"
+        + "<dt>Network</dt><dd>BSC Testnet (chain 97)</dd>"
+        + "<dt>Provider</dt><dd class=\"mono\">" + esc(q.provider) + "</dd>"
+        + "<dt>Token</dt><dd class=\"mono\">" + esc(q.tokenSymbol + " " + q.token) + "</dd>"
+        + "<dt>Price</dt><dd>" + esc(q.amountHuman + " " + q.tokenSymbol) + "</dd>"
+        + "<dt>Maximum spend</dt><dd>" + esc(q.amountHuman + " " + q.tokenSymbol) + " plus network fees</dd>"
+        + "<dt>Quote expires</dt><dd>" + esc(new Date(q.expiresAt * 1000).toLocaleTimeString()) + "</dd>"
+        + "<dt>Permission</dt><dd>" + esc(q.permissions?.summary || "See the agent page.") + "</dd>"
+        + "</dl>"
+        + '<div class="row"><button class="btn" type="button" id="confirm">Confirm hire</button><button class="btn secondary" type="button" id="cancel">Back</button></div>'
+        + '<div id="out"></div></div>';
+      $("#cancel").addEventListener("click", renderNew);
+      $("#confirm").addEventListener("click", prepareHire);
+    }
+
+    async function prepareHire() {
+      const out = $("#out");
+      out.innerHTML = note("<strong>Preparing your hire.</strong> Reading allowances and building the exact transaction plan. No transaction yet.");
+      try {
+        const hire = await api("/api/hire/prepare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId: state.quote.quoteId, buyer: state.buyer, idempotencyKey: state.idempotencyKey }) });
+        state.hire = hire;
+        state.plan = hire.plan?.steps || [];
+        remember({ hireId: hire.hireId, agent: hire.agent, buyer: hire.buyer });
+        history.replaceState(null, "", "/hire/" + encodeURIComponent(hire.hireId) + "?buyer=" + encodeURIComponent(state.buyer));
+        state.hireId = hire.hireId;
+        renderSigning();
+      } catch (e) { out.innerHTML = err("Not ready to confirm.", esc(e.message)); }
+    }
+
+    function renderSigning() {
+      const h = state.hire;
+      const steps = state.plan;
+      $("#flow").innerHTML = '<div class="card"><h2>Sign in your wallet (' + steps.length + " step" + (steps.length === 1 ? "" : "s") + ")</h2>"
+        + "<p>Send each transaction from your own wallet, in order, waiting for each one. Canned verifies every transaction on chain before moving on.</p>"
+        + '<div id="steps">' + steps.map((s, i) => '<div class="step' + (i === 0 ? " active" : "") + '" data-i="' + i + '"><div class="t">' + (i + 1) + ". " + esc(s.title) + '</div><div class="p">' + esc(s.purpose) + "</div><div class=\"h\"></div></div>").join("") + "</div>"
+        + '<div class="row"><button class="btn" type="button" id="send">Send step 1</button></div>'
+        + '<div id="out"></div></div>';
+      $("#send").addEventListener("click", sendNext);
+    }
+
+    async function sendNext() {
+      if (state.busy) return;
+      const step = state.plan[0];
+      if (!step) { renderStatus(); return; }
+      const out = $("#out");
+      state.busy = true;
+      $("#send").disabled = true;
+      try {
+        out.innerHTML = note("<strong>Waiting for your wallet.</strong> " + esc(step.title) + " — declining is safe and spends nothing.");
+        const hash = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: state.buyer, to: step.to, data: step.data, value: step.value === "0" ? "0x0" : step.value, chainId: BSC_TESTNET }] });
+        out.innerHTML = note("<strong>Transaction sent.</strong> Verifying it on chain: " + esc(hash));
+        const hire = await api("/api/hire/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId: state.quote?.quoteId || state.hire.quoteId, idempotencyKey: state.idempotencyKey, steps: [{ kind: step.kind, txHash: hash }] }) });
+        state.hire = hire;
+        if (hire.idempotencyKey) state.idempotencyKey = hire.idempotencyKey;
+        state.plan = hire.plan?.steps || [];
+        document.querySelector('.step.active')?.classList.add("done");
+        document.querySelector('.step.active')?.classList.remove("active");
+        const next = document.querySelector('.step:not(.done)');
+        if (next) next.classList.add("active");
+        const box = document.querySelector('.step.done .h');
+        if (box) box.textContent = hash;
+        if (!state.plan.length) { renderStatus(); return; }
+        out.innerHTML = note("<strong>Verified.</strong> " + state.plan.length + " step(s) left.");
+        $("#send").textContent = "Send next step";
+        $("#send").disabled = false;
+      } catch (e) {
+        const msg = String((e && e.message) || e);
+        const declined = e && (e.code === 4001 || /declin|reject|cancel/i.test(msg));
+        out.innerHTML = declined
+          ? err("You declined in the wallet.", "Nothing was sent and nothing was paid. Send the step again when ready.")
+          : err("That did not go through.", esc(msg) + " Nothing was recorded for this step; check the transaction status and try again.");
+        $("#send").disabled = false;
+      } finally { state.busy = false; }
+    }
+
+    function lifecycleText(h) {
+      const map = { PREPARED: "Ready to sign", CREATED: "Job created, finishing setup", REGISTERED: "Policy bound, setting budget", BUDGETED: "Budget set, funding next", FUNDED: "Funded — provider notified", PROVIDER_NOTIFIED: "Funded — provider notified", IN_PROGRESS: "Provider is working", DELIVERY_PENDING: "Provider submitted; validating delivery", DELIVERED: "Delivered", DELIVERY_INVALID: "Provider delivery failed validation", COMPLETED: "Completed", REJECTED: "Rejected", TIMED_OUT: "Timed out", REFUND_AVAILABLE: "Refund available", TRANSACTION_PENDING: "Transaction pending" };
+      return map[h.state] || h.state;
+    }
+
+    async function renderStatus() {
+      const h = state.hire;
+      let body = '<div class="card"><h2>' + esc(lifecycleText(h)) + "</h2>"
+        + "<p>Hire <span class=\"mono\">" + esc(h.hireId) + "</span>" + (h.jobId ? " · job <span class=\"mono\">" + esc(String(h.jobId)) + "</span>" : "") + "</p>"
+        + (h.chainStatus ? "<p>Chain state: <strong>" + esc(h.chainStatus) + "</strong></p>" : "")
+        + (h.failure ? err("A step failed and was preserved.", esc(h.failure.reason || "")) : "")
+        + '<div id="result"></div><div id="out"></div>';
+      if (h.notifyDetail) body += note("Provider: " + esc(h.notifyDetail));
+      if (h.state === "FUNDED" || h.state === "PROVIDER_NOTIFIED" || h.state === "IN_PROGRESS") body += '<p class="poll">Watching the job. This page refreshes every 15 seconds; closing it is safe.</p>';
+      body += "</div>";
+      if (h.deliverableAvailable || h.chainStatus === "SUBMITTED" || h.chainStatus === "COMPLETED") {
+        body += '<div class="card"><h2>Result</h2><div id="resultbox"><button class="btn" type="button" id="getresult">Load result</button></div></div>';
+      }
+      body += '<div class="card"><h2>Evidence</h2><p><a href="/api/hire/job/' + encodeURIComponent(h.hireId) + "/evidence?buyer=" + encodeURIComponent(state.buyer || "") + '" target="_blank" rel="noreferrer">Open the evidence record</a></p></div>';
+      $("#flow").innerHTML = body;
+      const gr = $("#getresult");
+      if (gr) gr.addEventListener("click", loadResult);
+      if (["FUNDED", "PROVIDER_NOTIFIED", "IN_PROGRESS"].includes(h.state)) setTimeout(refreshStatus, 15000);
+      else if (h.deliverableAvailable) loadResult();
+    }
+
+    async function refreshStatus() {
+      try {
+        const h = await api("/api/hire/job/" + encodeURIComponent(state.hireId) + (state.buyer ? "?buyer=" + encodeURIComponent(state.buyer) : ""));
+        state.hire = h;
+        renderStatus();
+      } catch { setTimeout(refreshStatus, 30000); }
+    }
+
+    async function loadResult() {
+      const box = $("#resultbox") || $("#result");
+      if (!state.buyer) { box.innerHTML = err("Connect the buyer wallet to read the result."); return; }
+      box.innerHTML = note("Loading the validated delivery.");
+      try {
+        const r = await api("/api/hire/job/" + encodeURIComponent(state.hireId) + "/result?buyer=" + encodeURIComponent(state.buyer));
+        box.innerHTML = "<pre class=\"mono\" style=\"white-space:pre-wrap;\">" + esc(JSON.stringify(r.result, null, 2)) + "</pre>"
+          + '<p class="poll">Retrieved ' + esc(r.metadata?.retrievedAt || "") + " · cost " + esc((r.metadata?.cost?.amountRaw || "") + " " + (r.metadata?.cost?.tokenSymbol || "")) + "</p>";
+      } catch (e) { box.innerHTML = err("No result yet.", esc(e.message)); }
+    }
+
+    async function boot() {
+      state.hireId = pathHireId();
+      state.identity = params().get("identity");
+      if (state.hireId) {
+        state.buyer = params().get("buyer") || null;
+        if (!state.buyer && window.ethereum) {
+          try { const accs = await window.ethereum.request({ method: "eth_accounts" }); state.buyer = accs?.[0] || null; } catch { /* ignore */ }
+        }
+        try {
+          const h = await api("/api/hire/job/" + encodeURIComponent(state.hireId) + (state.buyer ? "?buyer=" + encodeURIComponent(state.buyer) : ""));
+          state.hire = h;
+          state.identity = h.agent?.identity || null;
+          if (h.plan?.steps?.length && h.review) {
+            // Resume mid-flow: the server re-issues the remaining plan.
+            state.quote = { quoteId: h.quoteId, agent: h.agent };
+            state.idempotencyKey = h.idempotencyKey || null;
+            state.plan = h.plan.steps;
+            renderSigning();
+          } else renderStatus();
+        } catch (e) { $("#flow").innerHTML = '<div class="state error"><strong>Hire not found</strong><p>' + esc(e.message) + '</p><p style="margin-top:10px;"><a class="btn small" href="/marketplace">Back to agents</a></p></div>'; }
+        return;
+      }
+      if (!state.identity) { location.replace("/marketplace"); return; }
+      try {
+        state.agent = await api("/api/agent/" + encodeURIComponent(state.identity));
+        if (state.agent.hire?.publicReady !== true) {
+          $("#flow").innerHTML = '<div class="state"><strong>Not available to hire</strong><p>' + esc(state.agent.hire?.reason || "Canned has not verified a safe way to hire this agent.") + '</p><p style="margin-top:10px;"><a class="btn small" href="/agent/' + encodeURIComponent(state.identity) + '">Back to evidence</a></p></div>';
+          return;
+        }
+        if (window.ethereum) {
+          try { const accs = await window.ethereum.request({ method: "eth_accounts" }); state.buyer = accs?.[0] || null; } catch { /* ignore */ }
+        }
+        renderNew();
+      } catch (e) { $("#flow").innerHTML = '<div class="state error"><strong>Agent not found</strong><p>' + esc(e.message) + "</p></div>"; }
+    }
+
+    if (window.ethereum) {
+      window.ethereum.on?.("accountsChanged", (accs) => { state.buyer = accs?.[0] || null; });
+      window.ethereum.on?.("chainChanged", () => location.reload());
+    }
+    boot();
+  </script>
+</body>
+</html>

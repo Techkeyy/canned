@@ -33,6 +33,15 @@ import { loadGradingArtifact } from "./marketplace/termix-evidence.mjs";
 import { createHealthFactorX402Seller } from "./reference/health-factor-x402.mjs";
 import { createHealthFactorMpp, HEALTH_FACTOR_MPP_EVIDENCE_PATH, HEALTH_FACTOR_MPP_PATH, HEALTH_FACTOR_MPP_STATUS_PATH, publicMppEvidence } from "./reference/health-factor-mpp.mjs";
 import { baselineSealedFromDerivedEvidence } from "./marketplace/hireability.mjs";
+import {
+  handleHireEvidence,
+  handleHireJob,
+  handleHireMine,
+  handleHirePrepare,
+  handleHireQuote,
+  handleHireResult,
+  handleHireSubmit,
+} from "./marketplace/hire-handlers.mjs";
 
 const store = await new FileStore().init();
 const html = await readFile(path.resolve(process.cwd(), "web/inspection.html"), "utf8");
@@ -52,6 +61,8 @@ const marketplaceHtml = await readFile(path.resolve(process.cwd(), "web/marketpl
 const agentHtml = await readFile(path.resolve(process.cwd(), "web/agent.html"), "utf8");
 const listHtml = await readFile(path.resolve(process.cwd(), "web/list.html"), "utf8");
 const leashHtml = await readFile(path.resolve(process.cwd(), "web/leash.html"), "utf8");
+const hireHtml = await readOptionalPage(path.resolve(process.cwd(), "web/hire.html"), "Hire unavailable");
+const hiresHtml = await readOptionalPage(path.resolve(process.cwd(), "web/hires.html"), "Hires unavailable");
 const cannedCss = await readFile(path.resolve(process.cwd(), "web/canned.css"), "utf8");
 
 // Ownership challenges are short lived and single use, so they live in memory
@@ -529,6 +540,11 @@ const server = createServer(async (request, response) => {
       response.end(leashHtml);
       return;
     }
+    if (url.pathname.startsWith("/hire/") || url.pathname === "/hires" || url.pathname === "/my-hires") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(url.pathname === "/hires" || url.pathname === "/my-hires" ? hiresHtml : hireHtml);
+      return;
+    }
     if (url.pathname === "/api/reference/grid" && request.method === "GET") { json(response, 200, gridKeeperRuntime.health()); return; }
     if (url.pathname === "/api/reference/grid/readiness") { json(response, 200, gridKeeperRuntime.readiness()); return; }
     if (url.pathname === "/api/reference/grid/metrics") { json(response, 200, gridKeeperRuntime.metrics()); return; }
@@ -863,8 +879,8 @@ const server = createServer(async (request, response) => {
       json(response, 200, { network: "bsc-testnet", chainId: 97, scheduler: schedulerStatus({ attempts }), candidates: current.marketplace.agents.map((agent) => ({ identity: agent.identity, name: agent.name, status: agent.status, quarantine: agent.quarantine, trust: agent.trust })) });
       return;
     }
-    if (url.pathname === "/api/hire/prepare" && request.method !== "GET") {
-      json(response, 405, { error: "method_not_allowed", reason: "Hire preparation is a read-only GET preflight." });
+    if (url.pathname === "/api/hire/prepare" && !["GET", "POST"].includes(request.method)) {
+      json(response, 405, { error: "method_not_allowed", reason: "Use GET for readiness or POST for user-wallet preparation." });
       return;
     }
     if (url.pathname === "/api/hire/prepare" && request.method === "GET") {
@@ -881,10 +897,72 @@ const server = createServer(async (request, response) => {
         publicHire: publicAgent.hire,
         status: publicAgent.trust,
         trust: publicAgent.trust,
-        note: publicAgent.hire.operatorReady
-          ? "Operator preflight is available for inspection only. Public browser payment, job lifecycle, and result retrieval are not enabled."
+        note: publicAgent.hire.ready
+          ? publicAgent.hire.reason
           : publicAgent.hire.reason,
       });
+      return;
+    }
+    // Non-custodial public hire: quote, prepare, submit, lifecycle, result.
+    // The buyer is always the user's own wallet; Canned verifies every
+    // transaction independently and never signs for a customer.
+    if (url.pathname === "/api/hire/quote" && request.method === "POST") {
+      const limit = publicWriteLimiter.check([["hireQuotePerIp", clientKey(request)]]);
+      if (!limit.allowed) { refuseRateLimited(response, limit.refused); return; }
+      const incoming = await readJsonBody(request);
+      const buyer = String(incoming.body?.buyer || "").trim();
+      const buyerLimit = buyer ? publicWriteLimiter.check([["hireQuotePerBuyer", buyer.toLowerCase()]]) : null;
+      if (buyerLimit && !buyerLimit.allowed) { refuseRateLimited(response, buyerLimit.refused); return; }
+      const [candidates, runs, listings] = await Promise.all([marketplaceCandidates(), store.loadRuns(), agentListings()]);
+      const result = await handleHireQuote({ store, candidates, runs, listings, body: incoming.body });
+      json(response, result.http, result.body);
+      return;
+    }
+    if (url.pathname === "/api/hire/prepare" && request.method === "POST") {
+      const limit = publicWriteLimiter.check([["hirePreparePerIp", clientKey(request)]]);
+      if (!limit.allowed) { refuseRateLimited(response, limit.refused); return; }
+      const incoming = await readJsonBody(request);
+      const [candidates, runs, listings] = await Promise.all([marketplaceCandidates(), store.loadRuns(), agentListings()]);
+      const result = await handleHirePrepare({ store, candidates, runs, listings, body: incoming.body });
+      json(response, result.http, result.body);
+      return;
+    }
+    if (url.pathname === "/api/hire/submit" && request.method === "POST") {
+      const limit = publicWriteLimiter.check([["hireSubmitPerIp", clientKey(request)]]);
+      if (!limit.allowed) { refuseRateLimited(response, limit.refused); return; }
+      const incoming = await readJsonBody(request);
+      const [candidates, runs] = await Promise.all([marketplaceCandidates(), store.loadRuns()]);
+      const result = await handleHireSubmit({ store, candidates, runs, body: incoming.body });
+      json(response, result.http, result.body);
+      return;
+    }
+    if (url.pathname === "/api/hire/mine" && request.method === "GET") {
+      const result = await handleHireMine({ store, buyer: url.searchParams.get("buyer") });
+      json(response, result.http, result.body);
+      return;
+    }
+    if (url.pathname.startsWith("/api/hire/job/") && request.method === "GET") {
+      const rest = decodeURIComponent(url.pathname.slice("/api/hire/job/".length));
+      const [hireId, sub] = rest.split("/");
+      if (!hireId) { json(response, 400, { error: "hire_required" }); return; }
+      const buyer = url.searchParams.get("buyer");
+      if (sub === "result") {
+        const result = await handleHireResult({ store, hireId, buyer });
+        json(response, result.http, result.body);
+        return;
+      }
+      if (sub === "evidence") {
+        const candidates = await marketplaceCandidates();
+        const result = await handleHireEvidence({ store, candidates, hireId, buyer });
+        json(response, result.http, result.body);
+        return;
+      }
+      if (!sub) {
+        const result = await handleHireJob({ store, hireId, buyer });
+        json(response, result.http, result.body);
+        return;
+      }
+      json(response, 404, { error: "Not found" });
       return;
     }
     if (url.pathname === "/api/baseline/health-factor" && request.method === "GET") {

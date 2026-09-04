@@ -114,7 +114,7 @@ test("tracked files contain no raw wallet key material", () => {
 test("Vercel exposes only the exact safe commerce proxy routes", () => {
   const config = readJson("vercel.json");
   const sources = config.rewrites.map((entry) => entry.source);
-  for (const source of ["/api/hire/prepare", "/api/claim/challenge", "/api/claim/verify", "/api/list/submit", "/api/grid/leash/proposal"]) assert.ok(sources.includes(source), `${source} must be explicitly proxied`);
+  for (const source of ["/api/hire/quote", "/api/hire/prepare", "/api/hire/submit", "/api/hire/mine", "/api/hire/job/:hireId", "/api/hire/job/:hireId/result", "/api/hire/job/:hireId/evidence", "/api/claim/challenge", "/api/claim/verify", "/api/list/submit", "/api/grid/leash/proposal"]) assert.ok(sources.includes(source), `${source} must be explicitly proxied`);
   assert.equal(sources.some((source) => source.includes(":path*")), false);
   assert.equal(sources.includes("/mpp"), false);
   assert.equal(sources.includes("/x402"), false);

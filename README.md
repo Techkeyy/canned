@@ -148,7 +148,7 @@ The Leash is what a user approves before it can act:
 
 The permission is an Altana session key naming an exact contract **and** an exact method selector, with a spend cap and an expiry. Revocation is one transaction. With no session granted, The Leash reads `NOT_CONFIGURED` rather than describing an authority that does not exist. Try it at `/leash`.
 
-Current state: Grid Keeper is ERC-8004 agent **2045**, deployed, operator-preflight-ready, and **BENCHMARKED**; the earlier failed job 835 stays in the record beside the corrective job 837. It is not publicly hireable because the marketplace has no public payment, confirmation, job-lifecycle, or result route. **All four categories are first-class.** A bounded Altana session was granted, used for **one real session-key PancakeSwap V2 trade** (`0x65a3a85e…`, 1 USDT in, 0.0778 WBNB out), then revoked, with the session key verified gone from the account on chain. `ALTANA_REAL_SESSION_EVIDENCE = true`.
+Current state: Grid Keeper is ERC-8004 agent **2045**, deployed, operator-preflight-ready, **publicly HIREABLE through the non-custodial BSC Testnet flow**, and **BENCHMARKED**; the earlier failed job 835 stays in the record beside the corrective job 837. **All four categories are first-class.** A bounded Altana session was granted, used for **one real session-key PancakeSwap V2 trade** (`0x65a3a85e…`, 1 USDT in, 0.0778 WBNB out), then revoked, with the session key verified gone from the account on chain. `ALTANA_REAL_SESSION_EVIDENCE = true`.
 
 The final Altana proof ran on BSC Testnet (chain 97) from action wallet `0xBB62A403F8b582b49bcB05E1a7a678Da4Ebde48f` against the exact testnet USDT contract. The permission named only `swapExactTokensForTokens` on the PancakeSwap V2 router (selector `0x38ed1739`), with a 1.01 USDT trading allowance and a separate native allowance of approximately 0.00012314 tBNB for the Altana relay fee only. The actual native spend was approximately 0.0000378505 tBNB; the session allowed one fill, was revoked after execution, and the revoked key was rejected. This proves bounded execution capability, not profitability, market alpha, or that Canned won an Altana track.
 
@@ -165,6 +165,10 @@ Canned has a public surface a visitor can use without knowing what ERC-8004 is.
 | `/inspection` | Runs, gradings, Agent Advantage pairs, venue evidence, and the recorded MPP payment boundary. |
 | `/list` | List or claim an agent by proving wallet ownership with a signature. |
 | `/leash` | The Grid Keeper authority view, including scope, expiry, and revocation state. |
+| `/hire/new` | Fresh provider quote, user review, and exact wallet transaction plan. |
+| `/hire/:hireId` | Resume one user-owned hire, watch job state, and load validated delivery. |
+| `/hires` / `/my-hires` | Recover and resume hires for a connected buyer wallet. |
+| `/leash` | The Grid Keeper authority view, including scope, expiry, and revocation state. |
 
 Two rules govern that surface.
 
@@ -172,11 +176,13 @@ Two rules govern that surface.
 
 **Unknown stays unknown.** An untested agent reports `wins: null`, not `0`, and no price rather than an advertised one. A win rate appears only at two or more benchmarks. Eligible agents without endpoint evidence are visible in the separate discovery shelf and are not presented as verified or available.
 
-The public Hire action is currently unavailable. Canned exposes a read-only
-operator preflight, but not a public payment confirmation, job lifecycle, or
-result-retrieval path. The UI and machine API report this as
-VERIFIED — NOT CURRENTLY HIREABLE / hire.publicReady: false; no customer
-payment is accepted by the public marketplace.
+Public Hire is live for four Canned reference agents on BSC Testnet. Canned
+takes a fresh signed quote, shows the task/agent/network/token/price/expiry and
+exact prompt sequence, then the user signs every transaction from their own wallet.
+Canned never receives a private key, never signs for the buyer, uses only exact
+approvals, and verifies every receipt before advancing the job. No real-spend UAT
+has been run as part of this implementation; the production path is stopped at
+the final pre-payment review.
 
 Canned proves ownership with a wallet signature and **never asks for a private key, a seed phrase, or a wallet password**. See [docs/SECURITY.md](docs/SECURITY.md).
 

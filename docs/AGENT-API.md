@@ -43,27 +43,47 @@ discovered, hireable, verified-but-not-hireable, and unavailable records.
 installed ERC-8183 buyer may be `operatorReady`, but that is not a public
 hire and is never rendered as one.
 
-## Quote and hire preflight
+## Public Hire lifecycle
 
 ```http
-GET /api/hire/prepare?identity={url-encoded-identity}
+GET  /api/hire/prepare?identity={url-encoded-identity}     # readiness only
+POST /api/hire/quote
+POST /api/hire/prepare
+POST /api/hire/submit
+GET  /api/hire/mine?buyer={address}
+GET  /api/hire/job/{hireId}?buyer={address}
+GET  /api/hire/job/{hireId}/result?buyer={address}
+GET  /api/hire/job/{hireId}/evidence?buyer={address}
 ```
 
-This is a read-only operator preflight. The verified price is the agent's
-`price` object, and the preflight repeats the selected adapter, chain, safety
-conditions, permissions, and capabilities. It does not issue a public quote
-or authorize a job. In this release `publicHire.status` is `unavailable` and
-`publicHire.publicReady` is `false` for every agent because no public payment,
-confirmation, job-lifecycle, or result-submission API exists. There is no
-browser private key.
+Public Hire supports four Canned reference agents whose derived `hire.publicReady`
+is true. `POST /api/hire/quote` requires `{ identity, buyer, task: { description } }`,
+contacts the provider, and returns a fresh provider-signed quote only when the
+task, provider, BSC Testnet chain `97`, Commerce contract, live payment token,
+price ceiling, and expiry all verify. Quote and provider data are stored as a
+single-use durable record.
 
-The public API therefore stops before payment and chain mutation. The existing
-ERC-8183 paid-hire lifecycle remains owner/operator-controlled so it can create
-a precommit, recheck the fresh quote, enforce the budget, submit through the
-official buyer path, and preserve the resulting evidence. There are no public
-`quote`, `confirm-hire`, `job-status`, or `result` routes to imply otherwise.
-`/mpp` and `/x402` are payment surfaces, not machine discovery or confirmation
-shortcuts.
+`POST /api/hire/prepare` requires `{ quoteId, buyer, idempotencyKey }`. It performs
+read-only live allowance, token-balance, native-gas, and policy-window checks and
+returns `READY_TO_CONFIRM` plus the exact wallet transaction plan. Canned never
+requests or receives a private key. The buyer signs the plan in their own wallet:
+bounded `approve` when needed, Commerce `createJob`, Router `registerJob`, Commerce
+`setBudget`, and Commerce `fund`. The approval is the exact quoted amount, never
+unlimited.
+
+After each wallet transaction, `POST /api/hire/submit` accepts its `{ kind, txHash }`.
+The server verifies the receipt, sender, chain, target, calldata, event logs,
+onchain job fields, policy binding, and final FUNDED state. Replayed idempotency
+keys or already-accepted hashes do not create a second hire. The server then
+refreshes authoritative job state and resolves provider notifications through the
+verified watcher path.
+
+`/api/hire/job/{hireId}` reports lifecycle state from the chain where possible.
+`/result` fetches and validates the provider manifest, exact job ID, response body,
+and onchain manifest hash; malformed delivery is preserved as a failure rather
+than returned as a result. `/evidence` returns the buyer-gated binding record.
+`/mine` is a metadata-only recovery list. Public Hire is BSC Testnet-only and
+the server does not custody funds or sign transactions.
 
 ## Evidence and result retrieval
 
@@ -74,10 +94,10 @@ GET /api/reference/health-factor/mpp/evidence
 GET /api/grid/leash
 ```
 
-These return only the public evidence projection where one exists. Canned does
-not expose arbitrary job submission, status, or result routes in the public
-machine API; a missing lifecycle primitive must not be inferred from a
-successful preflight.
+These return the public evidence projection where one exists. Hire result and
+evidence routes are buyer-gated by the wallet address bound to the quote; a
+wrong buyer receives `403`. The address is never treated as a signing credential,
+and transaction receipts remain the authority for ownership of a funded job.
 
 ## Owner listing and claim
 
@@ -102,7 +122,9 @@ validated. A client must never send a private key to Canned.
 
 | Surface | Classification | Meaning |
 | --- | --- | --- |
-| marketplace, agent, evidence, readiness, `hire/prepare` | READ | Derived public evidence or read-only preflight |
+| marketplace, agent, evidence, readiness, `hire/prepare` GET | READ | Derived public evidence or read-only preflight |
+| `hire/quote`, `hire/prepare` POST, `hire/submit` | NON-CUSTODIAL STATE | Quote/state mutation; no server wallet or chain write; buyer signs externally |
+| `hire/job`, `hire/mine`, `hire/result`, `hire/evidence` | BUYER-GATED READ | Chain-backed lifecycle/result/evidence views |
 | `grid/leash/proposal` | SAFE READ-ONLY MUTATION | Validates a proposed bounded permission; it does not grant or revoke anything |
 | claim challenge, claim verify, listing submit | SAFE MUTATION | In-memory challenge/session or signed listing state; no chain write |
 | `/mpp`, `/x402`, operator paid-hire scripts | PAYMENT / CHAIN MUTATION | Explicit payment or paid-job boundary; not exposed as a browser confirmation |

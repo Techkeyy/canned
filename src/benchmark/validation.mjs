@@ -16,6 +16,7 @@ export function validateSubmittedDeliverable({ body, jobId, onchainDeliverable =
   const { manifest, content, output } = extractProviderDeliverable(body);
   const errors = [];
   if (!manifest) errors.push("deliverable_not_an_object");
+  if (manifest && manifest.jobId === undefined) errors.push("deliverable_job_id_missing");
   if (manifest && manifest.jobId !== undefined && Number(manifest.jobId) !== Number(jobId)) errors.push("deliverable_job_id_mismatch");
   if (typeof content !== "string" || content.length === 0) errors.push("deliverable_response_content_missing");
   if (manifest?.response?.contentType && manifest.response.contentType !== "text/plain") errors.push("deliverable_content_type_unexpected");

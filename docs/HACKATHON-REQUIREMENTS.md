@@ -1,6 +1,6 @@
 # Hackathon requirements matrix
 
-Research date: 2026-08-27 for the source matrix; current implementation status: 2026-09-01. Status labels are Confirmed, Inferred, or Unknown. The current official sources are the [BNB Chain hackathon page](https://www.bnbchain.org/en/hackathons/smart-money-era?tab=tracks), the [official Build the Era announcement](https://www.bnbchain.org/en/blog/build-the-era-build-the-official-bnb-agent-studio-marketplace), and the [BNB Agent Studio documentation](https://docs.bnbchain.org/developer-kit/bnbchain-studio/quickstart/).
+Research date: 2026-08-27 for the source matrix; current implementation status: 2026-09-04. Status labels are Confirmed, Inferred, or Unknown. The current official sources are the [BNB Chain hackathon page](https://www.bnbchain.org/en/hackathons/smart-money-era?tab=tracks), the [official Build the Era announcement](https://www.bnbchain.org/en/blog/build-the-era-build-the-official-bnb-agent-studio-marketplace), and the [BNB Agent Studio documentation](https://docs.bnbchain.org/developer-kit/bnbchain-studio/quickstart/).
 
 ## Current submission state
 
@@ -15,17 +15,18 @@ explicitly separate from Binance B402 and x402. Binance Sandbox credentials are
 not present, so no B402 payment claim is made.
 
 Current production boundary: public discovery, evidence inspection, signed
-List/Claim, and read-only safety review are available on Vercel. Public Hire
-is intentionally unavailable until quote, confirmation, payment, job
-lifecycle, and result retrieval are implemented together. Any historical
-matrix row below that describes an agent as `hireable` is not a claim about
-the current public Vercel workflow.
+List/Claim, read-only safety review, and the non-custodial public Hire lifecycle
+are available on Vercel. Public Hire is limited to BSC Testnet chain 97, four
+derived-hireable Canned reference agents, exact approvals, buyer-owned wallet
+signing, and server-side receipt/result reconciliation. Any historical matrix row
+below that describes an agent as `hireable` is not a claim about the current
+public Vercel workflow unless it is backed by the current deployment checks.
 
 | Area | Requirement or fact | Status | Canned response |
 | --- | --- | --- | --- |
 | Main event | Build the Era online hackathon runs 2026-08-05 through 2026-09-09 UTC+0 | Confirmed | Freeze a public, functional testnet demo before the deadline. |
 | Eligibility | Individuals and teams may enter; one entry per team; globally open | Confirmed | Keep the repository and demo attributable to one entry. |
-| Product | Build an AI agent marketplace, not merely a portfolio of agents | Confirmed | Discovery, signed listing, evidence, safety review, and comparison are the current public loop; public hiring is a declared unavailable boundary until its full commerce lifecycle exists. |
+| Product | Build an AI agent marketplace, not merely a portfolio of agents | Confirmed | Discovery, signed listing, evidence, safety review, comparison, and bounded non-custodial public hiring are the current public loop. |
 | Live agents | Agents surfaced during judging must be live on BSC | Confirmed | Do not list a fixture as a live agent; label offline examples. |
 | Categories | Rebalancing, Grid Trading, Yield Optimisation, Health Factor Monitoring | Confirmed | Treat all four as first-class schema values and navigation paths. |
 | Category depth | A single category scores poorly; all four should be equally deep | Confirmed | Build shared task and evidence primitives so categories can reach parity. |

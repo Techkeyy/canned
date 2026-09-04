@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canned | My hires</title>
+  <link rel="stylesheet" href="/canned.css">
+  <style>
+    .wrap { max-width: 760px; margin: 0 auto; padding-block: var(--step-5) var(--step-6); display: grid; gap: var(--step-4); }
+    .card { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); padding: var(--step-4); }
+    .hire { border-top: 1px solid var(--line); padding: 12px 0; display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+    .hire:first-of-type { border-top: 0; }
+    .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .field input { width: 100%; border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 10px 12px; font: inherit; background: #fff; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .note { font-size: 13.5px; margin-top: 12px; }
+    .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="/">Canned <span>BNB agent marketplace</span></a>
+      <nav class="topnav" aria-label="Main">
+        <a href="/marketplace">Explore agents</a>
+        <a href="/hires">My hires</a>
+        <a href="/list">List your agent</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="shell"><div class="wrap">
+    <div class="card">
+      <h2>My hires</h2>
+      <p class="note">Reconnect your wallet, or paste its address, to resume monitoring and results. No account, no password — the wallet is the identity.</p>
+      <div class="field" style="margin-top:12px;"><label for="buyer">Buyer wallet address</label><input id="buyer" placeholder="0x..." spellcheck="false"></div>
+      <div class="row">
+        <button class="btn" type="button" id="connect">Connect wallet</button>
+        <button class="btn secondary" type="button" id="lookup">Look up hires</button>
+      </div>
+      <div id="out"></div>
+    </div>
+    <div class="card" id="local-card" hidden>
+      <h2>Saved on this browser</h2>
+      <div id="local"></div>
+    </div>
+    <div class="card" id="results-card" hidden>
+      <h2>Hires for this wallet</h2>
+      <div id="results"></div>
+    </div>
+  </div></main>
+
+  <footer class="footer">
+    <div class="shell">
+      <nav aria-label="Footer"><a href="/">Home</a><a href="/marketplace">Explore agents</a><a href="/inspection">Evidence</a></nav>
+    </div>
+  </footer>
+
+  <script>
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    function renderLocal() {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem("canned_hires") || "[]"); } catch { list = []; }
+      if (!list.length) return;
+      document.getElementById("local-card").hidden = false;
+      document.getElementById("local").innerHTML = list.map((e) => '<div class="hire"><div><strong>' + esc(e.agentName || "Hire") + '</strong><br><span class="mono">' + esc(e.hireId) + "</span></div>"
+        + '<a class="btn small" href="/hire/' + encodeURIComponent(e.hireId) + (e.buyer ? "?buyer=" + encodeURIComponent(e.buyer) : "") + '">Resume</a></div>').join("");
+    }
+
+    async function lookup() {
+      const buyer = document.getElementById("buyer").value.trim();
+      const out = document.getElementById("out");
+      if (!/^0x[0-9a-fA-F]{40}$/.test(buyer)) { out.innerHTML = '<p class="note"><strong>Enter a valid wallet address.</strong></p>'; return; }
+      out.innerHTML = '<p class="note">Looking up hires.</p>';
+      try {
+        const r = await fetch("/api/hire/mine?buyer=" + encodeURIComponent(buyer));
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.reason || "Lookup failed.");
+        document.getElementById("results-card").hidden = false;
+        document.getElementById("results").innerHTML = data.count === 0
+          ? '<p class="note">No hires for this wallet yet.</p>'
+          : data.hires.map((h) => '<div class="hire"><div><strong>' + esc(h.agent?.name || "Hire") + " — " + esc(h.state) + "</strong><br><span class=\"mono\">" + esc(h.hireId) + (h.jobId ? " · job " + esc(String(h.jobId)) : "") + "</span></div>"
+            + '<a class="btn small" href="/hire/' + encodeURIComponent(h.hireId) + "?buyer=" + encodeURIComponent(buyer) + '">Open</a></div>').join("");
+        out.innerHTML = "";
+      } catch (e) { out.innerHTML = '<p class="note"><strong>Lookup failed.</strong> ' + esc(e.message) + "</p>"; }
+    }
+
+    document.getElementById("connect").addEventListener("click", async () => {
+      if (!window.ethereum) { document.getElementById("out").innerHTML = '<p class="note"><strong>No browser wallet.</strong> Paste the address instead.</p>'; return; }
+      try {
+        const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
+        if (accs?.[0]) { document.getElementById("buyer").value = accs[0]; lookup(); }
+      } catch { document.getElementById("out").innerHTML = '<p class="note">Wallet not connected. Declining is safe.</p>'; }
+    });
+    document.getElementById("lookup").addEventListener("click", lookup);
+    renderLocal();
+  </script>
+</body>
+</html>

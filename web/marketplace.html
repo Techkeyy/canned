@@ -167,7 +167,9 @@
         + fact("Track record", record, benchmarks === 0)
         + "</div>"
         + '<div class="actions"><a class="btn small secondary" href="/agent/' + encodeURIComponent(agent.identity) + '">View evidence</a>'
-        + '<button class="btn small" type="button" disabled aria-label="Public hire unavailable">Hire unavailable</button>'
+        + (agent.hire.publicReady === true
+          ? '<a class="btn small" href="/hire/new?identity=' + encodeURIComponent(agent.identity) + '">Hire</a>'
+          : '<button class="btn small" type="button" disabled title="' + esc(agent.hire.reason || "Not currently hireable") + '">Hire unavailable</button>')
         + '<label class="compare"><input type="checkbox" data-compare="' + esc(agent.identity) + '"' + (state.compare.has(agent.identity) ? " checked" : "") + (compareAvailable ? "" : " disabled") + ' aria-label="' + (compareAvailable ? "Compare agent" : "Comparison unavailable until two agents share this category") + '"> ' + (compareAvailable ? "Compare" : "Comparison unavailable until two agents share this category") + "</label>"
         + "</div></article>";
     }

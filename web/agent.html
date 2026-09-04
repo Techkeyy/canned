@@ -106,10 +106,24 @@
     }
 
     function hireBox(agent) {
-      return '<aside class="hirebox" style="background:var(--subtle); border-color:var(--line);">'
-        + "<h3>Public hire unavailable</h3>"
-        + '<p class="why">' + esc(agent.hire.reason || "Canned has not verified a safe way to hire this agent.") + "</p>"
-        + '<p class="why">The read-only preflight below is not a quote or a payment request. No public confirmation, job lifecycle, or result route is exposed.</p></aside>';
+      const price = u(agent.price);
+      if (agent.hire.publicReady !== true) {
+        const checks = (agent.hire.checks || []).filter((c) => !c.pass).slice(0, 4)
+          .map((c) => "<dt>" + esc(c.name.replace(/_/g, " ")) + "</dt><dd>" + esc(c.detail || "") + "</dd>").join("");
+        return '<aside class="hirebox" style="background:var(--subtle); border-color:var(--line);">'
+          + "<h3>Not available to hire</h3>"
+          + '<p class="why">' + esc(agent.hire.reason || "Canned has not verified a safe way to hire this agent.") + "</p>"
+          + (checks ? '<dl class="kv" style="grid-template-columns:1fr; font-size:12.5px;">' + checks + "</dl>" : "")
+          + '<p class="why">Canned will not take your money for a job it cannot verify will reach the agent.</p></aside>';
+      }
+      return '<aside class="hirebox" id="hire">'
+        + "<h3>Hire " + esc(agent.name) + "</h3>"
+        + '<div><div class="line"><span>Price</span><span>' + esc(price || "Quoted at hire") + "</span></div>"
+        + '<div class="line"><span>You pay</span><span>From your own wallet, when you confirm</span></div>'
+        + '<div class="line"><span>Can move your funds</span><span>' + (agent.permissions.known ? (agent.permissions.canMoveFunds ? "Yes" : "No") : "Not published") + "</span></div>"
+        + '<div class="line"><span>Runs on</span><span>BSC Testnet</span></div></div>'
+        + '<a class="btn" href="/hire/new?identity=' + encodeURIComponent(agent.identity) + '">Hire with your wallet</a>'
+        + '<p class="why">A fresh provider quote is verified before anything is spent. Canned never holds your keys.</p></aside>';
     }
 
     function ladder(agent) {

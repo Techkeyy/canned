@@ -1,6 +1,6 @@
 import { CATEGORIES, RUN_TYPES } from "../domain.mjs";
 import { deriveAgentRecord, filterAgents } from "./model.mjs";
-import { selectHiringAdapter } from "./adapters.mjs";
+import { derivePublicHireability } from "./public-hire.mjs";
 import { delivered } from "./model.mjs";
 
 function realRuns(runs) {
@@ -14,6 +14,13 @@ function endpointUnavailable(record) {
 
 export function deriveMarketplaceMetrics({ candidates = [], runs = [] } = {}) {
   const records = candidates.map((candidate) => deriveAgentRecord(candidate, runs));
+  const hireableByIdentity = new Map(
+    candidates.map((candidate) => {
+      const record = records.find((item) => item.identity === candidate.identity) || null;
+      return [candidate.identity, derivePublicHireability({ candidate, record, runs }).ready];
+    }),
+  );
+  const hireableRecord = (record) => hireableByIdentity.get(record.identity) === true;
   const actualRuns = realRuns(runs);
   const paidAttempts = actualRuns.filter((run) => run?.protocolJob?.funded === true && run?.protocolJob?.jobId !== undefined && run?.protocolJob?.jobId !== null);
   const deliveredRuns = paidAttempts.filter(delivered);
@@ -24,9 +31,10 @@ export function deriveMarketplaceMetrics({ candidates = [], runs = [] } = {}) {
       discovered: inCategory.length,
       reachable: inCategory.filter((record) => record.currentAvailability === "reachable").length,
       callable: inCategory.filter((record) => record.callableSurface === true).length,
-      // Adapter readiness is an operator preflight, not public hireability.
-      hireable: 0,
-      operatorReady: inCategory.filter((record) => selectHiringAdapter(candidates.find((item) => item.identity === record.identity), { chainId: 97 }).status === "ready").length,
+      // Public hireability is derived per agent; adapter readiness stays
+      // visible separately as the operator preflight.
+      hireable: inCategory.filter(hireableRecord).length,
+      operatorReady: inCategory.filter((record) => record.activation?.selection?.status === "ready").length,
       tested: inCategory.filter((record) => record.trust.paidAttempts > 0).length,
       delivered: inCategory.filter((record) => record.trust.deliveryCount > 0).length,
       benchmarked: inCategory.filter((record) => record.trust.benchmarkCount > 0).length,
@@ -37,9 +45,9 @@ export function deriveMarketplaceMetrics({ candidates = [], runs = [] } = {}) {
     reachableAgents: records.filter((record) => record.currentAvailability === "reachable").length,
     callableAgents: records.filter((record) => record.callableSurface === true).length,
     verifiedQuotes: records.filter((record) => record.trust.states.QUOTE_VERIFIED).length,
-    hireableAgents: 0,
-    operatorReadyAgents: records.filter((record) => record.activation.selection.status === "ready").length,
-    verifiedNotHireableAgents: records.filter((record) => record.trust.states.ENDPOINT_VERIFIED).length,
+    hireableAgents: records.filter(hireableRecord).length,
+    operatorReadyAgents: records.filter((record) => record.activation?.selection?.status === "ready").length,
+    verifiedNotHireableAgents: records.filter((record) => record.trust.states.ENDPOINT_VERIFIED && !hireableRecord(record)).length,
     unavailableAgents: records.filter(endpointUnavailable).length,
     hireAttempts: actualRuns.filter((run) => run?.qualification?.hasRealPayment === true || run?.protocolJob?.funded === true).length,
     paidAttempts: paidAttempts.length,
