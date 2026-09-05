@@ -30,7 +30,7 @@ The agent answered all five required fields and was right about the things that 
 
 Job 695 reached `COMPLETED`, the deliverable is on IPFS at `QmVbNqGEQWcaYrBvNWKfHz4JSfFzw6pVobPZ8XJk6gpT1T`, and its manifest hash matches the value committed onchain. Health Guard is now `BENCHMARKED` with one observed delivery. It is not `REPEATEDLY OBSERVED`; that needs a second qualifying benchmark. `jobs paid for and graded` is now `1`, derived from run records rather than set by hand.
 
-This is TermiX Candidate #1. Candidate #2 is the PancakeSwap pair above, which does satisfy the trading-category requirement. The track still needs a third qualifying pair.
+This is TermiX Candidate #1. The RebalanceBench and YieldBench pairs complete the three-pair minimum, including the trading-category task. The later GridBench run is real benchmark evidence but is not a fourth TermiX pair.
 
 The reference agent is first-party. It is labelled `CANNED_REFERENCE`, it is excluded from third-party agent diversity, and it received no leniency for belonging to Canned.
 
@@ -168,7 +168,7 @@ Canned has a public surface a visitor can use without knowing what ERC-8004 is.
 | `/hire/new` | Fresh provider quote, user review, and exact wallet transaction plan. |
 | `/hire/:hireId` | Resume one user-owned hire, watch job state, and load validated delivery. |
 | `/hires` / `/my-hires` | Recover and resume hires for a connected buyer wallet. |
-| `/leash` | The Grid Keeper authority view, including scope, expiry, and revocation state. |
+
 
 Two rules govern that surface.
 
@@ -180,9 +180,11 @@ Public Hire is live for four Canned reference agents on BSC Testnet. Canned
 takes a fresh signed quote, shows the task/agent/network/token/price/expiry and
 exact prompt sequence, then the user signs every transaction from their own wallet.
 Canned never receives a private key, never signs for the buyer, uses only exact
-approvals, and verifies every receipt before advancing the job. No real-spend UAT
-has been run as part of this implementation; the production path is stopped at
-the final pre-payment review.
+approvals, and verifies every receipt before advancing the job. The completed
+public UAT hire hire_b52f758ed8354c4ea78f (ERC-8183 job 969) proves the
+fresh-wallet flow through completion, result recovery, evidence recovery, and
+My Hires recovery. Its authoritative human-facing cost is 0.001 U, and its
+result is NO_SHORTFALL_OBSERVED.
 
 Canned proves ownership with a wallet signature and **never asks for a private key, a seed phrase, or a wallet password**. See [docs/SECURITY.md](docs/SECURITY.md).
 

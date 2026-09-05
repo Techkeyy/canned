@@ -7,13 +7,49 @@
   <meta name="description" content="Canned ranks BNB Chain agents by work it has observed: real hires, real deliverables, real cost, graded against a person doing the same task.">
   <link rel="stylesheet" href="/canned.css">
   <style>
-    .hero { padding-block: var(--step-6) var(--step-6); }
-    @media (min-height: 860px) { .hero { padding-block: var(--step-7) var(--step-6); } }
-    .hero h1 { max-width: 14ch; }
-    .hero .tape { font-size: clamp(19px, 2.4vw, 26px); font-weight: 700; letter-spacing: -0.03em; color: var(--ink); margin-top: var(--step-3); }
+    .hero {
+      position: relative;
+      isolation: isolate;
+      min-height: min(720px, calc(100svh - 64px));
+      display: grid;
+      align-items: end;
+      padding: clamp(72px, 12vw, 144px) 0 clamp(48px, 8vw, 96px);
+      background: url("/assets/canned-hero.jpg") 50% 42% / cover no-repeat;
+      color: #fff;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(5, 15, 31, 0.94) 0%, rgba(5, 15, 31, 0.74) 42%, rgba(5, 15, 31, 0.18) 100%),
+        linear-gradient(0deg, rgba(5, 15, 31, 0.66), rgba(5, 15, 31, 0.12) 62%);
+      pointer-events: none;
+    }
+    .hero-inner { position: relative; z-index: 1; }
+    .hero h1 { max-width: 14ch; color: #fff; }
+    .hero .eyebrow { color: #c5e0ff; }
+    .hero .tape { font-size: clamp(19px, 2.4vw, 26px); font-weight: 700; letter-spacing: -0.03em; color: #fff; margin-top: var(--step-3); }
     .hero .lede { margin-top: var(--step-2); }
+    .hero .lede { color: rgba(255, 255, 255, 0.87); }
     .hero .actions { display: flex; flex-wrap: wrap; gap: var(--step-2); margin-top: var(--step-4); }
-    .hero .aside { margin-top: var(--step-3); font-size: 14px; color: var(--muted); }
+    .hero .btn.secondary { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.46); }
+    .hero .btn.secondary:hover { background: rgba(255, 255, 255, 0.2); border-color: #fff; }
+    .hero .aside { margin-top: var(--step-3); font-size: 14px; color: rgba(255, 255, 255, 0.72); }
+
+    @media (max-width: 760px) {
+      .hero {
+        min-height: min(700px, calc(100svh - 64px));
+        padding-block: 80px 56px;
+        background-position: 50% 38%;
+      }
+      .hero::before {
+        background: linear-gradient(180deg, rgba(5, 15, 31, 0.16) 0%, rgba(5, 15, 31, 0.62) 45%, rgba(5, 15, 31, 0.94) 100%);
+      }
+      .hero h1 { max-width: 12ch; }
+    }
 
     .claims { display: grid; gap: var(--step-3); grid-template-columns: 1.05fr 1fr; align-items: start; }
     .quotes { display: grid; gap: 10px; }
@@ -87,6 +123,8 @@
       .totals { gap: var(--step-3); }
     }
   </style>
+  <link rel="stylesheet" href="/canned-theme.css">
+  <script src="/canned-theme.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -101,16 +139,18 @@
   </header>
 
   <main>
-    <section class="hero shell" style="border:0;">
-      <p class="eyebrow">BNB Chain agent marketplace</p>
-      <h1>Find agents by what they did.</h1>
-      <p class="tape">Don't read the pitch. Read the tape.</p>
-      <p class="lede">Anyone can say their agent manages liquidity or protects a position. Canned hires agents for real work, watches what comes back, grades it against a person doing the same task, and keeps the receipts. Including the times the agent lost.</p>
-      <div class="actions">
-        <a class="btn" href="/marketplace">Explore agents</a>
-        <a class="btn secondary" href="#evidence">See a verified run</a>
+    <section class="hero" style="border:0;">
+      <div class="shell hero-inner">
+        <p class="eyebrow">BNB Chain agent marketplace</p>
+        <h1>Find agents by what they did.</h1>
+        <p class="tape">Don't read the pitch. Read the tape.</p>
+        <p class="lede">Anyone can say their agent manages liquidity or protects a position. Canned hires agents for real work, watches what comes back, grades it against a person doing the same task, and keeps the receipts. Including the times the agent lost.</p>
+        <div class="actions">
+          <a class="btn" href="/marketplace">Explore agents</a>
+          <a class="btn secondary" href="#evidence">See a verified run</a>
+        </div>
+        <p class="aside">Built on BNB Smart Chain. Payments and agent jobs run on BSC Testnet.</p>
       </div>
-      <p class="aside">Built on BNB Smart Chain. Payments and agent jobs run on BSC Testnet.</p>
     </section>
 
     <section id="problem">

@@ -1,0 +1,121 @@
+/* Shared appearance layer. canned.css and the inspection page provide the
+   light baseline; this file supplies the dark tokens and the control. */
+
+html[data-theme="light"] { color-scheme: light; }
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ink: #e6edf5;
+  --ink-soft: #c1cddd;
+  --muted: #9eafc2;
+  --paper: #111a27;
+  --panel: #1c2938;
+  --subtle: #172333;
+  --line: #34465c;
+  --line-strong: #526883;
+
+  --accent: #79a6f5;
+  --accent-button-ink: #10213a;
+  --accent-ink: #a8c5ff;
+  --accent-soft: #1d3150;
+  --accent-line: #3d5e91;
+
+  --good: #83d5b1;
+  --good-soft: #18372d;
+  --good-line: #3b735d;
+  --warn: #f4c86f;
+  --warn-soft: #3a301e;
+  --warn-line: #765e2d;
+  --bad: #ffaaa5;
+  --bad-soft: #3b2429;
+  --bad-line: #7c464e;
+
+  /* Tokens used by inspection.html's independent light stylesheet. */
+  --blue: #79a6f5;
+  --blue-soft: #1d3150;
+  --green: #83d5b1;
+  --green-soft: #18372d;
+  --amber: #f4c86f;
+  --amber-soft: #3a301e;
+  --red: #ffaaa5;
+  --red-soft: #3b2429;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+}
+
+html[data-theme="dark"] body { background: var(--paper); color: var(--ink); }
+html[data-theme="dark"] a:hover { color: var(--accent-ink); }
+html[data-theme="dark"] .btn,
+html[data-theme="dark"] .primary,
+html[data-theme="dark"] .notice button:not(.secondary),
+html[data-theme="dark"] form button:not(.secondary) { color: var(--accent-button-ink) !important; }
+html[data-theme="dark"] .btn.quiet { color: var(--accent) !important; }
+html[data-theme="dark"] .hero .btn.secondary { background: rgba(255, 255, 255, 0.12) !important; color: #fff !important; border-color: rgba(255, 255, 255, 0.46) !important; }
+html[data-theme="dark"] .shelf.on,
+html[data-theme="dark"] .chip.on { color: var(--paper) !important; }
+html[data-theme="dark"] .topbar { background: rgba(17, 26, 39, 0.92); }
+html[data-theme="dark"] .topnav a:hover,
+html[data-theme="dark"] .topnav a.here { background: rgba(230, 237, 245, 0.09); }
+html[data-theme="dark"] .state { background: var(--subtle); }
+html[data-theme="dark"] .state.error p,
+html[data-theme="dark"] .error-note { color: var(--bad); }
+html[data-theme="dark"] .skeleton { background: linear-gradient(90deg, #172333 25%, #223247 37%, #172333 63%); }
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field textarea { background: var(--panel); color: var(--ink); }
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder { color: var(--muted); }
+html[data-theme="dark"] pre { background: var(--subtle); color: var(--ink); }
+
+/* Inspection/evidence has a separate stylesheet with a few literal light
+   surfaces. Keep those surfaces legible without changing its layout. */
+html[data-theme="dark"] .secondary,
+html[data-theme="dark"] button.secondary { background: var(--panel) !important; color: var(--ink) !important; border-color: var(--line) !important; }
+html[data-theme="dark"] .category,
+html[data-theme="dark"] .status.neutral { background: var(--subtle) !important; color: var(--muted) !important; }
+html[data-theme="dark"] .category:hover,
+html[data-theme="dark"] .category.active { background: var(--ink) !important; color: var(--paper) !important; border-color: var(--ink) !important; }
+html[data-theme="dark"] .empty,
+html[data-theme="dark"] .error,
+html[data-theme="dark"] .loading { background: var(--subtle) !important; border-color: var(--line-strong) !important; }
+html[data-theme="dark"] .compare-table-wrap,
+html[data-theme="dark"] .operator-card,
+html[data-theme="dark"] .pair,
+html[data-theme="dark"] .venue-card,
+html[data-theme="dark"] .raw,
+html[data-theme="dark"] .sbs { background: var(--panel) !important; }
+html[data-theme="dark"] .hire-box { background: var(--accent-soft) !important; border-color: var(--accent-line) !important; }
+html[data-theme="dark"] .hire-box p,
+html[data-theme="dark"] .hirebox .line span:first-child,
+html[data-theme="dark"] .hirebox .why { color: var(--muted) !important; }
+html[data-theme="dark"] .status.ready,
+html[data-theme="dark"] .status.live,
+html[data-theme="dark"] .chip.good,
+html[data-theme="dark"] .verdict.win { background: var(--good-soft) !important; color: var(--good) !important; border-color: var(--good-line) !important; }
+html[data-theme="dark"] .status.warn,
+html[data-theme="dark"] .chip.warn,
+html[data-theme="dark"] .verdict.mixed { background: var(--warn-soft) !important; color: var(--warn) !important; border-color: var(--warn-line) !important; }
+html[data-theme="dark"] .status.bad,
+html[data-theme="dark"] .verdict.loss { background: var(--bad-soft) !important; color: var(--bad) !important; border-color: var(--bad-line) !important; }
+html[data-theme="dark"] .operator-card,
+html[data-theme="dark"] .card:hover { border-color: var(--line-strong); }
+
+/* Compact, keyboard-accessible global appearance menu. */
+.theme-control { position: relative; z-index: 25; flex: none; color: var(--ink); font-size: 13px; }
+.theme-control summary { cursor: pointer; list-style: none; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--panel); color: var(--ink-soft); padding: 8px 10px; font-weight: 700; white-space: nowrap; }
+.theme-control summary::-webkit-details-marker { display: none; }
+.theme-control summary::after { content: "▾"; margin-left: 7px; color: var(--muted); }
+.theme-control[open] summary { border-color: var(--accent); color: var(--ink); }
+.theme-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 176px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--panel); box-shadow: 0 12px 30px rgba(20, 32, 51, 0.16); }
+.theme-menu fieldset { display: grid; gap: 2px; border: 0; margin: 0; padding: 0; }
+.theme-menu legend { width: 100%; margin-bottom: 4px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.theme-menu label { display: flex; align-items: center; gap: 8px; border-radius: 7px; color: var(--ink); cursor: pointer; padding: 7px 6px; }
+.theme-menu label:hover { background: var(--subtle); }
+.theme-menu input[type="radio"] { width: 16px !important; min-height: 16px !important; margin: 0; padding: 0 !important; accent-color: var(--accent); }
+
+@media (max-width: 760px) {
+  .theme-control summary { padding-inline: 8px; }
+  .theme-menu { position: fixed; top: 56px; right: 16px; }
+}

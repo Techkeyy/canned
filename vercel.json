@@ -70,7 +70,10 @@
     { "source": "/health-baseline", "destination": "/web/health-baseline.html" },
     { "source": "/rebalance-baseline", "destination": "/web/rebalance-baseline.html" },
     { "source": "/yield-baseline", "destination": "/web/yield-baseline.html" },
-    { "source": "/canned.css", "destination": "/web/canned.css" }
+    { "source": "/canned.css", "destination": "/web/canned.css" },
+    { "source": "/canned-theme.css", "destination": "/web/canned-theme.css" },
+    { "source": "/canned-theme.js", "destination": "/web/canned-theme.js" },
+    { "source": "/assets/canned-hero.jpg", "destination": "/web/assets/canned-hero.jpg" }
   ],
   "headers": [
     {

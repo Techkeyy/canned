@@ -64,6 +64,9 @@ const leashHtml = await readFile(path.resolve(process.cwd(), "web/leash.html"), 
 const hireHtml = await readOptionalPage(path.resolve(process.cwd(), "web/hire.html"), "Hire unavailable");
 const hiresHtml = await readOptionalPage(path.resolve(process.cwd(), "web/hires.html"), "Hires unavailable");
 const cannedCss = await readFile(path.resolve(process.cwd(), "web/canned.css"), "utf8");
+const cannedThemeCss = await readFile(path.resolve(process.cwd(), "web/canned-theme.css"), "utf8");
+const cannedThemeJs = await readFile(path.resolve(process.cwd(), "web/canned-theme.js"), "utf8");
+const cannedHeroImage = await readFile(path.resolve(process.cwd(), "web/assets/canned-hero.jpg"));
 
 // Ownership challenges are short lived and single use, so they live in memory
 // rather than on disk. A restart invalidates them, which is the safe direction.
@@ -337,6 +340,21 @@ const server = createServer(async (request, response) => {
     if (url.pathname === "/canned.css") {
       response.writeHead(200, { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "no-store" });
       response.end(cannedCss);
+      return;
+    }
+    if (url.pathname === "/canned-theme.css") {
+      response.writeHead(200, { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(cannedThemeCss);
+      return;
+    }
+    if (url.pathname === "/canned-theme.js") {
+      response.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "no-store" });
+      response.end(cannedThemeJs);
+      return;
+    }
+    if (url.pathname === "/assets/canned-hero.jpg") {
+      response.writeHead(200, { "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=3600" });
+      response.end(cannedHeroImage);
       return;
     }
     if (request.url === "/" || url.pathname === "/home") {
