@@ -78,7 +78,10 @@ export function hireReadClient() {
     readClientPromise = (async () => {
       const { loadSdk } = await import("./erc8183-buyer.mjs");
       const sdk = await loadSdk();
-      return sdk.ERC8183Client.create({ network: "bsc-testnet" });
+      const sdkErc8183 = await import("@bnbagent/sdk/erc8183");
+      const network = sdkErc8183.resolveErc8183Network("bsc-testnet");
+      const rpcUrl = process.env.RPC_URL_BSC_TESTNET || process.env.RPC_URL || process.env.CANNED_RPC_URL || network.rpcUrl;
+      return sdk.ERC8183Client.create({ network: { ...network, rpcUrl } });
     })();
   }
   return readClientPromise;

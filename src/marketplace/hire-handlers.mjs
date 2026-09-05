@@ -1,5 +1,6 @@
 import { contentHashes, nowIso, safeError } from "../core.mjs";
 import { safeRequestJson } from "../net/egress-guard.mjs";
+import { fetchDeliverable } from "../protocol/erc8183-buyer.mjs";
 import { validateSubmittedDeliverable } from "../benchmark/validation.mjs";
 import { buildPublicAgent, publicRunsOnly } from "./public-api.mjs";
 import { applyListing } from "./listings.mjs";
@@ -572,25 +573,30 @@ export async function handleHireResult({ store, hireId, buyer = null }) {
       return fail(502, "deliverable_unresolved", { reason: `Delivery reference unresolvable: ${safeError(error)}` });
     }
   }
-  const fetched = await safeRequestJson(deliverableUrl, { timeoutMs: 20_000 });
-  if (fetched.blocked || !fetched.ok || fetched.body === null) {
-    hire.failure = { step: "result", reason: `Deliverable fetch failed (${fetched.error || fetched.status}).`, at: nowIso() };
+  const fetched = await fetchDeliverable(deliverableUrl, { timeoutMs: 20_000 });
+  const fetchedBody = fetched.response?.body;
+  if (!fetched.ok || fetchedBody === null || fetchedBody === undefined) {
+    const detail = fetched.scheme === "unsupported" ? "unsupported deliverable scheme" : "no delivery gateway returned usable JSON";
     await putHire(store, hire);
     return fail(502, "deliverable_fetch_failed", { reason: "The provider delivery could not be retrieved. The failure is preserved; the job state is unchanged." });
   }
-  const validation = validateSubmittedDeliverable({ body: fetched.body, jobId: hire.jobId, onchainDeliverable: onchain.deliverable });
+  const validation = validateSubmittedDeliverable({ body: fetchedBody, jobId: hire.jobId, onchainDeliverable: onchain.deliverable });
   if (!validation.valid) {
     hire.failure = { step: "result", reason: `Malformed delivery preserved: ${validation.errors.join(", ")}.`, at: nowIso() };
     await putHire(store, hire);
     return fail(502, "deliverable_invalid", { reason: "The provider submission failed validation and is preserved as a failure, not a result.", errors: validation.errors });
   }
+  const quote = await getQuote(store, hire.quoteId);
+  const parsedDecimals = quote?.tokenDecimals === null || quote?.tokenDecimals === undefined || quote?.tokenDecimals === "" ? null : Number(quote.tokenDecimals);
+  const tokenDecimals = Number.isInteger(parsedDecimals) && parsedDecimals >= 0 && parsedDecimals <= 255 ? parsedDecimals : null;
+  const amountHuman = tokenDecimals === null ? (hire.amountHuman || null) : formatUnits(hire.amountRaw, tokenDecimals);
   hire.result = {
     output: validation.output,
     manifestHash: validation.manifestHash,
     deliverableUrl,
     jobId: hire.jobId,
     retrievedAt: nowIso(),
-    cost: { amountRaw: hire.amountRaw, tokenSymbol: hire.tokenSymbol, token: hire.token },
+    cost: { amountRaw: hire.amountRaw, amountHuman, tokenDecimals, tokenSymbol: hire.tokenSymbol, token: hire.token },
   };
   hire.failure = null;
   hire.updatedAt = nowIso();

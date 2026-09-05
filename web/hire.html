@@ -27,6 +27,8 @@
     .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
     .poll { font-size: 13px; color: var(--muted); }
   </style>
+  <link rel="stylesheet" href="/canned-theme.css">
+  <script src="/canned-theme.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -54,13 +56,67 @@
     const $ = (s) => document.querySelector(s);
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const BSC_TESTNET = "0x61";
-    const state = { identity: null, hireId: null, agent: null, buyer: null, quote: null, hire: null, plan: [], idempotencyKey: null, busy: false };
+    const BSC_TESTNET_CONFIG = Object.freeze({
+      chainId: BSC_TESTNET,
+      chainName: "BSC Testnet",
+      nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 },
+      rpcUrls: ["https://bsc-testnet-rpc.publicnode.com"],
+      blockExplorerUrls: ["https://testnet.bscscan.com"],
+    });
+    const state = { identity: null, hireId: null, agent: null, buyer: null, chainId: null, quote: null, hire: null, plan: [], idempotencyKey: null, taskDraft: "", walletError: null, walletErrorDetail: null, busy: false };
 
     function params() { return new URLSearchParams(location.search); }
-    function pathHireId() { const m = location.pathname.match(/^\/hire\/(.+)$/); return m ? decodeURIComponent(m[1]) : null; }
+    function pathHireId() { if (location.pathname === "/hire/new") return null; const m = location.pathname.match(/^\/hire\/(.+)$/); return m ? decodeURIComponent(m[1]) : null; }
     function newKey() { const b = new Uint8Array(18); crypto.getRandomValues(b); return Array.from(b).map((x) => "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".charAt(x % 64)).join(""); }
     function note(t, p) { return '<p class="note">' + t + (p ? " " + p : "") + "</p>"; }
     function err(t, p) { return '<p class="error-note"><strong>' + t + "</strong>" + (p ? " " + p : "") + "</p>"; }
+    function onTestnet() { return String(state.chainId || "").toLowerCase() === BSC_TESTNET; }
+    function captureTask() { const task = $("#task"); if (task) state.taskDraft = task.value || ""; }
+    function invalidateBuyerBoundState() { state.quote = null; state.hire = null; state.plan = []; state.idempotencyKey = null; }
+    function walletStatus() {
+      if (!state.buyer) return '<div id="wallet-status" aria-live="polite">' + '<p class="note">Connect your wallet to continue.</p>' + (state.walletError ? err("Wallet connection not completed.", esc(state.walletError)) : "") + "</div>";
+      const address = '<p class="mono">Connected wallet: ' + esc(state.buyer) + "</p>";
+      if (!onTestnet()) return '<div id="wallet-status" aria-live="polite">' + '<p class="note"><strong>Wallet connected. Switch to BSC Testnet (chain 97) to continue.</strong></p>' + address + '<button class="btn secondary" type="button" id="switch">Switch to BSC Testnet</button>' + (state.walletError ? err("Network switch not completed.", esc(state.walletError)) : "") + "</div>";
+      return '<div id="wallet-status" aria-live="polite">' + '<p class="note"><strong>Connected to BSC Testnet.</strong></p>' + address + (state.walletError ? err("Wallet action not completed.", esc(state.walletError)) : "") + "</div>";
+    }
+    function updateBuyer(nextBuyer) {
+      const next = nextBuyer || null;
+      const changed = String(state.buyer || "").toLowerCase() !== String(next || "").toLowerCase();
+      const hadPreparedFlow = Boolean(state.quote || state.plan.length);
+      if (changed && state.buyer && hadPreparedFlow) invalidateBuyerBoundState();
+      state.buyer = next;
+      return { changed, hadPreparedFlow };
+    }
+    function updateChain(nextChainId) {
+      const next = nextChainId ? String(nextChainId).toLowerCase() : null;
+      const changed = String(state.chainId || "").toLowerCase() !== String(next || "").toLowerCase();
+      const hadPreparedFlow = Boolean(state.quote || state.plan.length);
+      if (changed && state.chainId && hadPreparedFlow) invalidateBuyerBoundState();
+      state.chainId = next;
+      return { changed, hadPreparedFlow };
+    }
+    async function syncWalletState({ accountsHint = null, chainIdHint = null, render = true } = {}) {
+      if (!window.ethereum) { updateBuyer(null); updateChain(null); return { accountChanged: false, chainChanged: false, hadPreparedFlow: false }; }
+      const accounts = accountsHint !== null ? accountsHint : await window.ethereum.request({ method: "eth_accounts" });
+      const buyerChange = updateBuyer(accounts?.[0] || null);
+      const chainId = state.buyer ? (chainIdHint || await window.ethereum.request({ method: "eth_chainId" })) : null;
+      const chainChange = updateChain(chainId);
+      state.walletError = null;
+      state.walletErrorDetail = null;
+      if (render && state.agent && !state.hireId) renderNew();
+      return { accountChanged: buyerChange.changed, chainChanged: chainChange.changed, hadPreparedFlow: buyerChange.hadPreparedFlow || chainChange.hadPreparedFlow };
+    }
+    async function handleWalletEvent(options) {
+      captureTask();
+      try {
+        const changed = await syncWalletState(options);
+        if (changed.accountChanged && changed.hadPreparedFlow && state.hireId) {
+          state.hireId = null;
+          history.replaceState(null, "", "/hire/new?identity=" + encodeURIComponent(state.identity));
+        }
+      } catch (e) { state.walletError = "Could not read the wallet state. Nothing was spent."; }
+      if (state.agent && !state.hireId) renderNew();
+    }
     function remember(hire) {
       try {
         const list = JSON.parse(localStorage.getItem("canned_hires") || "[]");
@@ -70,29 +126,102 @@
     }
 
     async function api(path, opts) {
-      const r = await fetch(path, opts);
-      const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data.reason || data.error || ("Request failed (" + r.status + ")"));
-      return data;
+      const controller = typeof AbortController === "function" ? new AbortController() : null;
+      const requestOpts = controller ? { ...(opts || {}), signal: controller.signal } : opts;
+      let timer = null;
+      const request = (async () => {
+        const r = await fetch(path, requestOpts);
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.reason || data.error || ("Request failed (" + r.status + ")"));
+        return data;
+      })();
+      const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          controller?.abort();
+          reject(new Error("Request timed out while reading this hire. Refresh to retry; no wallet action was requested."));
+        }, 20000);
+      });
+      try { return await Promise.race([request, timeout]); }
+      catch (e) {
+        if (e?.name === "AbortError") throw new Error("Request timed out while reading this hire. Refresh to retry; no wallet action was requested.");
+        throw e;
+      } finally { if (timer !== null) clearTimeout(timer); }
     }
 
     async function connectWallet() {
       if (!window.ethereum) throw new Error("No browser wallet found. Open this page in a wallet browser such as MetaMask.");
+      captureTask();
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       if (!accounts || !accounts[0]) throw new Error("No account selected.");
-      state.buyer = accounts[0];
-      const chainId = await window.ethereum.request({ method: "eth_chainId" }).catch(() => null);
-      if (chainId !== BSC_TESTNET) await switchToTestnet();
+      await syncWalletState({ accountsHint: accounts });
       return state.buyer;
     }
 
+    function providerName() {
+      const p = window.ethereum || {};
+      if (p.isMetaMask) return "MetaMask";
+      if (p.isCoinbaseWallet) return "Coinbase Wallet";
+      if (p.isTrust) return "Trust Wallet";
+      return "browser wallet";
+    }
+    function providerErrorMessage(e) { return String(e?.message || e || "Unknown provider error"); }
+    function isRejectedError(e) { return e?.code === 4001 || /user\s+(?:reject|den|cancel)|cancel(?:led|ed) by user/i.test(providerErrorMessage(e)); }
+    function isUnknownChainError(e) {
+      return e?.code === 4902 || /unknown chain|unrecognized chain|unrecognised chain|chain (?:is )?not added/i.test(providerErrorMessage(e));
+    }
+    function isUnsupportedSwitchError(e) {
+      return e?.code === -32601 || /wallet_switchEthereumChain.*(?:unsupported|not found|does not exist)|(?:method|switching).*(?:unsupported|not supported|not found)/i.test(providerErrorMessage(e));
+    }
+    function captureProviderError(e, phase, currentChainId) {
+      state.walletErrorDetail = {
+        code: e?.code ?? null,
+        message: providerErrorMessage(e),
+        provider: providerName(),
+        currentChainId: currentChainId || state.chainId || null,
+        requestedChainId: BSC_TESTNET,
+        phase,
+      };
+    }
+    function walletFailureMessage(e, phase) {
+      if (isRejectedError(e)) {
+        return phase === "add" ? "Adding BSC Testnet was cancelled. Switch to BSC Testnet to continue." : "Network switch cancelled. Switch to BSC Testnet to continue.";
+      }
+      if (phase === "add") return "Could not add BSC Testnet to this wallet. Nothing was spent.";
+      if (isUnsupportedSwitchError(e)) return "This " + providerName() + " does not support programmatic network switching. Select BSC Testnet (chain 97) in your wallet, then return to continue. Nothing was spent.";
+      return "Could not switch to BSC Testnet. Check your wallet network configuration and try again. Nothing was spent.";
+    }
+    function walletFailure(error, phase) { return { error, phase }; }
     async function switchToTestnet() {
+      if (!window.ethereum) throw new Error("No browser wallet found.");
+      captureTask();
+      state.walletError = null;
+      state.walletErrorDetail = null;
+      let phase = "read-chain";
+      let currentChainId = state.chainId;
       try {
-        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BSC_TESTNET }] });
-      } catch (e) {
-        if (e && e.code === 4902) {
-          await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: BSC_TESTNET, chainName: "BSC Testnet", nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 }, rpcUrls: ["https://data-seed-prebsc-2-s2.binance.org:8545"], blockExplorerUrls: ["https://testnet.bscscan.com"] }] });
-        } else throw new Error("Switch to BSC Testnet (chain 97) to continue. Nothing was spent.");
+        currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+        updateChain(currentChainId);
+        if (onTestnet()) { await syncWalletState({ chainIdHint: BSC_TESTNET }); return; }
+        phase = "switch";
+        try {
+          await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BSC_TESTNET }] });
+        } catch (e) {
+          captureProviderError(e, phase, currentChainId);
+          if (!isUnknownChainError(e)) throw walletFailure(e, phase);
+          phase = "add";
+          try { await window.ethereum.request({ method: "wallet_addEthereumChain", params: [BSC_TESTNET_CONFIG] }); }
+          catch (addError) { throw walletFailure(addError, phase); }
+          phase = "switch-retry";
+          try { await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: BSC_TESTNET }] }); }
+          catch (retryError) { throw walletFailure(retryError, phase); }
+        }
+        await syncWalletState({ chainIdHint: BSC_TESTNET });
+      } catch (failure) {
+        const e = failure?.error || failure;
+        const failurePhase = failure?.phase || phase;
+        captureProviderError(e, failurePhase, currentChainId);
+        state.walletError = walletFailureMessage(e, failurePhase);
+        throw new Error(state.walletError);
       }
     }
 
@@ -114,27 +243,35 @@
     }
 
     function renderNew() {
+      captureTask();
       const a = state.agent;
       $("#flow").innerHTML = '<p class="small"><a href="/agent/' + encodeURIComponent(state.identity) + '">Back to ' + esc(a.name) + "</a></p>"
         + '<div class="card"><h2>Hire ' + esc(a.name) + "</h2>"
         + "<p>" + esc(a.purpose || a.description || "") + "</p>"
         + '<div class="field" style="margin-top:14px;"><label for="task">What should it do? (max 2000 characters)</label>'
-        + '<textarea id="task" maxlength="2000" placeholder="Describe your position or the work you want, e.g. the Venus account and pool to assess."></textarea></div>'
+        + '<textarea id="task" maxlength="2000" placeholder="Describe your position or the work you want, e.g. the Venus account and pool to assess.">' + esc(state.taskDraft) + "</textarea></div>"
         + '<div class="row"><button class="btn" type="button" id="connect">' + (state.buyer ? "Wallet: " + esc(state.buyer.slice(0, 10)) + "..." : "Connect wallet") + "</button>"
-        + '<button class="btn secondary" type="button" id="quote">Get a real quote</button></div>'
+        + '<button class="btn secondary" type="button" id="quote"' + (state.buyer && onTestnet() ? "" : " disabled") + '>Get a real quote</button></div>'
+        + walletStatus()
         + '<div id="out"></div></div>'
         + '<div class="card"><h2>What happens next</h2><p class="note">Canned takes a fresh signed quote from the provider and verifies it. You review exact terms, confirm, then sign each transaction yourself. Nothing moves until you confirm.</p></div>';
       $("#connect").addEventListener("click", async () => {
-        const taskBeforeConnect = $("#task")?.value || "";
-        try { await connectWallet(); renderNew(); $("#task").value = taskBeforeConnect; } catch (e) { $("#out").innerHTML = err("Wallet not connected.", esc(e.message)); }
+        state.walletError = null;
+        try { await connectWallet(); renderNew(); } catch (e) { state.walletError = e.message; renderNew(); }
+      });
+      $("#switch")?.addEventListener("click", async () => {
+        state.walletError = null;
+        try { await switchToTestnet(); renderNew(); } catch (e) { if (!state.walletError) state.walletError = e.message; renderNew(); }
       });
       $("#quote").addEventListener("click", requestQuote);
     }
 
     async function requestQuote() {
       const out = $("#out");
-      const description = $("#task").value.trim();
+      captureTask();
+      const description = state.taskDraft.trim();
       if (!state.buyer) { out.innerHTML = err("Connect your wallet first.", "The quote binds to your address."); return; }
+      if (!onTestnet()) { out.innerHTML = err("Switch to BSC Testnet first.", "The quote is blocked until your wallet is on chain 97."); return; }
       if (!description) { out.innerHTML = err("Describe the task first."); return; }
       out.innerHTML = note("<strong>Asking the provider for a fresh quote.</strong> Nothing is spent.");
       try {
@@ -267,9 +404,24 @@
       box.innerHTML = note("Loading the validated delivery.");
       try {
         const r = await api("/api/hire/job/" + encodeURIComponent(state.hireId) + "/result?buyer=" + encodeURIComponent(state.buyer));
+        const cost = r.metadata?.cost || {};
+        const costHuman = cost.amountHuman || (cost.tokenDecimals !== null && cost.tokenDecimals !== undefined ? formatTokenAmount(cost.amountRaw, cost.tokenDecimals) : null) || state.hire?.amountHuman;
+        const costLabel = costHuman ? costHuman + (cost.tokenSymbol ? " " + cost.tokenSymbol : "") : "unavailable";
         box.innerHTML = "<pre class=\"mono\" style=\"white-space:pre-wrap;\">" + esc(JSON.stringify(r.result, null, 2)) + "</pre>"
-          + '<p class="poll">Retrieved ' + esc(r.metadata?.retrievedAt || "") + " · cost " + esc((r.metadata?.cost?.amountRaw || "") + " " + (r.metadata?.cost?.tokenSymbol || "")) + "</p>";
+          + '<p class="poll">Retrieved ' + esc(r.metadata?.retrievedAt || "") + " · cost " + esc(costLabel) + "</p>";
       } catch (e) { box.innerHTML = err("No result yet.", esc(e.message)); }
+    }
+
+    function formatTokenAmount(raw, decimals) {
+      const precision = Number(decimals);
+      if (raw === null || raw === undefined || decimals === null || decimals === undefined || decimals === "" || !Number.isInteger(precision) || precision < 0 || precision > 255) return null;
+      try {
+        const value = BigInt(raw);
+        const base = 10n ** BigInt(precision);
+        const whole = value / base;
+        const fraction = String(value % base).padStart(precision, "0").replace(/0+$/, "");
+        return fraction ? whole + "." + fraction : String(whole);
+      } catch { return null; }
     }
 
     async function boot() {
@@ -277,8 +429,8 @@
       state.identity = params().get("identity");
       if (state.hireId) {
         state.buyer = params().get("buyer") || null;
-        if (!state.buyer && window.ethereum) {
-          try { const accs = await window.ethereum.request({ method: "eth_accounts" }); state.buyer = accs?.[0] || null; } catch { /* ignore */ }
+        if (window.ethereum) {
+          try { await syncWalletState({ accountsHint: state.buyer ? [state.buyer] : null, render: false }); } catch { state.walletError = "Could not read the wallet state. Nothing was spent."; }
         }
         try {
           const h = await api("/api/hire/job/" + encodeURIComponent(state.hireId) + (state.buyer ? "?buyer=" + encodeURIComponent(state.buyer) : ""));
@@ -291,7 +443,7 @@
             state.plan = h.plan.steps;
             renderSigning();
           } else renderStatus();
-        } catch (e) { $("#flow").innerHTML = '<div class="state error"><strong>Hire not found</strong><p>' + esc(e.message) + '</p><p style="margin-top:10px;"><a class="btn small" href="/marketplace">Back to agents</a></p></div>'; }
+        } catch (e) { $("#flow").innerHTML = '<div class="state error"><strong>Could not load this hire</strong><p>' + esc(e.message) + '</p><p style="margin-top:10px;"><a class="btn small" href="/marketplace">Back to agents</a></p></div>'; }
         return;
       }
       if (!state.identity) { location.replace("/marketplace"); return; }
@@ -301,16 +453,15 @@
           $("#flow").innerHTML = '<div class="state"><strong>Not available to hire</strong><p>' + esc(state.agent.hire?.reason || "Canned has not verified a safe way to hire this agent.") + '</p><p style="margin-top:10px;"><a class="btn small" href="/agent/' + encodeURIComponent(state.identity) + '">Back to evidence</a></p></div>';
           return;
         }
-        if (window.ethereum) {
-          try { const accs = await window.ethereum.request({ method: "eth_accounts" }); state.buyer = accs?.[0] || null; } catch { /* ignore */ }
-        }
+        if (window.ethereum) { try { await syncWalletState({ render: false }); } catch { state.walletError = "Could not read the wallet state. Nothing was spent."; } }
         renderNew();
       } catch (e) { $("#flow").innerHTML = '<div class="state error"><strong>Agent not found</strong><p>' + esc(e.message) + "</p></div>"; }
     }
 
     if (window.ethereum) {
-      window.ethereum.on?.("accountsChanged", (accs) => { state.buyer = accs?.[0] || null; });
-      window.ethereum.on?.("chainChanged", () => location.reload());
+      window.ethereum.on?.("accountsChanged", (accs) => { void handleWalletEvent({ accountsHint: accs }); });
+      window.ethereum.on?.("chainChanged", (chainId) => { void handleWalletEvent({ chainIdHint: chainId }); });
+      window.ethereum.on?.("disconnect", () => { captureTask(); updateBuyer(null); updateChain(null); state.walletError = "Wallet disconnected. Nothing was spent."; if (state.agent && !state.hireId) renderNew(); });
     }
     boot();
   </script>
